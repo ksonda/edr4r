@@ -1,0 +1,17 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "247",
+      "geometry": { "type": "Point", "coordinates": [-104.8, 40.42] },
+      "properties": { "name": "Horsetooth Reservoir", "locationType": "reservoir" }
+    },
+    {
+      "type": "Feature",
+      "id": "248",
+      "geometry": { "type": "Point", "coordinates": [-108.2, 39.05] },
+      "properties": { "name": "Blue Mesa Reservoir", "locationType": "reservoir" }
+    }
+  ]
+}

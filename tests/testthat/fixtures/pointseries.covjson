@@ -1,0 +1,48 @@
+{
+  "type": "CoverageCollection",
+  "domainType": "PointSeries",
+  "parameters": {
+    "storage": {
+      "type": "Parameter",
+      "description": { "en": "Reservoir storage" },
+      "unit": { "symbol": "acre-feet" },
+      "observedProperty": { "id": "storage", "label": { "en": "Reservoir Storage" } }
+    },
+    "elevation": {
+      "type": "Parameter",
+      "unit": { "label": { "en": "feet" } },
+      "observedProperty": { "id": "elevation", "label": { "en": "Lake/Reservoir Elevation" } }
+    }
+  },
+  "coverages": [
+    {
+      "type": "Coverage",
+      "id": "247",
+      "domain": {
+        "type": "Domain",
+        "domainType": "PointSeries",
+        "axes": {
+          "x": { "values": [-104.8] },
+          "y": { "values": [40.42] },
+          "t": { "values": ["2020-01-01T00:00:00Z", "2020-01-02T00:00:00Z", "2020-01-03T00:00:00Z"] }
+        }
+      },
+      "ranges": {
+        "storage": {
+          "type": "NdArray",
+          "dataType": "float",
+          "axisNames": ["t"],
+          "shape": [3],
+          "values": [100.5, null, 102.7]
+        },
+        "elevation": {
+          "type": "NdArray",
+          "dataType": "float",
+          "axisNames": ["t"],
+          "shape": [3],
+          "values": [5412.1, 5412.4, 5412.9]
+        }
+      }
+    }
+  ]
+}
