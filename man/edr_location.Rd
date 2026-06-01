@@ -21,9 +21,12 @@ edr_location(
 
 \item{collection_id}{Collection identifier.}
 
-\item{location_id}{Identifier of the location. IDs vary by source:
-integers for USBR RISE, alphanumeric codes for SNOTEL/USACE,
-station triplets for AWDB forecasts (will be URL-encoded).}
+\item{location_id}{Identifier of the location, as advertised by the
+server. IDs vary by deployment: bare integers, alphanumeric station
+codes, or compound identifiers (e.g. colon-separated triplets used
+by some snow / forecast networks). Reserved characters are
+URL-encoded for you; a literal \code{/} is rejected because it cannot
+round-trip through HTTP path segments.}
 
 \item{datetime}{ISO-8601 instant or interval, e.g.
 \code{"2024-01-01/2024-12-31"} or \code{"2024-01-01/.."}.}

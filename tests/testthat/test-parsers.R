@@ -5,15 +5,15 @@ test_that("covjson_to_tibble flattens a PointSeries with nulls", {
   expect_s3_class(tb, "tbl_df")
   # 2 parameters x 3 timesteps
   expect_equal(nrow(tb), 6)
-  expect_setequal(unique(tb$parameter), c("storage", "elevation"))
+  expect_setequal(unique(tb$parameter), c("discharge", "gage_height"))
 
-  storage <- tb[tb$parameter == "storage", ]
-  expect_equal(storage$value, c(100.5, NA, 102.7))
-  expect_equal(unique(storage$unit), "acre-feet")
-  expect_equal(unique(storage$parameter_label), "Reservoir Storage")
-  expect_equal(unique(storage$x), -104.8)
-  expect_equal(unique(storage$y), 40.42)
-  expect_equal(unique(tb$coverage_id), "247")
+  discharge <- tb[tb$parameter == "discharge", ]
+  expect_equal(discharge$value, c(100.5, NA, 102.7))
+  expect_equal(unique(discharge$unit), "ft3/s")
+  expect_equal(unique(discharge$parameter_label), "Discharge")
+  expect_equal(unique(discharge$x), -109.83)
+  expect_equal(unique(discharge$y), 37.02)
+  expect_equal(unique(tb$coverage_id), "08313000")
   expect_s3_class(tb$datetime, "POSIXct")
 })
 
@@ -71,32 +71,43 @@ test_that("non-CoverageJSON input errors clearly", {
   expect_error(covjson_to_tibble(list(foo = 1)), "CoverageJSON")
 })
 
+test_that("geojson_props_tibble works without dplyr/sf (no map_dfr regression)", {
+  # Regression guard: purrr::map_dfr off-loads its bind to dplyr, which we
+  # don't depend on. Make sure vec_rbind handles the feature-properties
+  # stack across rows even when feature property keys differ.
+  gj <- read_fixture("locations.geojson")
+  tb <- edr4r:::geojson_props_tibble(gj)
+  expect_s3_class(tb, "tbl_df")
+  expect_equal(nrow(tb), 2L)
+  expect_true("id" %in% names(tb))
+})
+
 test_that("mixed numeric/character parameters in one coverage demote cleanly", {
   cov <- list(
     type = "Coverage",
     parameters = list(
-      storage = list(unit = list(symbol = "acre-feet"),
-                     observedProperty = list(label = "Reservoir Storage")),
+      discharge = list(unit = list(symbol = "ft3/s"),
+                       observedProperty = list(label = "Discharge")),
       qa_flag = list(observedProperty = list(label = "QA Flag"))
     ),
     domain = list(
       domainType = "PointSeries",
       axes = list(
-        x = list(values = list(-104.8)),
-        y = list(values = list(40.42)),
+        x = list(values = list(-109.83)),
+        y = list(values = list(37.02)),
         t = list(values = list("2020-01-01T00:00:00Z", "2020-01-02T00:00:00Z"))
       )
     ),
     ranges = list(
-      storage = list(type = "NdArray", axisNames = list("t"),
-                     shape = list(2L), values = list(100.5, 102.7)),
+      discharge = list(type = "NdArray", axisNames = list("t"),
+                       shape = list(2L), values = list(100.5, 102.7)),
       qa_flag = list(type = "NdArray", axisNames = list("t"),
                      shape = list(2L), values = list("ok", "missing"))
     )
   )
-  expect_warning(tb <- covjson_to_tibble(cov), "storage")
+  expect_warning(tb <- covjson_to_tibble(cov), "discharge")
   expect_type(tb$value, "character")
-  expect_equal(tb$value[tb$parameter == "storage"], c("100.5", "102.7"))
+  expect_equal(tb$value[tb$parameter == "discharge"], c("100.5", "102.7"))
   expect_equal(tb$value[tb$parameter == "qa_flag"], c("ok", "missing"))
 })
 
@@ -133,6 +144,32 @@ test_that("all-numeric responses emit no warning and keep numeric values", {
   cov <- read_fixture("pointseries.covjson")
   expect_silent(tb <- covjson_to_tibble(cov))
   expect_type(tb$value, "double")
+})
+
+test_that("parse_datetime picks the first format that parses any element", {
+  # Single-format axis: full parse.
+  iso <- c("2023-01-01T00:00:00Z", "2023-01-02T00:00:00Z")
+  p <- edr4r:::parse_datetime(iso)
+  expect_s3_class(p, "POSIXct")
+  expect_false(any(is.na(p)))
+
+  date_only <- c("2023-01-01", "2023-01-02")
+  p2 <- edr4r:::parse_datetime(date_only)
+  expect_s3_class(p2, "POSIXct")
+  expect_false(any(is.na(p2)))
+})
+
+test_that("parse_datetime silently NA-fills when an axis mixes formats", {
+  # ASSUMPTION lock-in: the parser picks the first matching format from
+  # its list and applies it to the whole vector. Values that don't match
+  # that format become NA. If a server ever mixes ISO timestamps with
+  # date-only strings on the same axis, the date-only ones drop out.
+  mixed <- c("2023-01-01", "2023-01-02T00:00:00Z")
+  p <- edr4r:::parse_datetime(mixed)
+  expect_s3_class(p, "POSIXct")
+  # ISO timestamp format wins (listed first); date-only becomes NA.
+  expect_true(is.na(p[[1]]))
+  expect_false(is.na(p[[2]]))
 })
 
 test_that("all-character responses do not warn (no demotion happened)", {

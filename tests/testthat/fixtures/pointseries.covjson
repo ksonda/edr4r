@@ -2,45 +2,45 @@
   "type": "CoverageCollection",
   "domainType": "PointSeries",
   "parameters": {
-    "storage": {
+    "discharge": {
       "type": "Parameter",
-      "description": { "en": "Reservoir storage" },
-      "unit": { "symbol": "acre-feet" },
-      "observedProperty": { "id": "storage", "label": { "en": "Reservoir Storage" } }
+      "description": { "en": "Streamflow discharge" },
+      "unit": { "symbol": "ft3/s" },
+      "observedProperty": { "id": "discharge", "label": { "en": "Discharge" } }
     },
-    "elevation": {
+    "gage_height": {
       "type": "Parameter",
       "unit": { "label": { "en": "feet" } },
-      "observedProperty": { "id": "elevation", "label": { "en": "Lake/Reservoir Elevation" } }
+      "observedProperty": { "id": "gage_height", "label": { "en": "Gage height" } }
     }
   },
   "coverages": [
     {
       "type": "Coverage",
-      "id": "247",
+      "id": "08313000",
       "domain": {
         "type": "Domain",
         "domainType": "PointSeries",
         "axes": {
-          "x": { "values": [-104.8] },
-          "y": { "values": [40.42] },
+          "x": { "values": [-109.83] },
+          "y": { "values": [37.02] },
           "t": { "values": ["2020-01-01T00:00:00Z", "2020-01-02T00:00:00Z", "2020-01-03T00:00:00Z"] }
         }
       },
       "ranges": {
-        "storage": {
+        "discharge": {
           "type": "NdArray",
           "dataType": "float",
           "axisNames": ["t"],
           "shape": [3],
           "values": [100.5, null, 102.7]
         },
-        "elevation": {
+        "gage_height": {
           "type": "NdArray",
           "dataType": "float",
           "axisNames": ["t"],
           "shape": [3],
-          "values": [5412.1, 5412.4, 5412.9]
+          "values": [5.41, 5.42, 5.43]
         }
       }
     }

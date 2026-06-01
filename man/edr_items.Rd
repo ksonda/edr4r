@@ -38,8 +38,9 @@ edr_item(client, collection_id, item_id, format = c("geojson", "json"), ...)
 }
 \description{
 Many EDR servers expose an OGC API Features \verb{/items} endpoint
-alongside the EDR queries. The Western Water Datahub providers
-implement \code{items} as a thin stub used to register the collection as
-both EDR and Features; non-trivial data is usually obtained via the
-EDR queries.
+alongside the EDR queries. Behaviour varies: some deployments
+implement \code{items} as a full Features endpoint, others as a thin stub
+used only to register the collection as both EDR and Features. In
+the stub case, non-trivial data is usually obtained via the EDR
+queries (\code{\link[=edr_locations]{edr_locations()}}, \code{\link[=edr_area]{edr_area()}}, \code{\link[=edr_cube]{edr_cube()}}, etc.).
 }

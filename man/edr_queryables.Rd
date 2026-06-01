@@ -9,7 +9,8 @@ edr_queryables(client, collection_id)
 \arguments{
 \item{client}{An \code{edr_client}.}
 
-\item{collection_id}{Collection identifier, e.g. \code{"rise-edr"}.}
+\item{collection_id}{Collection identifier as advertised by the
+server -- e.g. \code{"monitoring-locations"} or \code{"daily-values"}.}
 }
 \value{
 A list with the queryables document.

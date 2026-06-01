@@ -4,26 +4,48 @@
 \name{edr4r-package}
 \alias{edr4r}
 \alias{edr4r-package}
-\title{edr4r: Client for OGC API - Environmental Data Retrieval}
+\title{edr4r: A tidy R client for OGC API - Environmental Data Retrieval}
 \description{
-An R client for OGC API - EDR endpoints. Designed against the
-Western Water Datahub (WWDH) pygeoapi deployment, but works with any
-compliant EDR service. Build a client with \code{\link[=edr_client]{edr_client()}}, discover
-resources with \code{\link[=edr_collections]{edr_collections()}}, and query data with
-\code{\link[=edr_locations]{edr_locations()}}, \code{\link[=edr_area]{edr_area()}}, \code{\link[=edr_cube]{edr_cube()}}, \code{\link[=edr_position]{edr_position()}}, and
-related verbs. Parse responses with \code{\link[=covjson_to_tibble]{covjson_to_tibble()}} and
-\code{\link[=geojson_to_sf]{geojson_to_sf()}}.
+\code{edr4r} talks to any service that implements
+\href{https://ogcapi.ogc.org/edr/}{OGC API - Environmental Data Retrieval}.
+It's general-purpose, but most of the testing and real-world use to
+date has been against in-situ monitoring networks -- the kind of
+service that exposes stream gauges, weather stations, snow telemetry,
+or reservoir telemetry as EDR collections.
+}
+\details{
+Two example endpoints worth pointing it at:
+\itemize{
+\item \href{https://api.waterdata.usgs.gov/ogcapi/beta/}{USGS waterdata OGC API}
+\item \href{https://api.wwdh.internetofwater.app}{Western Water Datahub}
+(a \href{https://pygeoapi.io}{pygeoapi} deployment)
+}
+
+A typical session looks like:
+\enumerate{
+\item Build a client with \code{\link[=edr_client]{edr_client()}}.
+\item Discover what's on offer with \code{\link[=edr_collections]{edr_collections()}} and
+\code{\link[=edr_queryables]{edr_queryables()}}.
+\item Pull data with \code{\link[=edr_locations]{edr_locations()}} / \code{\link[=edr_location]{edr_location()}}, \code{\link[=edr_cube]{edr_cube()}},
+\code{\link[=edr_area]{edr_area()}}, \code{\link[=edr_position]{edr_position()}}, or the less common
+\code{\link[=edr_radius]{edr_radius()}} / \code{\link[=edr_trajectory]{edr_trajectory()}} / \code{\link[=edr_corridor]{edr_corridor()}}.
+\item Flatten the response with \code{\link[=covjson_to_tibble]{covjson_to_tibble()}} (for CoverageJSON)
+or \code{\link[=geojson_to_sf]{geojson_to_sf()}} (for GeoJSON).
+}
+
+For everything the high-level verbs don't cover, \code{\link[=edr_request]{edr_request()}} is
+the raw escape hatch.
 }
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/internetofwater/WWDH}
-  \item Report bugs at \url{https://github.com/internetofwater/WWDH/issues}
+  \item \url{https://github.com/ksonda/edr4r}
+  \item Report bugs at \url{https://github.com/ksonda/edr4r/issues}
 }
 
 }
 \author{
-\strong{Maintainer}: Western Water Datahub \email{bwebb@lincolninst.edu}
+\strong{Maintainer}: Kyle Onda \email{konda@lincolninst.edu} [copyright holder]
 
 }
 \keyword{internal}

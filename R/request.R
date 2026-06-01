@@ -7,7 +7,7 @@
 #'
 #' @param client An `edr_client` from [edr_client()].
 #' @param path Path under the base URL (with or without leading slash),
-#'   e.g. `"collections/rise-edr/locations"`.
+#'   e.g. `"collections/monitoring-locations/locations"`.
 #' @param query Named list of query parameters. Values may be scalars
 #'   or vectors; vectors are joined with `","`. `NULL` entries are
 #'   dropped.

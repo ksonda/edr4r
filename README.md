@@ -7,15 +7,24 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 <!-- badges: end -->
 
-An R client for **OGC API - Environmental Data Retrieval (EDR)** services,
-built for the [Western Water Datahub (WWDH)](https://github.com/internetofwater/WWDH)
-pygeoapi deployment but usable against any compliant EDR server.
+An R client for any service that speaks
+[OGC API - Environmental Data Retrieval](https://ogcapi.ogc.org/edr/) (EDR).
+The spec is general, but in practice this package gets the most use against
+**in-situ monitoring networks** — stream gauges, weather stations, snow
+telemetry, reservoir telemetry — that expose their stations and time series
+through EDR.
 
-It handles the boring parts — URL construction, comma-separated parameter
-lists, WKT coordinate encoding, retries, and content negotiation — and parses
-responses into tidy structures:
+Two known-good places to point it:
 
-- **CoverageJSON** → a long [`tibble`](https://tibble.tidyverse.org/) (one row per coverage × parameter × time-step), via `covjson_to_tibble()`.
+- [USGS waterdata OGC API](https://api.waterdata.usgs.gov/ogcapi/beta/) — stream gauges and water-quality stations from the U.S. Geological Survey.
+- [Western Water Datahub](https://api.wwdh.internetofwater.app) — a [pygeoapi](https://pygeoapi.io) deployment that wraps RISE, SNOTEL, USACE, AWDB and other monitoring sources behind a single EDR endpoint.
+
+The goal is to take the tedious parts of EDR off your hands — URL
+construction, comma-separated parameter lists, WKT coordinate encoding,
+retries, content negotiation — and hand back something you can actually do
+data analysis with:
+
+- **CoverageJSON** → a long [`tibble`](https://tibble.tidyverse.org/) (one row per coverage × parameter × time step), via `covjson_to_tibble()`.
 - **GeoJSON** → an [`sf`](https://r-spatial.github.io/sf/) object, via `geojson_to_sf()`.
 
 ## Installation
@@ -43,82 +52,116 @@ location lists and GeoJSON into spatial objects).
 
 ## Quick start
 
+Start by pointing a client at a server. The base URL is the only thing it
+really needs:
+
 ```r
 library(edr4r)
 
-# Point at a running WWDH server: local dev, or the hosted instance
-# at "https://api.wwdh.internetofwater.app".
-wwdh <- edr_client("http://localhost:5005")
+client <- edr_client("https://api.waterdata.usgs.gov/ogcapi/beta")
+# or "https://api.wwdh.internetofwater.app"
+# or "http://localhost:5005" if you're running pygeoapi locally
 
-# What collections are available?
-edr_collections(wwdh)
-#> # A tibble: 7 × 7
-#>   id                 title                         description  extent_bbox crs   data_queries links
-#>   <chr>              <chr>                         <chr>        <list>      <chr> <list>       <list>
-#> 1 rise-edr           USBR RISE                     ...          <dbl [4]>   ...   <chr [3]>    ...
-#> 2 snotel-edr         USDA SNOTEL                   ...          <dbl [4]>   ...   <chr [3]>    ...
+edr_collections(client)
+#> # A tibble: N × 7
+#>   id                   title                description  extent_bbox crs   data_queries links
+#>   <chr>                <chr>                <chr>        <list>      <chr> <list>       <list>
+#> 1 monitoring-locations Monitoring locations ...          <dbl [4]>   ...   <chr [3]>    ...
+#> 2 daily-values         Daily values         ...          <dbl [4]>   ...   <chr [3]>    ...
 #> ...
 ```
 
-### List locations (returns an `sf` object)
+The collection IDs above (`monitoring-locations`, `daily-values`) are the
+ones I used as placeholders — every server advertises its own. The first
+thing to do against a new service is run `edr_collections()` and read the
+`data_queries` column to see which EDR endpoints each collection supports.
+
+### Find stations
+
+`edr_locations()` with no filters returns the full station list as
+GeoJSON. If you have [`sf`](https://r-spatial.github.io/sf/) installed,
+it gets promoted to an `sf` object automatically:
 
 ```r
-locs <- edr_locations(wwdh, "rise-edr")
-locs                       # sf POINTs with station attributes
+locs <- edr_locations(client, "monitoring-locations")
+locs                            # sf POINTs with station attributes
 plot(sf::st_geometry(locs))
 ```
 
-### Pull a time series for one location (CoverageJSON → tibble)
+### Pull a time series for one station
+
+Once you know a station ID, ask for its values. The server returns
+CoverageJSON; `covjson_to_tibble()` flattens it into one row per
+(coverage × parameter × timestamp):
 
 ```r
 resp <- edr_location(
-  wwdh, "rise-edr",
-  location_id    = 247,
+  client, "daily-values",
+  location_id    = "08313000",
   datetime       = "2020-01-01/2020-12-31",
-  parameter_name = c("storage", "elevation")
+  parameter_name = c("discharge", "gage_height")
 )
 
 df <- covjson_to_tibble(resp)
 df
 #> # A tibble: 732 × 9
-#>   coverage_id parameter parameter_label   unit       datetime                x     y     z value
-#>   <chr>       <chr>     <chr>             <chr>      <dttm>              <dbl> <dbl> <dbl> <dbl>
-#> 1 247         storage   Reservoir Storage acre-feet  2020-01-01 00:00:00 -104.  40.4    NA  100.5
+#>   coverage_id parameter   parameter_label  unit  datetime                x     y     z value
+#>   <chr>       <chr>       <chr>            <chr> <dttm>              <dbl> <dbl> <dbl> <dbl>
+#> 1 08313000    discharge   Discharge        ft3/s 2020-01-01 00:00:00 -109.  37.0    NA   240
 #> ...
 ```
 
-### Bounding-box (cube) and polygon (area) queries
+### Spatial filters — bbox and polygon
+
+To grab everything inside a rectangle, use `edr_cube()`:
 
 ```r
-# Everything in a bbox over a date range
 cube <- edr_cube(
-  wwdh, "snotel-edr",
+  client, "daily-values",
   bbox           = c(-120, 39, -118, 41),
   datetime       = "2023-01-01/2023-03-31",
-  parameter_name = "WTEQ"
+  parameter_name = "discharge"
 )
 covjson_to_tibble(cube)
+```
 
-# Inside an arbitrary polygon (matrix of lon/lat, an sf polygon, or WKT)
+For an arbitrary polygon, `edr_area()` takes WKT, an `sf` polygon, or a
+matrix of `(lon, lat)` rows (it'll close the ring for you):
+
+```r
 ring <- matrix(
   c(-109, 47, -104, 47, -104, 49, -109, 49),
   ncol = 2, byrow = TRUE
 )
-area <- edr_area(wwdh, "rise-edr", coords = ring, datetime = "2022-01-01/..")
+area <- edr_area(client, "monitoring-locations", coords = ring,
+                 datetime = "2022-01-01/..")
 covjson_to_tibble(area)
 ```
 
-### Station triplets, CSV, and escape hatches
+### Weird IDs, CSV, and an escape hatch
+
+Some monitoring networks use compound station IDs — colon-separated
+triplets are a common pattern. The client URL-encodes reserved
+characters for you:
 
 ```r
-# AWDB forecast station triplets work as-is (encoded for you)
-edr_location(wwdh, "awdb-forecasts-edr", "1185:CO:SNTL", datetime = "2024-01-01/..")
+edr_location(client, "station-network", "1185:CO:SNTL",
+             datetime = "2024-01-01/..")
+```
 
-# Ask the server for CSV instead of CovJSON
-edr_location(wwdh, "snotel-edr", "1175", datetime = "2010-01-01/..", format = "csv")
+If the server advertises CSV, you can ask for it instead of CovJSON:
 
-# Drop down to a raw request for anything not wrapped by a helper
-edr_request(wwdh, "collections/rise-edr/instances", format = "json")
+```r
+edr_location(client, "daily-values", "08313000",
+             datetime = "2010-01-01/..", format = "csv")
+```
+
+And if you need to hit an endpoint the package doesn't wrap (instances,
+custom queryables, anything weird), `edr_request()` is the raw escape
+hatch:
+
+```r
+edr_request(client, "collections/daily-values/instances", format = "json")
 ```
 
 ## API at a glance
@@ -140,10 +183,13 @@ edr_request(wwdh, "collections/rise-edr/instances", format = "json")
 | `edr_request()` | low-level escape hatch |
 | `covjson_to_tibble()` / `geojson_to_sf()` | response parsers |
 
-> **Note on WWDH coverage:** The WWDH providers currently implement
-> `locations`, `cube`, and `area` (plus a stub `items`). `position`, `radius`,
-> `trajectory`, and `corridor` are part of the EDR spec and supported by this
-> client, but will return an error from collections that don't implement them.
+> **What a server actually supports varies.** Every query verb above is in
+> the [EDR spec](https://ogcapi.ogc.org/edr/) and supported by the client,
+> but most servers implement only a subset. On in-situ monitoring
+> deployments, `locations`, `position`, `cube`, and `area` are common;
+> `radius`, `trajectory`, and `corridor` less so. Hitting a verb the server
+> doesn't implement gives you an HTTP error. Check the `data_queries`
+> column from `edr_collections()` before you assume a query will work.
 
 ## Common parameters
 

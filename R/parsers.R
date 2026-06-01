@@ -287,6 +287,13 @@ parse_datetime <- function(x) {
     "%Y-%m-%dT%H:%M:%OS",  "%Y-%m-%dT%H:%M:%S",
     "%Y-%m-%d"
   )
+  # We pick the first format that parses any non-NA element, then apply it
+  # to the whole vector. ASSUMPTION: every value on a single time axis
+  # uses the same format -- this matches the CoverageJSON spec (a time
+  # axis has a single `dataType`). If a server ever mixes formats in one
+  # axis, values that don't match the chosen format silently become NA;
+  # the caller can detect that via `is.na()` and disable parsing with
+  # `datetime_as_posix = FALSE`.
   for (f in fmts) {
     p <- suppressWarnings(as.POSIXct(x, format = f, tz = "UTC"))
     if (!all(is.na(p) | is.na(x))) return(p)
@@ -321,10 +328,12 @@ as_geojson <- function(x) {
 geojson_props_tibble <- function(gj) {
   features <- gj$features %||% list()
   if (length(features) == 0L) return(tibble::tibble())
-  purrr::map_dfr(features, function(f) {
+  # vec_rbind, not map_dfr: see note in edr_collections().
+  rows <- lapply(features, function(f) {
     props <- f$properties %||% list()
     props <- lapply(props, function(v) if (is.null(v)) NA else v)
     id <- f$id %||% NA
     tibble::as_tibble(c(list(id = id), props))
   })
+  vctrs::vec_rbind(!!!rows)
 }

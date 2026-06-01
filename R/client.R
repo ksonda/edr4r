@@ -4,10 +4,14 @@
 #' API - EDR service, a default user-agent, and HTTP options that are
 #' applied to every request.
 #'
-#' @param base_url Base URL of the EDR service, e.g.
-#'   `"http://localhost:5005"` for the local WWDH deployment or
-#'   `"https://api.wwdh.internetofwater.app"` for the hosted instance.
-#'   A trailing slash is optional.
+#' @param base_url Base URL of an
+#'   [OGC API - EDR](https://ogcapi.ogc.org/edr/) service. Examples:
+#'   the [USGS waterdata OGC API](https://api.waterdata.usgs.gov/ogcapi/beta/)
+#'   at `"https://api.waterdata.usgs.gov/ogcapi/beta"`, the
+#'   [Western Water Datahub](https://api.wwdh.internetofwater.app) at
+#'   `"https://api.wwdh.internetofwater.app"`, or
+#'   `"http://localhost:5005"` for a local [pygeoapi](https://pygeoapi.io)
+#'   dev server. A trailing slash is optional.
 #' @param user_agent String sent in the `User-Agent` header. Defaults to
 #'   `"edr4r/<version> (+https://github.com/ksonda/edr4r)"`.
 #' @param timeout Request timeout in seconds. Defaults to 60.
@@ -23,8 +27,8 @@
 #' @export
 #'
 #' @examples
-#' wwdh <- edr_client("http://localhost:5005")
-#' wwdh
+#' usgs <- edr_client("https://api.waterdata.usgs.gov/ogcapi/beta")
+#' usgs
 edr_client <- function(base_url,
                        user_agent = NULL,
                        timeout = 60,

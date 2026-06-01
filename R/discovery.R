@@ -33,13 +33,16 @@ edr_collections <- function(client) {
   if (length(collections) == 0L) {
     return(empty_collections_tibble())
   }
-  purrr::map_dfr(collections, collection_row)
+  # vec_rbind, not map_dfr: purrr deprecated map_dfr and now off-loads
+  # the bind to dplyr, which we don't depend on.
+  vctrs::vec_rbind(!!!lapply(collections, collection_row))
 }
 
 #' Get a single collection's metadata
 #'
 #' @inheritParams edr_landing
-#' @param collection_id Collection identifier, e.g. `"rise-edr"`.
+#' @param collection_id Collection identifier as advertised by the
+#'   server -- e.g. `"monitoring-locations"` or `"daily-values"`.
 #' @return A list with the raw collection document.
 #' @export
 edr_collection <- function(client, collection_id) {

@@ -16,7 +16,7 @@ edr_request(
 \item{client}{An \code{edr_client} from \code{\link[=edr_client]{edr_client()}}.}
 
 \item{path}{Path under the base URL (with or without leading slash),
-e.g. \code{"collections/rise-edr/locations"}.}
+e.g. \code{"collections/monitoring-locations/locations"}.}
 
 \item{query}{Named list of query parameters. Values may be scalars
 or vectors; vectors are joined with \code{","}. \code{NULL} entries are

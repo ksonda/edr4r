@@ -5,11 +5,11 @@ test_that("edr_collections returns a tidy tibble", {
   tb <- edr_collections(test_client())
   expect_s3_class(tb, "tbl_df")
   expect_equal(nrow(tb), 2)
-  expect_setequal(tb$id, c("rise-edr", "snotel-edr"))
+  expect_setequal(tb$id, c("monitoring-locations", "daily-values"))
 
-  rise <- tb[tb$id == "rise-edr", ]
-  expect_equal(rise$extent_bbox[[1]], c(-123.60518, 28.4667, -95.875, 48.8283))
-  expect_setequal(rise$data_queries[[1]], c("locations", "cube", "area"))
+  ml <- tb[tb$id == "monitoring-locations", ]
+  expect_equal(ml$extent_bbox[[1]], c(-123.60518, 28.4667, -95.875, 48.8283))
+  expect_setequal(ml$data_queries[[1]], c("locations", "cube", "area"))
 })
 
 test_that("empty collection list yields an empty tibble", {

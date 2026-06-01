@@ -2,9 +2,9 @@
   "links": [],
   "collections": [
     {
-      "id": "rise-edr",
-      "title": "USBR Reclamation Information Sharing Environment (RISE)",
-      "description": "Proxy of the RISE API into OGC API EDR.",
+      "id": "monitoring-locations",
+      "title": "Monitoring locations",
+      "description": "Spatial index of in-situ monitoring stations.",
       "extent": {
         "spatial": {
           "bbox": [[-123.60518, 28.4667, -95.875, 48.8283]],
@@ -19,9 +19,9 @@
       "links": []
     },
     {
-      "id": "snotel-edr",
-      "title": "USDA Snowpack Telemetry Network (SNOTEL)",
-      "description": "Proxy of the SNOTEL API into OGC API EDR.",
+      "id": "daily-values",
+      "title": "Daily time series",
+      "description": "Daily observation values for monitoring locations.",
       "extent": {
         "spatial": {
           "bbox": [[-164.92472, 32.92342, -103.78758, 70.28062]],

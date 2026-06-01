@@ -54,9 +54,12 @@ edr_locations <- function(client,
 #' [covjson_to_tibble()] for a tidy data frame.
 #'
 #' @inheritParams edr_locations
-#' @param location_id Identifier of the location. IDs vary by source:
-#'   integers for USBR RISE, alphanumeric codes for SNOTEL/USACE,
-#'   station triplets for AWDB forecasts (will be URL-encoded).
+#' @param location_id Identifier of the location, as advertised by the
+#'   server. IDs vary by deployment: bare integers, alphanumeric station
+#'   codes, or compound identifiers (e.g. colon-separated triplets used
+#'   by some snow / forecast networks). Reserved characters are
+#'   URL-encoded for you; a literal `/` is rejected because it cannot
+#'   round-trip through HTTP path segments.
 #' @param z Vertical level filter.
 #' @param format `"covjson"` (default), `"geojson"`, `"csv"`, or `"json"`.
 #' @export
@@ -89,10 +92,11 @@ edr_location <- function(client,
 #' Items (OGC API Features) helpers
 #'
 #' Many EDR servers expose an OGC API Features `/items` endpoint
-#' alongside the EDR queries. The Western Water Datahub providers
-#' implement `items` as a thin stub used to register the collection as
-#' both EDR and Features; non-trivial data is usually obtained via the
-#' EDR queries.
+#' alongside the EDR queries. Behaviour varies: some deployments
+#' implement `items` as a full Features endpoint, others as a thin stub
+#' used only to register the collection as both EDR and Features. In
+#' the stub case, non-trivial data is usually obtained via the EDR
+#' queries ([edr_locations()], [edr_area()], [edr_cube()], etc.).
 #'
 #' @inheritParams edr_locations
 #' @export
@@ -413,10 +417,11 @@ common_query <- function(...) {
 # percent-encoded. We pre-encode reserved chars because httr2's
 # req_url_path_append() does NOT escape unsafe segment characters (space,
 # '?', '#'); the later req_url_query() pass normalises the URL so
-# segment-safe reserved chars (':' in AWDB triplets) come back literal.
-# '/' is rejected outright: even when pre-encoded as %2F, URL normalisation
-# and server-side decoding both turn it back into a path separator, so
-# there is no safe round-trip for an id containing a slash.
+# segment-safe reserved chars (e.g. ':' in colon-separated station
+# triplets) come back literal. '/' is rejected outright: even when
+# pre-encoded as %2F, URL normalisation and server-side decoding both
+# turn it back into a path separator, so there is no safe round-trip
+# for an id containing a slash.
 check_path_id <- function(id, arg, call = rlang::caller_env()) {
   if (length(id) != 1L || is.na(id)) {
     cli::cli_abort("{.arg {arg}} must be a single non-NA value.", call = call)
