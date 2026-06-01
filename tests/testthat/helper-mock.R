@@ -39,3 +39,20 @@ mock_text_response <- function(text,
 test_client <- function() {
   edr_client("http://test", max_tries = 1)
 }
+
+# Concatenate every popup HTML string stashed in a leaflet htmlwidget so
+# tests can grep for embedded data URIs without depending on the exact
+# positional arg index in leaflet's `addCircleMarkers` call.
+extract_popup_html <- function(m) {
+  pieces <- character(0)
+  for (call in m$x$calls) {
+    if (!identical(call$method, "addCircleMarkers")) next
+    for (arg in call$args) {
+      if (is.character(arg) && length(arg) >= 1L &&
+          any(nchar(arg) > 100L)) {
+        pieces <- c(pieces, arg)
+      }
+    }
+  }
+  paste(pieces, collapse = "")
+}

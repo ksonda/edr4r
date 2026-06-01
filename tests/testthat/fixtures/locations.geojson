@@ -3,15 +3,15 @@
   "features": [
     {
       "type": "Feature",
-      "id": "247",
-      "geometry": { "type": "Point", "coordinates": [-104.8, 40.42] },
-      "properties": { "name": "Horsetooth Reservoir", "locationType": "reservoir" }
+      "id": "08313000",
+      "geometry": { "type": "Point", "coordinates": [-109.83, 37.02] },
+      "properties": { "name": "Site A", "locationType": "gauge" }
     },
     {
       "type": "Feature",
-      "id": "248",
-      "geometry": { "type": "Point", "coordinates": [-108.2, 39.05] },
-      "properties": { "name": "Blue Mesa Reservoir", "locationType": "reservoir" }
+      "id": "08317400",
+      "geometry": { "type": "Point", "coordinates": [-106.86, 35.55] },
+      "properties": { "name": "Site B", "locationType": "gauge" }
     }
   ]
 }

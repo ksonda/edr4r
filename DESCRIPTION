@@ -29,10 +29,15 @@ Imports:
     tibble,
     vctrs
 Suggests:
+    base64enc,
     covr,
+    ggplot2,
+    htmlwidgets,
     knitr,
+    leaflet,
     rmarkdown,
     sf,
+    svglite,
     testthat (>= 3.0.0),
     withr
 Config/testthat/edition: 3

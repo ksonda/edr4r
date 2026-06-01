@@ -2,7 +2,7 @@
 % Please edit documentation in R/discovery.R
 \name{edr_queryables}
 \alias{edr_queryables}
-\title{List queryable parameters for a collection}
+\title{Get the queryables (filter properties) for a collection}
 \usage{
 edr_queryables(client, collection_id)
 }
@@ -13,9 +13,13 @@ edr_queryables(client, collection_id)
 server -- e.g. \code{"monitoring-locations"} or \code{"daily-values"}.}
 }
 \value{
-A list with the queryables document.
+A list with the parsed queryables document.
 }
 \description{
-Returns the JSON Schema describing parameters the collection accepts.
-Useful for discovering valid \code{parameter_name} values.
+Returns the OGC API queryables document for a collection -- a JSON
+Schema describing the filter properties the server exposes (this is
+typically used by OGC API Features for CQL2 / property-based
+filtering). It is \strong{not} the right place to look up the data
+parameters / observed properties an EDR collection serves; for that,
+use \code{\link[=edr_parameters]{edr_parameters()}}.
 }

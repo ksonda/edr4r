@@ -50,13 +50,17 @@ edr_collection <- function(client, collection_id) {
   edr_request(client, paste0("collections/", collection_id), format = "json")
 }
 
-#' List queryable parameters for a collection
+#' Get the queryables (filter properties) for a collection
 #'
-#' Returns the JSON Schema describing parameters the collection accepts.
-#' Useful for discovering valid `parameter_name` values.
+#' Returns the OGC API queryables document for a collection -- a JSON
+#' Schema describing the filter properties the server exposes (this is
+#' typically used by OGC API Features for CQL2 / property-based
+#' filtering). It is **not** the right place to look up the data
+#' parameters / observed properties an EDR collection serves; for that,
+#' use [edr_parameters()].
 #'
 #' @inheritParams edr_collection
-#' @return A list with the queryables document.
+#' @return A list with the parsed queryables document.
 #' @export
 edr_queryables <- function(client, collection_id) {
   collection_id <- check_collection_id(collection_id)
@@ -64,6 +68,70 @@ edr_queryables <- function(client, collection_id) {
     client,
     paste0("collections/", collection_id, "/queryables"),
     format = "json"
+  )
+}
+
+#' List the data parameters a collection serves
+#'
+#' Pulls the `parameter_names` block out of the collection document
+#' (`GET /collections/{id}`) and flattens it into a tidy tibble. These
+#' are the observed properties you can pass to `parameter_name =` on the
+#' query verbs ([edr_location()], [edr_cube()], etc.).
+#'
+#' EDR servers vary in how they key the `parameter_names` dictionary
+#' (numeric IDs, short codes, etc.). The `id` column in the returned
+#' tibble is the value to pass back as `parameter_name`; the `name`
+#' column is the human-readable label.
+#'
+#' @inheritParams edr_collection
+#' @return A tibble with one row per parameter. Columns:
+#'   `id`, `name`, `description`, `unit_symbol`, `unit_label`,
+#'   `observed_property`.
+#' @export
+edr_parameters <- function(client, collection_id) {
+  collection_id <- check_collection_id(collection_id)
+  body <- edr_collection(client, collection_id)
+  params <- body$parameter_names %||% body$parameters %||% list()
+  if (length(params) == 0L) {
+    return(empty_parameters_tibble())
+  }
+  rows <- Map(parameter_row, params, names(params))
+  vctrs::vec_rbind(!!!rows)
+}
+
+# ---------------------------------------------------------------------
+# parameter helpers (check_collection_id / collection_row /
+# empty_collections_tibble live below, alongside the collection helpers)
+
+parameter_row <- function(p, key) {
+  obs <- p$observedProperty %||% list()
+  unit <- p$unit %||% list()
+  tibble::tibble(
+    id                = p$id %||% key %||% NA_character_,
+    name              = p$name %||% localized(obs$label) %||% NA_character_,
+    description       = localized(obs$description) %||% localized(p$description) %||% NA_character_,
+    unit_symbol       = extract_unit_symbol(unit$symbol),
+    unit_label        = localized(unit$label) %||% NA_character_,
+    observed_property = obs$id %||% NA_character_
+  )
+}
+
+# unit$symbol may be a bare string or a {value, type} list.
+extract_unit_symbol <- function(s) {
+  if (is.null(s)) return(NA_character_)
+  if (is.character(s) && length(s) >= 1L) return(s[[1]])
+  if (is.list(s)) return(s$value %||% s$symbol %||% s$label %||% NA_character_)
+  NA_character_
+}
+
+empty_parameters_tibble <- function() {
+  tibble::tibble(
+    id                = character(),
+    name              = character(),
+    description       = character(),
+    unit_symbol       = character(),
+    unit_label        = character(),
+    observed_property = character()
   )
 }
 

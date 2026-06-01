@@ -9,12 +9,13 @@ reference:
     contents:
       - edr_client
   - title: Discovery
-    desc: List collections, conformance classes, and queryable parameters.
+    desc: List collections, conformance classes, data parameters, and filterable properties.
     contents:
       - edr_landing
       - edr_conformance
       - edr_collections
       - edr_collection
+      - edr_parameters
       - edr_queryables
   - title: Query verbs
     desc: Standard EDR query types (one helper per endpoint).
@@ -34,6 +35,13 @@ reference:
     contents:
       - covjson_to_tibble
       - geojson_to_sf
+  - title: Visualize
+    desc: Plot time series, map stations with popups, save to standalone HTML.
+    contents:
+      - edr_plot
+      - edr_map
+      - edr_save_html
+      - edr_explore
 
 articles:
   - title: Articles
