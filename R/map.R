@@ -35,25 +35,45 @@
 #' @param parameter Optional character vector restricting which
 #'   parameters get plotted in each popup.
 #' @param plot_width,plot_height Popup plot dimensions in inches
-#'   (passed to the underlying SVG device). Rendered at ~60 px/in.
+#'   (passed to the underlying SVG device). Display size in pixels is
+#'   `plot_width * plot_dpi` by `plot_height * plot_dpi`.
+#' @param plot_dpi Display dots-per-inch for the inline SVG. Default 72;
+#'   bump to 90+ if popups look small on hi-DPI displays.
 #' @param tile_provider Leaflet basemap. Default `"CartoDB.Positron"`.
-#' @param marker_radius,marker_color Marker styling.
+#' @param marker_radius Marker radius in pixels for stations that have
+#'   time-series data. Data-less stations are drawn one pixel smaller.
+#' @param matched_color Marker colour for stations that joined to a
+#'   coverage in `data`. Default deep blue.
+#' @param unmatched_color Marker colour for stations without data
+#'   (only relevant when `data` is supplied and `show_unmatched = TRUE`).
+#'   Default light grey.
+#' @param show_unmatched If `TRUE` (default), data-less stations are
+#'   drawn in `unmatched_color` so the user can see the full station
+#'   network. Set to `FALSE` to drop them entirely. Ignored when
+#'   `data` is `NULL`.
+#' @param legend If `TRUE` (default), add a legend distinguishing
+#'   stations with data from those without. Suppressed automatically
+#'   when there are no unmatched markers to label.
 #'
 #' @return A `leaflet` htmlwidget. Pass it to [edr_save_html()] to
 #'   write a selfcontained HTML file.
 #' @export
 edr_map <- function(locations,
-                    data         = NULL,
-                    popup        = c("plot+csv", "plot", "csv", "table", "all"),
-                    location_col = "coverage_id",
-                    id_col       = NULL,
-                    label_col    = NULL,
-                    parameter    = NULL,
-                    plot_width   = 6,
-                    plot_height  = 3,
-                    tile_provider = "CartoDB.Positron",
-                    marker_radius = 6,
-                    marker_color  = "#2C7FB8") {
+                    data            = NULL,
+                    popup           = c("plot+csv", "plot", "csv", "table", "all"),
+                    location_col    = "coverage_id",
+                    id_col          = NULL,
+                    label_col       = NULL,
+                    parameter       = NULL,
+                    plot_width      = 7,
+                    plot_height     = 3.5,
+                    plot_dpi        = 72,
+                    tile_provider   = "CartoDB.Positron",
+                    marker_radius   = 6,
+                    matched_color   = "#2C7FB8",
+                    unmatched_color = "#BBBBBB",
+                    show_unmatched  = TRUE,
+                    legend          = TRUE) {
   check_installed_for("leaflet", "render maps")
   check_installed_for("sf",      "render maps")
   popup <- match.arg(popup)
@@ -70,7 +90,31 @@ edr_map <- function(locations,
   attr_table <- sf::st_drop_geometry(locations)
   ids    <- detect_id_column(attr_table, id_col)
   labels <- detect_labels(attr_table, label_col, ids)
-  per_feature_data <- per_feature_split(data, ids, location_col)
+  per_feature_data <- per_feature_split(data, ids, location_col, locations)
+  # When `data` is NULL the matched/unmatched distinction doesn't apply —
+  # everyone is drawn as a regular station marker.
+  has_data <- if (is.null(data)) {
+    rep(TRUE, length(ids))
+  } else {
+    !vapply(per_feature_data, is.null, logical(1))
+  }
+
+  # Drop data-less stations entirely if the caller doesn't want them.
+  if (!is.null(data) && !show_unmatched) {
+    keep <- has_data
+    if (!any(keep)) {
+      cli::cli_abort(
+        c("No stations in {.arg locations} joined to {.arg data}.",
+          i = "Check that ids overlap, or set {.code show_unmatched = TRUE}.")
+      )
+    }
+    locations        <- locations[keep, , drop = FALSE]
+    attr_table       <- attr_table[keep, , drop = FALSE]
+    ids              <- ids[keep]
+    labels           <- labels[keep]
+    per_feature_data <- per_feature_data[keep]
+    has_data         <- has_data[keep]
+  }
 
   popups <- vapply(
     seq_along(ids),
@@ -82,6 +126,7 @@ edr_map <- function(locations,
       parameter   = parameter,
       plot_width  = plot_width,
       plot_height = plot_height,
+      plot_dpi    = plot_dpi,
       csv_name    = paste0("station-", ids[[i]], ".csv")
     ),
     character(1)
@@ -96,22 +141,63 @@ edr_map <- function(locations,
   }
   coords <- sf::st_coordinates(geom)
 
+  popup_opts <- leaflet::popupOptions(
+    maxWidth = ceiling(plot_width * plot_dpi + 48)
+  )
+
   m <- leaflet::leaflet() |>
-    leaflet::addProviderTiles(tile_provider) |>
-    leaflet::addCircleMarkers(
-      lng         = coords[, 1],
-      lat         = coords[, 2],
-      radius      = marker_radius,
-      color       = marker_color,
+    leaflet::addProviderTiles(tile_provider)
+
+  # Draw unmatched first, matched on top — leaflet renders later layers
+  # above earlier ones, so the data-bearing markers stay clickable even
+  # in a dense cluster of grey ones.
+  if (any(!has_data)) {
+    idx <- which(!has_data)
+    m <- leaflet::addCircleMarkers(
+      m,
+      lng         = coords[idx, 1],
+      lat         = coords[idx, 2],
+      radius      = max(marker_radius - 1L, 3L),
+      color       = unmatched_color,
       stroke      = TRUE,
       weight      = 1,
-      fillOpacity = 0.85,
-      popup       = popups,
-      label       = labels,
-      popupOptions = leaflet::popupOptions(
-        maxWidth = ceiling(plot_width * 60 + 40)
-      )
+      fillOpacity = 0.5,
+      opacity     = 0.6,
+      popup       = popups[idx],
+      label       = labels[idx],
+      popupOptions = popup_opts,
+      group       = "No data in window"
     )
+  }
+  if (any(has_data)) {
+    idx <- which(has_data)
+    m <- leaflet::addCircleMarkers(
+      m,
+      lng         = coords[idx, 1],
+      lat         = coords[idx, 2],
+      radius      = marker_radius,
+      color       = matched_color,
+      stroke      = TRUE,
+      weight      = 1,
+      fillOpacity = 0.9,
+      opacity     = 1,
+      popup       = popups[idx],
+      label       = labels[idx],
+      popupOptions = popup_opts,
+      group       = "Has data"
+    )
+  }
+
+  if (isTRUE(legend) && !is.null(data) && any(has_data) && any(!has_data)) {
+    m <- leaflet::addLegend(
+      m,
+      position = "bottomright",
+      colors   = c(matched_color, unmatched_color),
+      labels   = c("Has data", "No data in window"),
+      opacity  = 0.9,
+      title    = "Stations"
+    )
+  }
 
   if (nrow(coords) > 1L) {
     m <- leaflet::fitBounds(
@@ -188,20 +274,66 @@ detect_labels <- function(df, label_col, ids) {
 }
 
 # Returns a list of per-feature data frames (or NULLs) aligned to `ids`.
-per_feature_split <- function(data, ids, location_col) {
+#
+# Joins `data` to `locations` in three modes:
+#   - Named list of tibbles keyed by feature id → direct lookup.
+#   - Tibble whose `location_col` matches some `ids` → id-based join.
+#   - Tibble with x/y columns (e.g. from edr_cube / edr_area) where
+#     `coverage_id` is a server-assigned sequence number that doesn't
+#     match feature ids → spatial-proximity join via centroid distance.
+per_feature_split <- function(data, ids, location_col, locations) {
   if (is.null(data)) return(rep(list(NULL), length(ids)))
   if (is.list(data) && !is.data.frame(data)) {
-    # Named list keyed by feature id.
     return(lapply(ids, function(i) data[[as.character(i)]]))
   }
   df <- as_tidy_data(data)
-  if (!location_col %in% names(df)) {
-    cli::cli_abort(
-      "{.arg data} has no column {.field {location_col}}; pass {.arg location_col}."
-    )
+
+  # 1. Try id-based join.
+  if (location_col %in% names(df)) {
+    candidate <- as.character(df[[location_col]])
+    if (any(candidate %in% ids)) {
+      split_df <- split(df, candidate)
+      return(lapply(ids, function(i) split_df[[as.character(i)]]))
+    }
   }
-  split_df <- split(df, as.character(df[[location_col]]))
-  lapply(ids, function(i) split_df[[as.character(i)]])
+
+  # 2. Spatial fallback via x/y columns (the shape covjson_to_tibble
+  #    produces from /cube and /area responses).
+  if (all(c("x", "y") %in% names(df))) {
+    return(spatial_split(df, locations, ids))
+  }
+
+  cli::cli_abort(
+    c("Could not match {.arg data} to {.arg locations}.",
+      i = "Pass {.arg data} as a named list keyed by feature id, or include {.field {location_col}} / {.field x} + {.field y} columns.")
+  )
+}
+
+# Group `df` by its (x, y) coordinates and assign each group to the
+# nearest feature in `locations`. Returns a list aligned to `ids` (NULL
+# where no coverage matched).
+spatial_split <- function(df, locations, ids) {
+  geom <- sf::st_geometry(locations)
+  if (!all(sf::st_geometry_type(geom) == "POINT")) {
+    geom <- suppressWarnings(sf::st_centroid(geom))
+  }
+  feat_xy <- sf::st_coordinates(geom)
+
+  # Drop rows with missing x or y, then group by unique pair.
+  ok  <- !is.na(df$x) & !is.na(df$y)
+  df  <- df[ok, , drop = FALSE]
+  key <- paste(df$x, df$y, sep = "_")
+  groups <- split(df, key)
+
+  out <- rep(list(NULL), length(ids))
+  for (k in names(groups)) {
+    sub <- groups[[k]]
+    cov_xy <- c(sub$x[[1]], sub$y[[1]])
+    d2 <- (feat_xy[, 1] - cov_xy[[1]])^2 + (feat_xy[, 2] - cov_xy[[2]])^2
+    i <- which.min(d2)
+    if (length(i) == 1L && !is.na(i)) out[[i]] <- sub
+  }
+  out
 }
 
 build_feature_popup <- function(df,
@@ -211,12 +343,13 @@ build_feature_popup <- function(df,
                                 parameter,
                                 plot_width,
                                 plot_height,
+                                plot_dpi,
                                 csv_name) {
+  display_px <- as.integer(plot_width * plot_dpi)
   if (is.null(df) || nrow(df) == 0L) {
-    # No time series for this feature — fall back to label + attrs.
     return(feature_popup_html(
       attrs = attrs, label = label, mode = "table",
-      plot_width = as.integer(plot_width * 60)
+      plot_width = display_px
     ))
   }
   if (!is.null(parameter)) {
@@ -238,6 +371,6 @@ build_feature_popup <- function(df,
     label        = label,
     mode         = popup_mode,
     csv_filename = csv_name,
-    plot_width   = as.integer(plot_width * 60)
+    plot_width   = display_px
   )
 }

@@ -12,11 +12,15 @@ edr_map(
   id_col = NULL,
   label_col = NULL,
   parameter = NULL,
-  plot_width = 6,
-  plot_height = 3,
+  plot_width = 7,
+  plot_height = 3.5,
+  plot_dpi = 72,
   tile_provider = "CartoDB.Positron",
   marker_radius = 6,
-  marker_color = "#2C7FB8"
+  matched_color = "#2C7FB8",
+  unmatched_color = "#BBBBBB",
+  show_unmatched = TRUE,
+  legend = TRUE
 )
 }
 \arguments{
@@ -43,11 +47,32 @@ detected id column.}
 parameters get plotted in each popup.}
 
 \item{plot_width, plot_height}{Popup plot dimensions in inches
-(passed to the underlying SVG device). Rendered at ~60 px/in.}
+(passed to the underlying SVG device). Display size in pixels is
+\code{plot_width * plot_dpi} by \code{plot_height * plot_dpi}.}
+
+\item{plot_dpi}{Display dots-per-inch for the inline SVG. Default 72;
+bump to 90+ if popups look small on hi-DPI displays.}
 
 \item{tile_provider}{Leaflet basemap. Default \code{"CartoDB.Positron"}.}
 
-\item{marker_radius, marker_color}{Marker styling.}
+\item{marker_radius}{Marker radius in pixels for stations that have
+time-series data. Data-less stations are drawn one pixel smaller.}
+
+\item{matched_color}{Marker colour for stations that joined to a
+coverage in \code{data}. Default deep blue.}
+
+\item{unmatched_color}{Marker colour for stations without data
+(only relevant when \code{data} is supplied and \code{show_unmatched = TRUE}).
+Default light grey.}
+
+\item{show_unmatched}{If \code{TRUE} (default), data-less stations are
+drawn in \code{unmatched_color} so the user can see the full station
+network. Set to \code{FALSE} to drop them entirely. Ignored when
+\code{data} is \code{NULL}.}
+
+\item{legend}{If \code{TRUE} (default), add a legend distinguishing
+stations with data from those without. Suppressed automatically
+when there are no unmatched markers to label.}
 }
 \value{
 A \code{leaflet} htmlwidget. Pass it to \code{\link[=edr_save_html]{edr_save_html()}} to

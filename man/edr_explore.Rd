@@ -8,11 +8,13 @@ edr_explore(
   client,
   collection_id,
   bbox = NULL,
+  coords = NULL,
   datetime = NULL,
   parameter_name = NULL,
   limit = NULL,
   file = NULL,
   popup = "plot+csv",
+  method = c("auto", "cube", "area", "per-location"),
   quiet = FALSE,
   ...
 )
@@ -22,18 +24,19 @@ edr_explore(
 
 \item{collection_id}{Collection identifier.}
 
-\item{bbox}{Optional numeric length-4 bbox passed to
-\code{\link[=edr_locations]{edr_locations()}}. Pre-filter when the collection is large.}
+\item{bbox}{Optional numeric length-4 bbox. Used both to filter
+the locations index (if the server honours it) and as the bbox
+for the cube fetch. If omitted, derived from the bounding box of
+the returned locations sf.}
 
-\item{datetime}{ISO-8601 interval forwarded to \code{\link[=edr_location]{edr_location()}}.}
+\item{coords}{Polygon coords for \code{area}. Forwarded to \code{\link[=edr_area]{edr_area()}}.}
+
+\item{datetime}{ISO-8601 interval forwarded to the data fetch.}
 
 \item{parameter_name}{Character vector of parameter ids; forwarded
-to \code{\link[=edr_location]{edr_location()}}. Use \code{\link[=edr_parameters]{edr_parameters()}} to discover valid
-ids.}
+to the data fetch. Use \code{\link[=edr_parameters]{edr_parameters()}} to discover valid ids.}
 
-\item{limit}{Optional cap on the number of stations to map (after
-bbox filtering). Useful for collections with thousands of
-stations.}
+\item{limit}{Optional cap on the number of stations to map.}
 
 \item{file}{If non-\code{NULL}, write the map to this HTML path via
 \code{\link[=edr_save_html]{edr_save_html()}} and return \code{file} invisibly. Otherwise return
@@ -41,8 +44,11 @@ the \code{leaflet} map.}
 
 \item{popup}{Popup mode (forwarded to \code{\link[=edr_map]{edr_map()}}).}
 
-\item{quiet}{If \code{FALSE} (default), print a cli progress bar while
-fetching per-station time series.}
+\item{method}{One of \code{"auto"} (default), \code{"cube"}, \code{"area"}, or
+\code{"per-location"}. See above.}
+
+\item{quiet}{If \code{FALSE} (default), print a cli progress bar when
+falling back to per-location fetches.}
 
 \item{...}{Forwarded to \code{\link[=edr_map]{edr_map()}}.}
 }
@@ -51,27 +57,39 @@ A \code{leaflet} htmlwidget, or \code{invisible(file)} when \code{file} is
 set.
 }
 \description{
-Convenience wrapper that calls \code{\link[=edr_locations]{edr_locations()}} to find stations,
-fetches one time series per station via \code{\link[=edr_location]{edr_location()}}, and hands
-the lot to \code{\link[=edr_map]{edr_map()}} for rendering. Optionally writes the map to a
+Convenience wrapper that finds stations via \code{\link[=edr_locations]{edr_locations()}},
+fetches time series with \strong{one} bulk request via \code{\link[=edr_cube]{edr_cube()}} or
+\code{\link[=edr_area]{edr_area()}} when the collection supports it, and hands the lot to
+\code{\link[=edr_map]{edr_map()}} for rendering. Optionally writes the map to a
 selfcontained HTML file.
 }
 \details{
-This is intentionally simple: one HTTP call per station. For
-collections that advertise \code{cube} or \code{area} you may prefer to fetch
-all stations in a single bbox query and call \code{\link[=edr_map]{edr_map()}} directly.
-Pre-filter with \verb{bbox =} (and/or \code{limit}) so you're not fetching
-more stations than you want.
+The default \code{method = "auto"} picks the cheapest route the
+collection advertises in its \code{data_queries}:
+\itemize{
+\item \strong{cube} -- one HTTP call returning a CoverageCollection across
+the whole bbox. Fast. Used when the collection supports \code{cube}
+\emph{and} a \code{bbox} is supplied (or derivable from the locations sf).
+\item \strong{area} -- like cube but uses a polygon. Used when \code{coords} is
+supplied and the collection supports \code{area}.
+\item \strong{per-location} -- the fallback: one HTTP call per station via
+\code{\link[=edr_location]{edr_location()}}. Slower (N+1), used when neither \code{cube} nor
+\code{area} is supported.
+}
+
+Force a specific path by setting \code{method}. \code{coords} is required for
+\code{area}.
 }
 \examples{
 \dontrun{
 cl <- edr_client("https://api.wwdh.internetofwater.app")
+
+# One /cube call across a bbox -- fast.
 edr_explore(
   cl, "rise-edr",
   bbox           = c(-116, 35.5, -114, 36.5),
   datetime       = "2023-01-01/2023-03-31",
   parameter_name = "3",
-  limit          = 25,
   file           = tempfile(fileext = ".html")
 )
 }

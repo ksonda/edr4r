@@ -33,6 +33,86 @@ test_that("edr_explore fetches per-station data and returns a leaflet map", {
   expect_match(popup_blob, "data:text/csv;base64,")
 })
 
+test_that("edr_explore method = 'cube' uses one bulk call, no per-station N+1", {
+  skip_if_not_installed("leaflet")
+  skip_if_not_installed("sf")
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("base64enc")
+
+  gj  <- read_fixture("locations.geojson")
+  # Build a synthetic /cube CovJSON whose two coverages live at the same
+  # (x, y) as the two fixture features, so spatial matching finds them.
+  cube <- list(
+    type = "CoverageCollection",
+    parameters = list(
+      discharge = list(
+        unit = list(symbol = "ft3/s"),
+        observedProperty = list(label = list(en = "Discharge"))
+      )
+    ),
+    coverages = list(
+      list(
+        type = "Coverage",
+        domain = list(
+          domainType = "PointSeries",
+          axes = list(
+            x = list(values = list(-109.83)),
+            y = list(values = list(37.02)),
+            t = list(values = list("2020-01-01T00:00:00Z", "2020-01-02T00:00:00Z"))
+          )
+        ),
+        ranges = list(discharge = list(
+          type = "NdArray", axisNames = list("t"),
+          shape = list(2L), values = list(11, 12)
+        ))
+      ),
+      list(
+        type = "Coverage",
+        domain = list(
+          domainType = "PointSeries",
+          axes = list(
+            x = list(values = list(-106.86)),
+            y = list(values = list(35.55)),
+            t = list(values = list("2020-01-01T00:00:00Z", "2020-01-02T00:00:00Z"))
+          )
+        ),
+        ranges = list(discharge = list(
+          type = "NdArray", axisNames = list("t"),
+          shape = list(2L), values = list(21, 22)
+        ))
+      )
+    )
+  )
+
+  call_n <- 0L
+  httr2::local_mocked_responses(function(req) {
+    call_n <<- call_n + 1L
+    # call 1: edr_locations -> FeatureCollection
+    # call 2: edr_cube      -> CoverageCollection
+    # No per-station N+1 calls expected.
+    if (call_n == 1L) {
+      mock_json_response(gj, content_type = "application/geo+json")
+    } else if (call_n == 2L) {
+      mock_json_response(cube)
+    } else {
+      cli::cli_abort("Unexpected extra HTTP call (#{call_n}); cube path should make exactly 2.")
+    }
+  })
+
+  m <- edr_explore(test_client(), "demo",
+                   bbox           = c(-110, 35, -106, 38),
+                   datetime       = "2020-01-01/2020-01-02",
+                   parameter_name = "discharge",
+                   method         = "cube",
+                   quiet          = TRUE)
+  expect_s3_class(m, "leaflet")
+  expect_equal(call_n, 2L)
+
+  popup_blob <- extract_popup_html(m)
+  expect_match(popup_blob, "data:image/svg\\+xml;base64,")
+  expect_match(popup_blob, "data:text/csv;base64,")
+})
+
 test_that("edr_explore + edr_save_html round-trip to disk", {
   skip_if_not_installed("leaflet")
   skip_if_not_installed("sf")
