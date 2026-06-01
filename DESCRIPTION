@@ -2,8 +2,8 @@ Package: edr4r
 Title: Client for OGC API - Environmental Data Retrieval (EDR)
 Version: 0.1.0
 Authors@R:
-    person("Kyle Onda", role = c("aut", "cre"),
-           email = "konda@lincolninst.edu")
+    person("Western Water Datahub", role = c("aut", "cre"),
+           email = "bwebb@lincolninst.edu")
 Description: A client for OGC API - Environmental Data Retrieval (EDR)
     services, with first-class support for the Western Water Datahub
     (WWDH) deployment. Provides discovery, query, and parsing helpers
