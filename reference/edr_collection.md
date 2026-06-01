@@ -16,7 +16,8 @@ edr_collection(client, collection_id)
 
 - collection_id:
 
-  Collection identifier, e.g. `"rise-edr"`.
+  Collection identifier as advertised by the server – e.g.
+  `"monitoring-locations"` or `"daily-values"`.
 
 ## Value
 

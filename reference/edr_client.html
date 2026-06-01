@@ -64,15 +64,19 @@ applied to every request.</p>
 
 
 <dl><dt id="arg-base-url">base_url<a class="anchor" aria-label="anchor" href="#arg-base-url"></a></dt>
-<dd><p>Base URL of the EDR service, e.g.
-<code>"http://localhost:5005"</code> for the local WWDH deployment or
-<code>"https://api.wwdh.internetofwater.dev"</code> for the hosted instance.
-A trailing slash is optional.</p></dd>
+<dd><p>Base URL of an
+<a href="https://ogcapi.ogc.org/edr/" class="external-link">OGC API - EDR</a> service. Examples:
+the <a href="https://api.waterdata.usgs.gov/ogcapi/beta/" class="external-link">USGS waterdata OGC API</a>
+at <code>"https://api.waterdata.usgs.gov/ogcapi/beta"</code>, the
+<a href="https://api.wwdh.internetofwater.app" class="external-link">Western Water Datahub</a> at
+<code>"https://api.wwdh.internetofwater.app"</code>, or
+<code>"http://localhost:5005"</code> for a local <a href="https://pygeoapi.io" class="external-link">pygeoapi</a>
+dev server. A trailing slash is optional.</p></dd>
 
 
 <dt id="arg-user-agent">user_agent<a class="anchor" aria-label="anchor" href="#arg-user-agent"></a></dt>
 <dd><p>String sent in the <code>User-Agent</code> header. Defaults to
-<code>"edr4r/&lt;version&gt; (+https://github.com/internetofwater/WWDH)"</code>.</p></dd>
+<code>"edr4r/&lt;version&gt; (+https://github.com/ksonda/edr4r)"</code>.</p></dd>
 
 
 <dt id="arg-timeout">timeout<a class="anchor" aria-label="anchor" href="#arg-timeout"></a></dt>
@@ -102,10 +106,10 @@ are made. Useful for debugging.</p></dd>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">wwdh</span> <span class="op">&lt;-</span> <span class="fu">edr_client</span><span class="op">(</span><span class="st">"http://localhost:5005"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">wwdh</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">usgs</span> <span class="op">&lt;-</span> <span class="fu">edr_client</span><span class="op">(</span><span class="st">"https://api.waterdata.usgs.gov/ogcapi/beta"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">usgs</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;edr_client&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   base_url:   <span style="color: #0000BB; font-style: italic;">&lt;http://localhost:5005&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   base_url:   <span style="color: #0000BB; font-style: italic;">&lt;https://api.waterdata.usgs.gov/ogcapi/beta&gt;</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   user_agent: edr4r/0.1.0 (+https://github.com/ksonda/edr4r)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   timeout:    60s</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   max_tries:  3</span>

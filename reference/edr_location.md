@@ -33,9 +33,12 @@ edr_location(
 
 - location_id:
 
-  Identifier of the location. IDs vary by source: integers for USBR
-  RISE, alphanumeric codes for SNOTEL/USACE, station triplets for AWDB
-  forecasts (will be URL-encoded).
+  Identifier of the location, as advertised by the server. IDs vary by
+  deployment: bare integers, alphanumeric station codes, or compound
+  identifiers (e.g. colon-separated triplets used by some snow /
+  forecast networks). Reserved characters are URL-encoded for you; a
+  literal `/` is rejected because it cannot round-trip through HTTP path
+  segments.
 
 - datetime:
 

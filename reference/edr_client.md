@@ -21,14 +21,19 @@ edr_client(
 
 - base_url:
 
-  Base URL of the EDR service, e.g. `"http://localhost:5005"` for the
-  local WWDH deployment or `"https://api.wwdh.internetofwater.dev"` for
-  the hosted instance. A trailing slash is optional.
+  Base URL of an [OGC API - EDR](https://ogcapi.ogc.org/edr/) service.
+  Examples: the [USGS waterdata OGC
+  API](https://api.waterdata.usgs.gov/ogcapi/beta/) at
+  `"https://api.waterdata.usgs.gov/ogcapi/beta"`, the [Western Water
+  Datahub](https://api.wwdh.internetofwater.app) at
+  `"https://api.wwdh.internetofwater.app"`, or `"http://localhost:5005"`
+  for a local [pygeoapi](https://pygeoapi.io) dev server. A trailing
+  slash is optional.
 
 - user_agent:
 
   String sent in the `User-Agent` header. Defaults to
-  `"edr4r/<version> (+https://github.com/internetofwater/WWDH)"`.
+  `"edr4r/<version> (+https://github.com/ksonda/edr4r)"`.
 
 - timeout:
 
@@ -56,10 +61,10 @@ An object of class `edr_client`.
 ## Examples
 
 ``` r
-wwdh <- edr_client("http://localhost:5005")
-wwdh
+usgs <- edr_client("https://api.waterdata.usgs.gov/ogcapi/beta")
+usgs
 #> <edr_client>
-#>   base_url:   <http://localhost:5005>
+#>   base_url:   <https://api.waterdata.usgs.gov/ogcapi/beta>
 #>   user_agent: edr4r/0.1.0 (+https://github.com/ksonda/edr4r)
 #>   timeout:    60s
 #>   max_tries:  3

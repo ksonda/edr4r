@@ -1,9 +1,14 @@
 # Items (OGC API Features) helpers
 
 Many EDR servers expose an OGC API Features `/items` endpoint alongside
-the EDR queries. The Western Water Datahub providers implement `items`
-as a thin stub used to register the collection as both EDR and Features;
-non-trivial data is usually obtained via the EDR queries.
+the EDR queries. Behaviour varies: some deployments implement `items` as
+a full Features endpoint, others as a thin stub used only to register
+the collection as both EDR and Features. In the stub case, non-trivial
+data is usually obtained via the EDR queries
+([`edr_locations()`](https://ksonda.github.io/edr4r/reference/edr_locations.md),
+[`edr_area()`](https://ksonda.github.io/edr4r/reference/edr_area.md),
+[`edr_cube()`](https://ksonda.github.io/edr4r/reference/edr_cube.md),
+etc.).
 
 ## Usage
 

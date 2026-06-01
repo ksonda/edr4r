@@ -2,9 +2,7 @@
 
 ## Authors
 
-- **Kyle Onda**. Author, maintainer.
-
-- **Western Water Datahub**. Copyright holder.
+- **Kyle Onda**. Author, maintainer, copyright holder.
 
 ## Citation
 

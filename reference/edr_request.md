@@ -29,7 +29,7 @@ edr_request(
 - path:
 
   Path under the base URL (with or without leading slash), e.g.
-  `"collections/rise-edr/locations"`.
+  `"collections/monitoring-locations/locations"`.
 
 - query:
 

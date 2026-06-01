@@ -1,8 +1,22 @@
 # Getting started with edr4r
 
-`edr4r` is a thin, tidy client for OGC API - EDR services. This vignette
-walks through a typical session against the Western Water Datahub
-(WWDH).
+`edr4r` is a small, tidy client for any service that speaks [OGC API -
+Environmental Data Retrieval](https://ogcapi.ogc.org/edr/). Most of the
+real-world use to date has been against in-situ monitoring networks –
+stream gauges, weather stations, snow telemetry, reservoir telemetry –
+but the package itself is generic.
+
+Two example endpoints you can point it at right now:
+
+- [USGS waterdata OGC API](https://api.waterdata.usgs.gov/ogcapi/beta/)
+- [Western Water Datahub](https://api.wwdh.internetofwater.app)
+
+This vignette walks through a typical session. The collection IDs and
+parameter names below (`monitoring-locations`, `daily-values`,
+`discharge`, …) are placeholders – every server advertises its own. The
+first thing to do against a new service is run
+[`edr_collections()`](https://ksonda.github.io/edr4r/reference/edr_collections.md)
+and look at what it returns.
 
 ## 1. Create a client
 
@@ -10,9 +24,9 @@ walks through a typical session against the Western Water Datahub
 
 library(edr4r)
 
-# Local pygeoapi dev server; swap for the hosted URL in production.
-wwdh <- edr_client("http://localhost:5005")
-wwdh
+# Pick any EDR-compliant base URL. A trailing slash is optional.
+client <- edr_client("https://api.waterdata.usgs.gov/ogcapi/beta")
+client
 ```
 
 The client just stores connection settings (base URL, user agent,
@@ -23,7 +37,7 @@ or `headers =` to attach auth tokens.
 
 ``` r
 
-collections <- edr_collections(wwdh)
+collections <- edr_collections(client)
 collections[, c("id", "title", "data_queries")]
 ```
 
@@ -32,7 +46,7 @@ To see the parameters a collection accepts:
 
 ``` r
 
-q <- edr_queryables(wwdh, "snotel-edr")
+q <- edr_queryables(client, "daily-values")
 names(q$properties)
 ```
 
@@ -43,18 +57,18 @@ which `edr4r` promotes to an `sf` object (if `sf` is installed):
 
 ``` r
 
-rise_locs <- edr_locations(wwdh, "rise-edr")
-rise_locs
+stations <- edr_locations(client, "monitoring-locations")
+stations
 
 library(sf)
-plot(st_geometry(rise_locs), pch = 19, cex = 0.4)
+plot(st_geometry(stations), pch = 19, cex = 0.4)
 ```
 
 You can pre-filter the list spatially:
 
 ``` r
 
-edr_locations(wwdh, "snotel-edr", bbox = c(-120, 39, -118, 41))
+edr_locations(client, "monitoring-locations", bbox = c(-120, 39, -118, 41))
 ```
 
 ## 4. Retrieve data for a location
@@ -65,17 +79,17 @@ it:
 ``` r
 
 resp <- edr_location(
-  wwdh, "rise-edr",
-  location_id    = 247,
+  client, "daily-values",
+  location_id    = "08313000",
   datetime       = "2020-01-01/2020-12-31",
-  parameter_name = c("storage", "elevation")
+  parameter_name = c("discharge", "gage_height")
 )
 
 df <- covjson_to_tibble(resp)
 head(df)
 ```
 
-The tibble is long and tidy — ready for `dplyr`/`ggplot2`:
+The tibble is long and tidy – ready for `dplyr`/`ggplot2`:
 
 ``` r
 
@@ -93,15 +107,16 @@ matrix, or an `sf` polygon):
 ``` r
 
 cube <- edr_cube(
-  wwdh, "snotel-edr",
+  client, "daily-values",
   bbox           = c(-120, 39, -118, 41),
   datetime       = "2023-01-01/2023-03-31",
-  parameter_name = "WTEQ"
+  parameter_name = "discharge"
 )
 covjson_to_tibble(cube)
 
 ring <- matrix(c(-109, 47, -104, 47, -104, 49, -109, 49), ncol = 2, byrow = TRUE)
-area <- edr_area(wwdh, "rise-edr", coords = ring, datetime = "2022-01-01/..")
+area <- edr_area(client, "monitoring-locations", coords = ring,
+                 datetime = "2022-01-01/..")
 covjson_to_tibble(area)
 ```
 
@@ -109,22 +124,28 @@ covjson_to_tibble(area)
 
 ``` r
 
-# CSV straight from the server
-edr_location(wwdh, "snotel-edr", "1175", datetime = "2010-01-01/..", format = "csv")
+# CSV straight from the server (if the server advertises it)
+edr_location(client, "daily-values", "08313000",
+             datetime = "2010-01-01/..", format = "csv")
 
 # Anything not wrapped by a helper:
-edr_request(wwdh, "collections/rise-edr", format = "json")
+edr_request(client, "collections/daily-values", format = "json")
 ```
 
-## Notes
+## A few things worth knowing
 
-- `datetime` accepts `"start/end"`, open intervals (`"2020-01-01/.."`),
-  or a length-2 character vector.
-- `parameter_name` is a character vector; it is sent as a single
+- `datetime` is forgiving: pass `"start/end"`, an open interval like
+  `"2020-01-01/.."`, or a length-2 character vector. It gets normalised
+  into the ISO-8601 form the server expects.
+- `parameter_name` is a character vector. It’s sent as one
   comma-separated `parameter-name` query parameter.
-- Station identifiers with reserved characters (e.g. AWDB triplets like
-  `"1185:CO:SNTL"`) are handled for you.
-- WWDH implements `locations`, `cube`, and `area`. The `position`,
-  `radius`, `trajectory`, and `corridor` verbs exist in this client for
-  spec completeness and other servers, but will error against
-  collections that do not implement them. \`\`\`
+- Some monitoring networks use compound station IDs (colon-separated
+  triplets like `"1185:CO:SNTL"` show up in snow and forecast networks).
+  Those work as-is – reserved characters get URL-encoded for you. A
+  literal `/` in an ID is rejected, because it can’t survive a round
+  trip through HTTP path segments no matter how you encode it.
+- Not every server implements every EDR verb. `locations`, `position`,
+  `cube`, and `area` are common; `radius`, `trajectory`, and `corridor`
+  less so. The client supports them all per the
+  [spec](https://ogcapi.ogc.org/edr/), but a call against a collection
+  that doesn’t implement a given verb returns an HTTP error. \`\`\`
