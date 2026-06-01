@@ -37,9 +37,16 @@ jobs:
           covr::to_cobertura(cov)
         shell: Rscript {0}
 
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
+        # Codecov requires an upload token even on public repos as of
+        # 2024+. To get the badge working: go to https://codecov.io,
+        # link the repo, copy the upload token, then add it as a
+        # `CODECOV_TOKEN` secret on the GitHub repo (Settings →
+        # Secrets and variables → Actions). Until that's done this
+        # step continues-on-error so the rest of the run stays green.
+        continue-on-error: true
         with:
-          fail_ci_if_error: ${{ github.event_name != 'pull_request' && true || false }}
+          fail_ci_if_error: false
           files: ./cobertura.xml
           plugin: noop
           disable_search: true
