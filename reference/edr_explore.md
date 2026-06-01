@@ -1,10 +1,11 @@
 # One-shot fetch + plot + map for a collection
 
-Convenience wrapper that calls
-[`edr_locations()`](https://ksonda.github.io/edr4r/reference/edr_locations.md)
-to find stations, fetches one time series per station via
-[`edr_location()`](https://ksonda.github.io/edr4r/reference/edr_location.md),
-and hands the lot to
+Convenience wrapper that finds stations via
+[`edr_locations()`](https://ksonda.github.io/edr4r/reference/edr_locations.md),
+fetches time series with **one** bulk request via
+[`edr_cube()`](https://ksonda.github.io/edr4r/reference/edr_cube.md) or
+[`edr_area()`](https://ksonda.github.io/edr4r/reference/edr_area.md)
+when the collection supports it, and hands the lot to
 [`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md) for
 rendering. Optionally writes the map to a selfcontained HTML file.
 
@@ -15,11 +16,13 @@ edr_explore(
   client,
   collection_id,
   bbox = NULL,
+  coords = NULL,
   datetime = NULL,
   parameter_name = NULL,
   limit = NULL,
   file = NULL,
   popup = "plot+csv",
+  method = c("auto", "cube", "area", "per-location"),
   quiet = FALSE,
   ...
 )
@@ -37,27 +40,29 @@ edr_explore(
 
 - bbox:
 
-  Optional numeric length-4 bbox passed to
-  [`edr_locations()`](https://ksonda.github.io/edr4r/reference/edr_locations.md).
-  Pre-filter when the collection is large.
+  Optional numeric length-4 bbox. Used both to filter the locations
+  index (if the server honours it) and as the bbox for the cube fetch.
+  If omitted, derived from the bounding box of the returned locations
+  sf.
+
+- coords:
+
+  Polygon coords for `area`. Forwarded to
+  [`edr_area()`](https://ksonda.github.io/edr4r/reference/edr_area.md).
 
 - datetime:
 
-  ISO-8601 interval forwarded to
-  [`edr_location()`](https://ksonda.github.io/edr4r/reference/edr_location.md).
+  ISO-8601 interval forwarded to the data fetch.
 
 - parameter_name:
 
-  Character vector of parameter ids; forwarded to
-  [`edr_location()`](https://ksonda.github.io/edr4r/reference/edr_location.md).
-  Use
+  Character vector of parameter ids; forwarded to the data fetch. Use
   [`edr_parameters()`](https://ksonda.github.io/edr4r/reference/edr_parameters.md)
   to discover valid ids.
 
 - limit:
 
-  Optional cap on the number of stations to map (after bbox filtering).
-  Useful for collections with thousands of stations.
+  Optional cap on the number of stations to map.
 
 - file:
 
@@ -70,10 +75,15 @@ edr_explore(
   Popup mode (forwarded to
   [`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md)).
 
+- method:
+
+  One of `"auto"` (default), `"cube"`, `"area"`, or `"per-location"`.
+  See above.
+
 - quiet:
 
-  If `FALSE` (default), print a cli progress bar while fetching
-  per-station time series.
+  If `FALSE` (default), print a cli progress bar when falling back to
+  per-location fetches.
 
 - ...:
 
@@ -86,24 +96,35 @@ A `leaflet` htmlwidget, or `invisible(file)` when `file` is set.
 
 ## Details
 
-This is intentionally simple: one HTTP call per station. For collections
-that advertise `cube` or `area` you may prefer to fetch all stations in
-a single bbox query and call
-[`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md)
-directly. Pre-filter with `bbox =` (and/or `limit`) so you're not
-fetching more stations than you want.
+The default `method = "auto"` picks the cheapest route the collection
+advertises in its `data_queries`:
+
+- **cube** – one HTTP call returning a CoverageCollection across the
+  whole bbox. Fast. Used when the collection supports `cube` *and* a
+  `bbox` is supplied (or derivable from the locations sf).
+
+- **area** – like cube but uses a polygon. Used when `coords` is
+  supplied and the collection supports `area`.
+
+- **per-location** – the fallback: one HTTP call per station via
+  [`edr_location()`](https://ksonda.github.io/edr4r/reference/edr_location.md).
+  Slower (N+1), used when neither `cube` nor `area` is supported.
+
+Force a specific path by setting `method`. `coords` is required for
+`area`.
 
 ## Examples
 
 ``` r
 if (FALSE) { # \dontrun{
 cl <- edr_client("https://api.wwdh.internetofwater.app")
+
+# One /cube call across a bbox -- fast.
 edr_explore(
   cl, "rise-edr",
   bbox           = c(-116, 35.5, -114, 36.5),
   datetime       = "2023-01-01/2023-03-31",
   parameter_name = "3",
-  limit          = 25,
   file           = tempfile(fileext = ".html")
 )
 } # }

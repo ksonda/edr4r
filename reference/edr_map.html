@@ -60,11 +60,15 @@ embedded as a <code>data:</code> URI so the resulting HTML is selfcontained).</p
 <span>  id_col <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  label_col <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  parameter <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  plot_width <span class="op">=</span> <span class="fl">6</span>,</span>
-<span>  plot_height <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  plot_width <span class="op">=</span> <span class="fl">7</span>,</span>
+<span>  plot_height <span class="op">=</span> <span class="fl">3.5</span>,</span>
+<span>  plot_dpi <span class="op">=</span> <span class="fl">72</span>,</span>
 <span>  tile_provider <span class="op">=</span> <span class="st">"CartoDB.Positron"</span>,</span>
 <span>  marker_radius <span class="op">=</span> <span class="fl">6</span>,</span>
-<span>  marker_color <span class="op">=</span> <span class="st">"#2C7FB8"</span></span>
+<span>  matched_color <span class="op">=</span> <span class="st">"#2C7FB8"</span>,</span>
+<span>  unmatched_color <span class="op">=</span> <span class="st">"#BBBBBB"</span>,</span>
+<span>  show_unmatched <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  legend <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -110,15 +114,46 @@ parameters get plotted in each popup.</p></dd>
 
 <dt id="arg-plot-width-plot-height">plot_width, plot_height<a class="anchor" aria-label="anchor" href="#arg-plot-width-plot-height"></a></dt>
 <dd><p>Popup plot dimensions in inches
-(passed to the underlying SVG device). Rendered at ~60 px/in.</p></dd>
+(passed to the underlying SVG device). Display size in pixels is
+<code>plot_width * plot_dpi</code> by <code>plot_height * plot_dpi</code>.</p></dd>
+
+
+<dt id="arg-plot-dpi">plot_dpi<a class="anchor" aria-label="anchor" href="#arg-plot-dpi"></a></dt>
+<dd><p>Display dots-per-inch for the inline SVG. Default 72;
+bump to 90+ if popups look small on hi-DPI displays.</p></dd>
 
 
 <dt id="arg-tile-provider">tile_provider<a class="anchor" aria-label="anchor" href="#arg-tile-provider"></a></dt>
 <dd><p>Leaflet basemap. Default <code>"CartoDB.Positron"</code>.</p></dd>
 
 
-<dt id="arg-marker-radius-marker-color">marker_radius, marker_color<a class="anchor" aria-label="anchor" href="#arg-marker-radius-marker-color"></a></dt>
-<dd><p>Marker styling.</p></dd>
+<dt id="arg-marker-radius">marker_radius<a class="anchor" aria-label="anchor" href="#arg-marker-radius"></a></dt>
+<dd><p>Marker radius in pixels for stations that have
+time-series data. Data-less stations are drawn one pixel smaller.</p></dd>
+
+
+<dt id="arg-matched-color">matched_color<a class="anchor" aria-label="anchor" href="#arg-matched-color"></a></dt>
+<dd><p>Marker colour for stations that joined to a
+coverage in <code>data</code>. Default deep blue.</p></dd>
+
+
+<dt id="arg-unmatched-color">unmatched_color<a class="anchor" aria-label="anchor" href="#arg-unmatched-color"></a></dt>
+<dd><p>Marker colour for stations without data
+(only relevant when <code>data</code> is supplied and <code>show_unmatched = TRUE</code>).
+Default light grey.</p></dd>
+
+
+<dt id="arg-show-unmatched">show_unmatched<a class="anchor" aria-label="anchor" href="#arg-show-unmatched"></a></dt>
+<dd><p>If <code>TRUE</code> (default), data-less stations are
+drawn in <code>unmatched_color</code> so the user can see the full station
+network. Set to <code>FALSE</code> to drop them entirely. Ignored when
+<code>data</code> is <code>NULL</code>.</p></dd>
+
+
+<dt id="arg-legend">legend<a class="anchor" aria-label="anchor" href="#arg-legend"></a></dt>
+<dd><p>If <code>TRUE</code> (default), add a legend distinguishing
+stations with data from those without. Suppressed automatically
+when there are no unmatched markers to label.</p></dd>
 
 </dl></div>
     <div class="section level2">

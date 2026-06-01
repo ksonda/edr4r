@@ -18,11 +18,15 @@ edr_map(
   id_col = NULL,
   label_col = NULL,
   parameter = NULL,
-  plot_width = 6,
-  plot_height = 3,
+  plot_width = 7,
+  plot_height = 3.5,
+  plot_dpi = 72,
   tile_provider = "CartoDB.Positron",
   marker_radius = 6,
-  marker_color = "#2C7FB8"
+  matched_color = "#2C7FB8",
+  unmatched_color = "#BBBBBB",
+  show_unmatched = TRUE,
+  legend = TRUE
 )
 ```
 
@@ -66,15 +70,44 @@ edr_map(
 - plot_width, plot_height:
 
   Popup plot dimensions in inches (passed to the underlying SVG device).
-  Rendered at ~60 px/in.
+  Display size in pixels is `plot_width * plot_dpi` by
+  `plot_height * plot_dpi`.
+
+- plot_dpi:
+
+  Display dots-per-inch for the inline SVG. Default 72; bump to 90+ if
+  popups look small on hi-DPI displays.
 
 - tile_provider:
 
   Leaflet basemap. Default `"CartoDB.Positron"`.
 
-- marker_radius, marker_color:
+- marker_radius:
 
-  Marker styling.
+  Marker radius in pixels for stations that have time-series data.
+  Data-less stations are drawn one pixel smaller.
+
+- matched_color:
+
+  Marker colour for stations that joined to a coverage in `data`.
+  Default deep blue.
+
+- unmatched_color:
+
+  Marker colour for stations without data (only relevant when `data` is
+  supplied and `show_unmatched = TRUE`). Default light grey.
+
+- show_unmatched:
+
+  If `TRUE` (default), data-less stations are drawn in `unmatched_color`
+  so the user can see the full station network. Set to `FALSE` to drop
+  them entirely. Ignored when `data` is `NULL`.
+
+- legend:
+
+  If `TRUE` (default), add a legend distinguishing stations with data
+  from those without. Suppressed automatically when there are no
+  unmatched markers to label.
 
 ## Value
 
