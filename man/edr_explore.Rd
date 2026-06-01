@@ -12,6 +12,7 @@ edr_explore(
   datetime = NULL,
   parameter_name = NULL,
   limit = NULL,
+  record_limit = NULL,
   file = NULL,
   popup = "plot+csv",
   method = c("auto", "cube", "area", "per-location"),
@@ -37,6 +38,11 @@ the returned locations sf.}
 to the data fetch. Use \code{\link[=edr_parameters]{edr_parameters()}} to discover valid ids.}
 
 \item{limit}{Optional cap on the number of stations to map.}
+
+\item{record_limit}{Optional per-station record cap, passed through
+to \code{\link[=edr_location]{edr_location()}} in the per-location path. Useful for servers
+(e.g. USGS waterdata) that cap responses at ~10 records by
+default. Ignored on the cube and area paths.}
 
 \item{file}{If non-\code{NULL}, write the map to this HTML path via
 \code{\link[=edr_save_html]{edr_save_html()}} and return \code{file} invisibly. Otherwise return

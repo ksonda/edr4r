@@ -9,3 +9,7 @@
 ^docs$
 ^pkgdown$
 ^cran-comments\.md$
+^vignettes/.*\.Rmd\.orig$
+^vignettes/precompute\.R$
+^doc$
+^Meta$

@@ -6,3 +6,5 @@
 *.Rproj
 docs/
 inst/doc/
+/doc/
+/Meta/

@@ -32,6 +32,10 @@
 #' @param parameter_name Character vector of parameter ids; forwarded
 #'   to the data fetch. Use [edr_parameters()] to discover valid ids.
 #' @param limit Optional cap on the number of stations to map.
+#' @param record_limit Optional per-station record cap, passed through
+#'   to [edr_location()] in the per-location path. Useful for servers
+#'   (e.g. USGS waterdata) that cap responses at ~10 records by
+#'   default. Ignored on the cube and area paths.
 #' @param file If non-`NULL`, write the map to this HTML path via
 #'   [edr_save_html()] and return `file` invisibly. Otherwise return
 #'   the `leaflet` map.
@@ -66,6 +70,7 @@ edr_explore <- function(client,
                         datetime       = NULL,
                         parameter_name = NULL,
                         limit          = NULL,
+                        record_limit   = NULL,
                         file           = NULL,
                         popup          = "plot+csv",
                         method         = c("auto", "cube", "area", "per-location"),
@@ -120,6 +125,7 @@ edr_explore <- function(client,
         client, collection_id, ids,
         datetime       = datetime,
         parameter_name = parameter_name,
+        record_limit   = record_limit,
         quiet          = quiet
       )
     }
@@ -166,7 +172,8 @@ sf_bbox_vec <- function(x) {
 # N+1 fallback: one /locations/{id} call per station, with a cli
 # progress bar for larger batches.
 fetch_per_station <- function(client, collection_id, ids,
-                              datetime, parameter_name, quiet) {
+                              datetime, parameter_name,
+                              record_limit = NULL, quiet = FALSE) {
   n <- length(ids)
   if (!quiet && n > 5L) {
     cli::cli_progress_bar(
@@ -180,12 +187,14 @@ fetch_per_station <- function(client, collection_id, ids,
   for (i in seq_along(ids)) {
     out[[i]] <- tryCatch(
       {
-        resp <- edr_location(
+        args <- list(
           client, collection_id,
           location_id    = ids[[i]],
           datetime       = datetime,
           parameter_name = parameter_name
         )
+        if (!is.null(record_limit)) args$limit <- record_limit
+        resp <- do.call(edr_location, args)
         covjson_to_tibble(resp)
       },
       error = function(e) NULL
