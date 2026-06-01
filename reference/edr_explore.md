@@ -20,6 +20,7 @@ edr_explore(
   datetime = NULL,
   parameter_name = NULL,
   limit = NULL,
+  record_limit = NULL,
   file = NULL,
   popup = "plot+csv",
   method = c("auto", "cube", "area", "per-location"),
@@ -63,6 +64,14 @@ edr_explore(
 - limit:
 
   Optional cap on the number of stations to map.
+
+- record_limit:
+
+  Optional per-station record cap, passed through to
+  [`edr_location()`](https://ksonda.github.io/edr4r/reference/edr_location.md)
+  in the per-location path. Useful for servers (e.g. USGS waterdata)
+  that cap responses at ~10 records by default. Ignored on the cube and
+  area paths.
 
 - file:
 
