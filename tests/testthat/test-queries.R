@@ -29,6 +29,38 @@ test_that("edr_location percent-encodes unsafe id characters", {
   expect_match(captured$url, "locations/a%20b")
 })
 
+test_that("edr_location resists query / fragment injection in ids", {
+  # '?', '#', '&' would otherwise reshape the URL into query/fragment/etc.
+  # Pre-encoding forces them inside the location-id segment.
+  for (id in c("a?b", "a#b", "a&b")) {
+    captured <- NULL
+    cov <- read_fixture("pointseries.covjson")
+    httr2::local_mocked_responses(function(req) {
+      captured <<- req
+      mock_json_response(cov)
+    })
+    edr_location(test_client(), "demo", location_id = id, format = "json")
+    enc <- utils::URLencode(id, reserved = TRUE)
+    expect_match(captured$url, paste0("locations/", enc), fixed = TRUE,
+                 info = paste("id =", id))
+    # Belt-and-braces: exactly one '/locations/' segment in the path.
+    path <- sub("\\?.*$", "", captured$url)
+    expect_equal(length(gregexpr("/locations/", path, fixed = TRUE)[[1]]), 1L,
+                 info = paste("id =", id))
+  }
+})
+
+test_that("edr_location rejects ids containing '/'", {
+  expect_error(
+    edr_location(test_client(), "demo", location_id = "a/b"),
+    "must not contain"
+  )
+  expect_error(
+    edr_item(test_client(), "demo", item_id = "a/b"),
+    "must not contain"
+  )
+})
+
 test_that("edr_cube serializes bbox and validates it", {
   captured <- NULL
   cov <- read_fixture("pointseries.covjson")

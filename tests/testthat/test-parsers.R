@@ -70,3 +70,89 @@ test_that("geojson_to_sf returns an sf object", {
 test_that("non-CoverageJSON input errors clearly", {
   expect_error(covjson_to_tibble(list(foo = 1)), "CoverageJSON")
 })
+
+test_that("mixed numeric/character parameters in one coverage demote cleanly", {
+  cov <- list(
+    type = "Coverage",
+    parameters = list(
+      storage = list(unit = list(symbol = "acre-feet"),
+                     observedProperty = list(label = "Reservoir Storage")),
+      qa_flag = list(observedProperty = list(label = "QA Flag"))
+    ),
+    domain = list(
+      domainType = "PointSeries",
+      axes = list(
+        x = list(values = list(-104.8)),
+        y = list(values = list(40.42)),
+        t = list(values = list("2020-01-01T00:00:00Z", "2020-01-02T00:00:00Z"))
+      )
+    ),
+    ranges = list(
+      storage = list(type = "NdArray", axisNames = list("t"),
+                     shape = list(2L), values = list(100.5, 102.7)),
+      qa_flag = list(type = "NdArray", axisNames = list("t"),
+                     shape = list(2L), values = list("ok", "missing"))
+    )
+  )
+  expect_warning(tb <- covjson_to_tibble(cov), "storage")
+  expect_type(tb$value, "character")
+  expect_equal(tb$value[tb$parameter == "storage"], c("100.5", "102.7"))
+  expect_equal(tb$value[tb$parameter == "qa_flag"], c("ok", "missing"))
+})
+
+test_that("a numeric coverage bound with a character coverage demotes the numeric one", {
+  make_cov <- function(id, vals) {
+    list(
+      id = id,
+      type = "Coverage",
+      domain = list(
+        domainType = "PointSeries",
+        axes = list(
+          x = list(values = list(-100)),
+          y = list(values = list(40)),
+          t = list(values = list("2020-01-01T00:00:00Z"))
+        )
+      ),
+      ranges = list(
+        flag = list(type = "NdArray", axisNames = list("t"),
+                    shape = list(1L), values = list(vals))
+      )
+    )
+  }
+  cc <- list(
+    type = "CoverageCollection",
+    parameters = list(flag = list(observedProperty = list(label = "Flag"))),
+    coverages = list(make_cov("A", 1), make_cov("B", "missing"))
+  )
+  expect_warning(tb <- covjson_to_tibble(cc), "flag")
+  expect_type(tb$value, "character")
+  expect_setequal(tb$value, c("1", "missing"))
+})
+
+test_that("all-numeric responses emit no warning and keep numeric values", {
+  cov <- read_fixture("pointseries.covjson")
+  expect_silent(tb <- covjson_to_tibble(cov))
+  expect_type(tb$value, "double")
+})
+
+test_that("all-character responses do not warn (no demotion happened)", {
+  cov <- list(
+    type = "Coverage",
+    parameters = list(qa = list(observedProperty = list(label = "QA"))),
+    domain = list(
+      domainType = "PointSeries",
+      axes = list(
+        x = list(values = list(0)),
+        y = list(values = list(0)),
+        t = list(values = list("2020-01-01T00:00:00Z"))
+      )
+    ),
+    ranges = list(
+      qa = list(type = "NdArray", axisNames = list("t"),
+                shape = list(1L), values = list("ok"))
+    )
+  )
+  expect_silent(tb <- covjson_to_tibble(cov))
+  expect_type(tb$value, "character")
+  expect_equal(tb$value, "ok")
+})

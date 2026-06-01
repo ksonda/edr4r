@@ -1,5 +1,12 @@
 # edr4r
 
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/ksonda/edr4r/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ksonda/edr4r/actions/workflows/R-CMD-check.yaml)
+[![Codecov test coverage](https://codecov.io/gh/ksonda/edr4r/graph/badge.svg)](https://app.codecov.io/gh/ksonda/edr4r)
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<!-- badges: end -->
+
 An R client for **OGC API - Environmental Data Retrieval (EDR)** services,
 built for the [Western Water Datahub (WWDH)](https://github.com/internetofwater/WWDH)
 pygeoapi deployment but usable against any compliant EDR server.
@@ -14,11 +21,21 @@ responses into tidy structures:
 ## Installation
 
 ```r
+# from GitHub (recommended)
 # install.packages("pak")
-pak::pak("internetofwater/WWDH/r-client")
+pak::pak("ksonda/edr4r")
 
-# or, from a local clone
-devtools::install("r-client")
+# or
+# install.packages("remotes")
+remotes::install_github("ksonda/edr4r")
+```
+
+For local development:
+
+```sh
+git clone https://github.com/ksonda/edr4r.git
+cd edr4r
+R -e 'devtools::install()'
 ```
 
 Requires R >= 4.1. The `sf` package is optional but recommended (used to turn

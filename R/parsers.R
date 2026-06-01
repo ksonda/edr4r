@@ -32,11 +32,45 @@ covjson_to_tibble <- function(x, datetime_as_posix = TRUE) {
   params <- cov$parameters %||% list()
   if (length(coverages) == 0L) return(empty_covjson_tibble())
 
-  out <- purrr::imap(coverages, function(cvg, i) {
+  per_cov <- purrr::imap(coverages, function(cvg, i) {
     cid <- coverage_id(cvg, i)
     one_coverage(cvg, params, coverage_id = cid)
   })
-  out <- vctrs::vec_rbind(!!!out)
+
+  # Names of parameters demoted from numeric to character inside each
+  # coverage (attached by one_coverage()).
+  demoted <- unique(unlist(
+    lapply(per_cov, attr, "edr_demoted"), use.names = FALSE
+  ))
+
+  # Outer reconciliation across coverages. When one coverage's `value`
+  # column is numeric and another's is character (same response, possibly
+  # different ranges of the same parameter), vec_rbind would fail with a
+  # type-mismatch error. Cast numerics to character before binding, and
+  # name any parameters that get demoted as a result.
+  if (length(per_cov) > 1L) {
+    types <- vapply(per_cov, function(t) typeof(t$value), character(1))
+    if (length(unique(types)) > 1L) {
+      forced <- unique(unlist(
+        lapply(per_cov[types != "character"],
+               function(t) unique(as.character(t$parameter))),
+        use.names = FALSE
+      ))
+      demoted <- unique(c(demoted, forced))
+      per_cov <- lapply(per_cov, function(t) {
+        if (!is.character(t$value)) t$value <- as.character(t$value)
+        t
+      })
+    }
+  }
+
+  out <- vctrs::vec_rbind(!!!per_cov)
+
+  if (length(demoted) > 0L) {
+    cli::cli_warn(
+      "Demoted to character: {.field {demoted}}; some values were non-numeric."
+    )
+  }
 
   if (isTRUE(datetime_as_posix) && "datetime" %in% names(out)) {
     out$datetime <- parse_datetime(out$datetime)
@@ -108,7 +142,26 @@ one_coverage <- function(cvg, params, coverage_id) {
   rows <- purrr::imap(ranges, function(rng, pname) {
     range_to_rows(rng, pname, axes, axis_vals, params, coverage_id)
   })
-  vctrs::vec_rbind(!!!rows)
+
+  # Reconcile `value` types across parameter ranges in this coverage.
+  # Constant-time on the happy path: we read column type tags only, never
+  # touch the values themselves. When numeric and character coexist (e.g.
+  # numeric `storage` next to a categorical `qa_flag`), demote everyone to
+  # character and remember which parameters started numeric so the
+  # top-level call can name them in a single warning.
+  types <- vapply(rows, function(r) typeof(r$value), character(1))
+  demoted <- character(0)
+  if (length(unique(types)) > 1L) {
+    demoted <- names(rows)[types != "character"]
+    rows <- lapply(rows, function(r) {
+      if (!is.character(r$value)) r$value <- as.character(r$value)
+      r
+    })
+  }
+
+  out <- vctrs::vec_rbind(!!!rows)
+  attr(out, "edr_demoted") <- demoted
+  out
 }
 
 range_to_rows <- function(rng, pname, axes, axis_vals, params, coverage_id) {

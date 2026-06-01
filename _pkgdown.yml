@@ -1,0 +1,42 @@
+url: https://ksonda.github.io/edr4r/
+
+template:
+  bootstrap: 5
+
+reference:
+  - title: Client
+    desc: Construct and configure an EDR client.
+    contents:
+      - edr_client
+  - title: Discovery
+    desc: List collections, conformance classes, and queryable parameters.
+    contents:
+      - edr_landing
+      - edr_conformance
+      - edr_collections
+      - edr_collection
+      - edr_queryables
+  - title: Query verbs
+    desc: Standard EDR query types (one helper per endpoint).
+    contents:
+      - edr_locations
+      - edr_location
+      - edr_items
+      - edr_position
+      - edr_area
+      - edr_cube
+      - edr_radius
+      - edr_trajectory
+      - edr_corridor
+      - edr_request
+  - title: Parsers
+    desc: Convert EDR responses to tidy R objects.
+    contents:
+      - covjson_to_tibble
+      - geojson_to_sf
+
+articles:
+  - title: Articles
+    navbar: ~
+    contents:
+      - getting-started

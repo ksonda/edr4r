@@ -71,11 +71,8 @@ edr_location <- function(client,
                          ...) {
   check_client(client)
   collection_id <- check_collection_id(collection_id)
-  if (length(location_id) != 1L || is.na(location_id)) {
-    cli::cli_abort("{.arg location_id} must be a single non-NA value.")
-  }
+  loc <- check_path_id(location_id, "location_id")
   format <- match.arg(format)
-  loc <- utils::URLencode(as.character(location_id), reserved = TRUE)
 
   query <- common_query(
     datetime = datetime, parameter_name = parameter_name,
@@ -132,11 +129,8 @@ edr_item <- function(client,
                      ...) {
   check_client(client)
   collection_id <- check_collection_id(collection_id)
-  if (length(item_id) != 1L || is.na(item_id)) {
-    cli::cli_abort("{.arg item_id} must be a single non-NA value.")
-  }
+  it <- check_path_id(item_id, "item_id")
   format <- match.arg(format)
-  it <- utils::URLencode(as.character(item_id), reserved = TRUE)
   resp <- edr_request(
     client,
     paste0("collections/", collection_id, "/items/", it),
@@ -413,6 +407,32 @@ common_query <- function(...) {
     args$datetime <- paste(args$datetime, collapse = "/")
   }
   args
+}
+
+# Validate a single path-segment id (location_id / item_id) and return it
+# percent-encoded. We pre-encode reserved chars because httr2's
+# req_url_path_append() does NOT escape unsafe segment characters (space,
+# '?', '#'); the later req_url_query() pass normalises the URL so
+# segment-safe reserved chars (':' in AWDB triplets) come back literal.
+# '/' is rejected outright: even when pre-encoded as %2F, URL normalisation
+# and server-side decoding both turn it back into a path separator, so
+# there is no safe round-trip for an id containing a slash.
+check_path_id <- function(id, arg, call = rlang::caller_env()) {
+  if (length(id) != 1L || is.na(id)) {
+    cli::cli_abort("{.arg {arg}} must be a single non-NA value.", call = call)
+  }
+  id <- as.character(id)
+  if (!nzchar(id)) {
+    cli::cli_abort("{.arg {arg}} must be a non-empty string.", call = call)
+  }
+  if (grepl("/", id, fixed = TRUE)) {
+    cli::cli_abort(
+      c("{.arg {arg}} must not contain {.val /}.",
+        i = "Path-segment ids cannot round-trip a literal slash through HTTP."),
+      call = call
+    )
+  }
+  utils::URLencode(id, reserved = TRUE)
 }
 
 check_bbox <- function(bbox, call = rlang::caller_env()) {

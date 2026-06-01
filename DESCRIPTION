@@ -1,9 +1,10 @@
 Package: edr4r
 Title: Client for OGC API - Environmental Data Retrieval (EDR)
 Version: 0.1.0
-Authors@R:
-    person("Western Water Datahub", role = c("aut", "cre"),
-           email = "bwebb@lincolninst.edu")
+Authors@R: c(
+    person("Kyle", "Onda", role = c("aut", "cre"),
+           email = "konda@lincolninst.edu"),
+    person("Western Water Datahub", role = "cph"))
 Description: A client for OGC API - Environmental Data Retrieval (EDR)
     services, with first-class support for the Western Water Datahub
     (WWDH) deployment. Provides discovery, query, and parsing helpers
@@ -11,8 +12,8 @@ Description: A client for OGC API - Environmental Data Retrieval (EDR)
     and corridor query types. Parses CoverageJSON responses into tidy
     tibbles and GeoJSON responses into 'sf' objects.
 License: MIT + file LICENSE
-URL: https://github.com/internetofwater/WWDH
-BugReports: https://github.com/internetofwater/WWDH/issues
+URL: https://github.com/ksonda/edr4r
+BugReports: https://github.com/ksonda/edr4r/issues
 Encoding: UTF-8
 Depends:
     R (>= 4.1)
@@ -25,6 +26,7 @@ Imports:
     tibble,
     vctrs
 Suggests:
+    covr,
     knitr,
     rmarkdown,
     sf,

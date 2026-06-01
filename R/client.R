@@ -9,7 +9,7 @@
 #'   `"https://api.wwdh.internetofwater.app"` for the hosted instance.
 #'   A trailing slash is optional.
 #' @param user_agent String sent in the `User-Agent` header. Defaults to
-#'   `"edr4r/<version> (+https://github.com/internetofwater/WWDH)"`.
+#'   `"edr4r/<version> (+https://github.com/ksonda/edr4r)"`.
 #' @param timeout Request timeout in seconds. Defaults to 60.
 #' @param max_tries Maximum number of attempts per request. The client
 #'   retries on 408, 429, and 5xx responses with exponential backoff.
@@ -42,7 +42,7 @@ edr_client <- function(base_url,
       error = function(e) "0.0.0"
     )
     user_agent <- sprintf(
-      "edr4r/%s (+https://github.com/internetofwater/WWDH)",
+      "edr4r/%s (+https://github.com/ksonda/edr4r)",
       ver
     )
   }
