@@ -77,105 +77,152 @@ OGC API</a></li>
 <li><a href="https://api.wwdh.internetofwater.app" class="external-link">Western Water
 Datahub</a></li>
 </ul>
-<p>This vignette walks through a typical session. The collection IDs and
-parameter names below (<code>monitoring-locations</code>,
-<code>daily-values</code>, <code>discharge</code>, …) are placeholders –
-every server advertises its own. The first thing to do against a new
-service is run <code><a href="../reference/edr_collections.html">edr_collections()</a></code> and look at what it
-returns.</p>
+<p>This vignette runs end-to-end against the Western Water Datahub’s
+<code>rise-edr</code> collection – a <a href="https://pygeoapi.io" class="external-link">pygeoapi</a> wrap of USBR’s reservoir
+telemetry. Every code chunk below is a real working call you can copy
+into a session.</p>
 <div class="section level2">
 <h2 id="create-a-client">1. Create a client<a class="anchor" aria-label="anchor" href="#create-a-client"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/ksonda/edr4r" class="external-link">edr4r</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Pick any EDR-compliant base URL. A trailing slash is optional.</span></span>
-<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_client.html">edr_client</a></span><span class="op">(</span><span class="st">"https://api.waterdata.usgs.gov/ogcapi/beta"</span><span class="op">)</span></span>
+<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_client.html">edr_client</a></span><span class="op">(</span><span class="st">"https://api.wwdh.internetofwater.app"</span><span class="op">)</span></span>
 <span><span class="va">client</span></span></code></pre></div>
 <p>The client just stores connection settings (base URL, user agent,
 timeout, retry policy). Pass <code>verbose = TRUE</code> to echo every
 request URL, or <code>headers =</code> to attach auth tokens.</p>
 </div>
 <div class="section level2">
-<h2 id="discover-whats-available">2. Discover what’s available<a class="anchor" aria-label="anchor" href="#discover-whats-available"></a>
+<h2 id="discover-collections-and-parameters">2. Discover collections and parameters<a class="anchor" aria-label="anchor" href="#discover-collections-and-parameters"></a>
 </h2>
+<p><code><a href="../reference/edr_collections.html">edr_collections()</a></code> lists every EDR collection the service
+serves.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">collections</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_collections.html">edr_collections</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span></span>
 <span><span class="va">collections</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"title"</span>, <span class="st">"data_queries"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
-<p><code>data_queries</code> tells you which EDR query types each
-collection supports. To see the parameters a collection accepts:</p>
+<p>The <code>data_queries</code> column tells you which EDR query types
+each collection supports (<code>locations</code>, <code>cube</code>,
+<code>area</code>, …). Hit a verb the server doesn’t implement and you
+get an HTTP error.</p>
+<p>To see the <strong>data parameters</strong> a collection exposes (the
+values you can pass to <code>parameter_name =</code> on the query
+verbs), use <code><a href="../reference/edr_parameters.html">edr_parameters()</a></code>:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">q</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_queryables.html">edr_queryables</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"daily-values"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">q</span><span class="op">$</span><span class="va">properties</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">params</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_parameters.html">edr_parameters</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"rise-edr"</span><span class="op">)</span></span>
+<span><span class="va">params</span></span>
+<span><span class="co">#&gt; # A tibble: 782 × 6</span></span>
+<span><span class="co">#&gt;   id    name                          description unit_symbol unit_label</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt; &lt;chr&gt;                         &lt;chr&gt;       &lt;chr&gt;       &lt;chr&gt;</span></span>
+<span><span class="co">#&gt; 1 1835  Secondary Canal Stage         "Average …" ft          Secondary…</span></span>
+<span><span class="co">#&gt; 2 1834  Lake/Reservoir Elevation      "Average …" ft          Lake/Rese…</span></span>
+<span><span class="co">#&gt; 3 1830  Lake/Reservoir Release Rate   "Instant…"  cfs         Lake/Rese…</span></span>
+<span><span class="co">#&gt; ...</span></span></code></pre></div>
+<p><code><a href="../reference/edr_queryables.html">edr_queryables()</a></code> is something different – it returns the
+OGC queryables JSON Schema (filterable feature properties for CQL2 / OGC
+API Features). For discovering parameter names,
+<code><a href="../reference/edr_parameters.html">edr_parameters()</a></code> is what you want.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Pick out the daily reservoir storage parameter (id "3"):</span></span>
+<span><span class="va">params</span><span class="op">[</span><span class="va">params</span><span class="op">$</span><span class="va">id</span> <span class="op">==</span> <span class="st">"3"</span>, <span class="op">]</span></span>
+<span><span class="co">#&gt; # A tibble: 1 × 6</span></span>
+<span><span class="co">#&gt;   id    name                              description unit_symbol unit_label</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt; &lt;chr&gt;                             &lt;chr&gt;       &lt;chr&gt;       &lt;chr&gt;</span></span>
+<span><span class="co">#&gt; 1 3     Daily Lake/Reservoir Storage      RISE Param… acre·ft     Acre Foot</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="find-locations">3. Find locations<a class="anchor" aria-label="anchor" href="#find-locations"></a>
 </h2>
-<p>With no filters, <code>locations</code> returns a GeoJSON
-<code>FeatureCollection</code>, which <code>edr4r</code> promotes to an
-<code>sf</code> object (if <code>sf</code> is installed):</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">stations</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_locations.html">edr_locations</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"monitoring-locations"</span><span class="op">)</span></span>
-<span><span class="va">stations</span></span>
-<span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_geometry</a></span><span class="op">(</span><span class="va">stations</span><span class="op">)</span>, pch <span class="op">=</span> <span class="fl">19</span>, cex <span class="op">=</span> <span class="fl">0.4</span><span class="op">)</span></span></code></pre></div>
-<p>You can pre-filter the list spatially:</p>
+<p>With no filters, <code><a href="../reference/edr_locations.html">edr_locations()</a></code> returns the station
+index as a GeoJSON <code>FeatureCollection</code>, promoted to an
+<code>sf</code> object when <a href="https://r-spatial.github.io/sf/" class="external-link"><code>sf</code></a> is
+installed:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/edr_locations.html">edr_locations</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"monitoring-locations"</span>, bbox <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">120</span>, <span class="fl">39</span>, <span class="op">-</span><span class="fl">118</span>, <span class="fl">41</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">stations</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_locations.html">edr_locations</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"rise-edr"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">stations</span><span class="op">)</span>            <span class="co"># ~906 reservoirs</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">stations</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"_id"</span>, <span class="st">"locationName"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
+<p>Note that the WWDH <code>rise-edr</code> locations index uses
+<code>_id</code> as the identifier column, not <code>id</code>. That’s
+fine – the query verbs accept either, and <code><a href="../reference/edr_map.html">edr_map()</a></code> will
+auto-detect.</p>
 </div>
 <div class="section level2">
-<h2 id="retrieve-data-for-a-location">4. Retrieve data for a location<a class="anchor" aria-label="anchor" href="#retrieve-data-for-a-location"></a>
+<h2 id="retrieve-data-for-a-station">4. Retrieve data for a station<a class="anchor" aria-label="anchor" href="#retrieve-data-for-a-station"></a>
 </h2>
-<p>Add a <code>location_id</code> and a <code>datetime</code> to get
-CoverageJSON, then flatten it:</p>
+<p>Pick a known station (Lake Mead, id <code>3514</code>) and a
+parameter (<code>3</code>, Daily Reservoir Storage) and you get
+CoverageJSON back. Flatten it into a tidy tibble with
+<code><a href="../reference/covjson_to_tibble.html">covjson_to_tibble()</a></code>:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_location.html">edr_location</a></span><span class="op">(</span></span>
-<span>  <span class="va">client</span>, <span class="st">"daily-values"</span>,</span>
-<span>  location_id    <span class="op">=</span> <span class="st">"08313000"</span>,</span>
-<span>  datetime       <span class="op">=</span> <span class="st">"2020-01-01/2020-12-31"</span>,</span>
-<span>  parameter_name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"discharge"</span>, <span class="st">"gage_height"</span><span class="op">)</span></span>
+<span>  <span class="va">client</span>, <span class="st">"rise-edr"</span>,</span>
+<span>  location_id    <span class="op">=</span> <span class="fl">3514</span>,</span>
+<span>  datetime       <span class="op">=</span> <span class="st">"2023-01-01/2023-06-30"</span>,</span>
+<span>  parameter_name <span class="op">=</span> <span class="st">"3"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">df</span><span class="op">)</span></span></code></pre></div>
-<p>The tibble is long and tidy – ready for
-<code>dplyr</code>/<code>ggplot2</code>:</p>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">df</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # A tibble: 6 × 9</span></span>
+<span><span class="co">#&gt;   coverage_id parameter parameter_label              unit  datetime</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;       &lt;chr&gt;     &lt;chr&gt;                        &lt;chr&gt; &lt;dttm&gt;</span></span>
+<span><span class="co">#&gt; 1 1           3         Lake/Reservoir Storage       af    2023-01-01 07:00:00</span></span>
+<span><span class="co">#&gt; 2 1           3         Lake/Reservoir Storage       af    2023-01-02 07:00:00</span></span>
+<span><span class="co">#&gt; ...</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="plot-the-time-series">5. Plot the time series<a class="anchor" aria-label="anchor" href="#plot-the-time-series"></a>
+</h2>
+<p><code><a href="../reference/edr_plot.html">edr_plot()</a></code> is a small <code>ggplot2</code> wrapper for
+the tidy tibble:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
-<span><span class="fu">ggplot</span><span class="op">(</span><span class="va">df</span>, <span class="fu">aes</span><span class="op">(</span><span class="va">datetime</span>, <span class="va">value</span>, colour <span class="op">=</span> <span class="va">parameter</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">geom_line</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">facet_wrap</span><span class="op">(</span><span class="op">~</span> <span class="va">parameter</span>, scales <span class="op">=</span> <span class="st">"free_y"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/edr_plot.html">edr_plot</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span>            <span class="co"># accepts the edr_response directly</span></span></code></pre></div>
+<p>Faceted by parameter (so different units don’t share a y-axis) and
+coloured by station. Add layers or themes like any other ggplot.</p>
 </div>
 <div class="section level2">
-<h2 id="spatial-queries-cube-and-area">5. Spatial queries: cube and area<a class="anchor" aria-label="anchor" href="#spatial-queries-cube-and-area"></a>
+<h2 id="map-stations-with-per-station-popups">6. Map stations with per-station popups<a class="anchor" aria-label="anchor" href="#map-stations-with-per-station-popups"></a>
 </h2>
-<p><code>cube</code> takes a bounding box; <code>area</code> takes a
-polygon (WKT, an lon/lat matrix, or an <code>sf</code> polygon):</p>
+<p><code><a href="../reference/edr_map.html">edr_map()</a></code> puts the stations on a leaflet basemap. With
+<code>data =</code>, each marker gets a popup containing a small inline
+plot and a “Download CSV” link for that station. Pass a named list keyed
+by station id when you’ve fetched one CovJSON per station
+(server-assigned <code>coverage_id</code>s won’t naturally match the
+feature id):</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">cube</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_cube.html">edr_cube</a></span><span class="op">(</span></span>
-<span>  <span class="va">client</span>, <span class="st">"daily-values"</span>,</span>
-<span>  bbox           <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">120</span>, <span class="fl">39</span>, <span class="op">-</span><span class="fl">118</span>, <span class="fl">41</span><span class="op">)</span>,</span>
-<span>  datetime       <span class="op">=</span> <span class="st">"2023-01-01/2023-03-31"</span>,</span>
-<span>  parameter_name <span class="op">=</span> <span class="st">"discharge"</span></span>
+<code class="sourceCode R"><span><span class="va">data_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"3514"</span> <span class="op">=</span> <span class="va">df</span><span class="op">)</span></span>
+<span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_map.html">edr_map</a></span><span class="op">(</span></span>
+<span>  <span class="va">stations</span><span class="op">[</span><span class="va">stations</span><span class="op">$</span><span class="va">`_id`</span> <span class="op">==</span> <span class="fl">3514</span>, <span class="op">]</span>,</span>
+<span>  data        <span class="op">=</span> <span class="va">data_list</span>,</span>
+<span>  id_col      <span class="op">=</span> <span class="st">"_id"</span>,</span>
+<span>  label_col   <span class="op">=</span> <span class="st">"locationName"</span>,</span>
+<span>  popup       <span class="op">=</span> <span class="st">"plot+csv"</span></span>
 <span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">cube</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">ring</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">109</span>, <span class="fl">47</span>, <span class="op">-</span><span class="fl">104</span>, <span class="fl">47</span>, <span class="op">-</span><span class="fl">104</span>, <span class="fl">49</span>, <span class="op">-</span><span class="fl">109</span>, <span class="fl">49</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">area</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_area.html">edr_area</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"monitoring-locations"</span>, coords <span class="op">=</span> <span class="va">ring</span>,</span>
-<span>                 datetime <span class="op">=</span> <span class="st">"2022-01-01/.."</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">area</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">m</span></span></code></pre></div>
+<p>To save the map to a standalone HTML file (embedded plots and CSVs –
+no sidecar directory):</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/edr_save_html.html">edr_save_html</a></span><span class="op">(</span><span class="va">m</span>, <span class="st">"lake-mead.html"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="other-formats-and-the-escape-hatch">6. Other formats and the escape hatch<a class="anchor" aria-label="anchor" href="#other-formats-and-the-escape-hatch"></a>
+<h2 id="one-shot-edr_explore">7. One-shot: <code>edr_explore()</code><a class="anchor" aria-label="anchor" href="#one-shot-edr_explore"></a>
 </h2>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># CSV straight from the server (if the server advertises it)</span></span>
-<span><span class="fu"><a href="../reference/edr_location.html">edr_location</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"daily-values"</span>, <span class="st">"08313000"</span>,</span>
-<span>             datetime <span class="op">=</span> <span class="st">"2010-01-01/.."</span>, format <span class="op">=</span> <span class="st">"csv"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Anything not wrapped by a helper:</span></span>
-<span><span class="fu"><a href="../reference/edr_request.html">edr_request</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"collections/daily-values"</span>, format <span class="op">=</span> <span class="st">"json"</span><span class="op">)</span></span></code></pre></div>
+<p>For a quick scan of a small set of stations,
+<code><a href="../reference/edr_explore.html">edr_explore()</a></code> does the whole pipeline – fetch locations,
+fetch one time series per station, render the map – in a single
+call:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/edr_explore.html">edr_explore</a></span><span class="op">(</span></span>
+<span>  <span class="va">client</span>, <span class="st">"rise-edr"</span>,</span>
+<span>  limit          <span class="op">=</span> <span class="fl">8</span>,                       <span class="co"># cap on stations to fetch</span></span>
+<span>  datetime       <span class="op">=</span> <span class="st">"2023-01-01/2023-03-31"</span>,</span>
+<span>  parameter_name <span class="op">=</span> <span class="st">"3"</span>,</span>
+<span>  file           <span class="op">=</span> <span class="st">"rise-storage.html"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Each station gets its own popup. Stations the server has no data for
+(in the requested window or for the requested parameter) fall back to a
+label and the attribute table.</p>
 </div>
 <div class="section level2">
 <h2 id="a-few-things-worth-knowing">A few things worth knowing<a class="anchor" aria-label="anchor" href="#a-few-things-worth-knowing"></a>
@@ -199,8 +246,12 @@ it.</li>
 <code>position</code>, <code>cube</code>, and <code>area</code> are
 common; <code>radius</code>, <code>trajectory</code>, and
 <code>corridor</code> less so. The client supports them all per the <a href="https://ogcapi.ogc.org/edr/" class="external-link">spec</a>, but a call against a
-collection that doesn’t implement a given verb returns an HTTP error.
-```</li>
+collection that doesn’t implement a given verb returns an HTTP
+error.</li>
+<li>
+<code><a href="../reference/edr_explore.html">edr_explore()</a></code> makes one HTTP call per station. For
+large collections, pre-filter aggressively via <code>bbox =</code> (if
+the server supports it) or <code>limit =</code>. ```</li>
 </ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

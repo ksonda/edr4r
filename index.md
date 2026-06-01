@@ -150,6 +150,53 @@ area <- edr_area(client, "monitoring-locations", coords = ring,
 covjson_to_tibble(area)
 ```
 
+### Plot a time series
+
+[`edr_plot()`](https://ksonda.github.io/edr4r/reference/edr_plot.md) is
+a small `ggplot2` wrapper over the tidy tibble:
+
+``` r
+
+edr_plot(resp)            # accepts an edr_response directly
+```
+
+Facets by parameter (so different units don’t share a y-axis) and
+colours by station. Add layers or themes like any other ggplot.
+
+### Map stations with per-station popups
+
+[`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md) puts
+the stations on a leaflet basemap. Pass `data =` as a named list keyed
+by station id (the shape \[edr_explore()\] produces) and each marker
+gets a popup with an inline plot and a “Download CSV” link for that
+station’s data — embedded as a `data:` URI so the saved HTML is
+selfcontained:
+
+``` r
+
+stations <- edr_locations(client, "monitoring-locations",
+                          bbox = c(-116, 35.5, -114, 36.5))
+data_list <- list("3514" = covjson_to_tibble(resp))
+m <- edr_map(stations, data = data_list, popup = "plot+csv")
+edr_save_html(m, "stations.html")
+```
+
+For a quick exploratory pass over a whole collection,
+[`edr_explore()`](https://ksonda.github.io/edr4r/reference/edr_explore.md)
+does the fetch + plot + map in one call:
+
+``` r
+
+edr_explore(
+  client, "daily-values",
+  bbox           = c(-116, 35.5, -114, 36.5),
+  datetime       = "2024-01-01/2024-03-31",
+  parameter_name = "discharge",
+  limit          = 25,
+  file           = "snapshot.html"
+)
+```
+
 ### Weird IDs, CSV, and an escape hatch
 
 Some monitoring networks use compound station IDs — colon-separated

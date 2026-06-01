@@ -1,7 +1,11 @@
-# List queryable parameters for a collection
+# Get the queryables (filter properties) for a collection
 
-Returns the JSON Schema describing parameters the collection accepts.
-Useful for discovering valid `parameter_name` values.
+Returns the OGC API queryables document for a collection – a JSON Schema
+describing the filter properties the server exposes (this is typically
+used by OGC API Features for CQL2 / property-based filtering). It is
+**not** the right place to look up the data parameters / observed
+properties an EDR collection serves; for that, use
+[`edr_parameters()`](https://ksonda.github.io/edr4r/reference/edr_parameters.md).
 
 ## Usage
 
@@ -22,4 +26,4 @@ edr_queryables(client, collection_id)
 
 ## Value
 
-A list with the queryables document.
+A list with the parsed queryables document.

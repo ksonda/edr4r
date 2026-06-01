@@ -54,7 +54,7 @@
       </dl></div><div class="section level2">
       <h2 id="discovery">Discovery<a class="anchor" aria-label="anchor" href="#discovery"></a></h2>
 
-      <div class="section-desc"><p>List collections, conformance classes, and queryable parameters.</p></div>
+      <div class="section-desc"><p>List collections, conformance classes, data parameters, and filterable properties.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -91,10 +91,17 @@
 
         <dt>
 
+          <code><a href="edr_parameters.html">edr_parameters()</a></code>
+
+        </dt>
+        <dd>List the data parameters a collection serves</dd>
+
+        <dt>
+
           <code><a href="edr_queryables.html">edr_queryables()</a></code>
 
         </dt>
-        <dd>List queryable parameters for a collection</dd>
+        <dd>Get the queryables (filter properties) for a collection</dd>
       </dl></div><div class="section level2">
       <h2 id="query-verbs">Query verbs<a class="anchor" aria-label="anchor" href="#query-verbs"></a></h2>
 
@@ -197,6 +204,43 @@
 
         </dt>
         <dd>Convert a GeoJSON EDR response to an <code>sf</code> object</dd>
+      </dl></div><div class="section level2">
+      <h2 id="visualize">Visualize<a class="anchor" aria-label="anchor" href="#visualize"></a></h2>
+
+      <div class="section-desc"><p>Plot time series, map stations with popups, save to standalone HTML.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="edr_plot.html">edr_plot()</a></code>
+
+        </dt>
+        <dd>Plot an EDR time-series response as a ggplot</dd>
+
+        <dt>
+
+          <code><a href="edr_map.html">edr_map()</a></code>
+
+        </dt>
+        <dd>Map EDR locations with optional per-station popups</dd>
+
+        <dt>
+
+          <code><a href="edr_save_html.html">edr_save_html()</a></code>
+
+        </dt>
+        <dd>Save a map to a standalone HTML file</dd>
+
+        <dt>
+
+          <code><a href="edr_explore.html">edr_explore()</a></code>
+
+        </dt>
+        <dd>One-shot fetch + plot + map for a collection</dd>
       </dl></div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
