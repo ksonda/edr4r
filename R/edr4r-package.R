@@ -13,9 +13,3 @@
 
 #' @importFrom rlang %||%
 NULL
-
-# Avoid R CMD check NOTEs about undefined globals used inside
-# parser pipelines.
-utils::globalVariables(c(
-  "location_id", "parameter", "value", "datetime", "x", "y", "z", "unit"
-))

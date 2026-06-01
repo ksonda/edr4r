@@ -263,8 +263,7 @@ param_unit <- function(params, pname) {
   if (is.null(p)) return(NA_character_)
   u <- p$unit
   if (is.null(u)) return(NA_character_)
-  localized(u$symbol) %||% localized(u$label) %||%
-    (if (is.character(u$symbol)) u$symbol else NULL) %||% NA_character_
+  localized(u$symbol) %||% localized(u$label) %||% NA_character_
 }
 
 # Pull an "en" (or first) value from a CovJSON localized label, which

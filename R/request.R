@@ -48,8 +48,7 @@ edr_request <- function(client,
     httr2::req_timeout(client$timeout) |>
     httr2::req_retry(
       max_tries = client$max_tries,
-      is_transient = is_transient_edr,
-      backoff = function(i) min(2 ^ i, 30)
+      is_transient = is_transient_edr
     ) |>
     httr2::req_error(body = edr_error_body)
 
