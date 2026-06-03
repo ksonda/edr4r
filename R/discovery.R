@@ -46,7 +46,7 @@ edr_collections <- function(client) {
 #' @return A list with the raw collection document.
 #' @export
 edr_collection <- function(client, collection_id) {
-  collection_id <- check_collection_id(collection_id)
+  collection_id <- collection_path_id(collection_id)
   edr_request(client, paste0("collections/", collection_id), format = "json")
 }
 
@@ -63,7 +63,7 @@ edr_collection <- function(client, collection_id) {
 #' @return A list with the parsed queryables document.
 #' @export
 edr_queryables <- function(client, collection_id) {
-  collection_id <- check_collection_id(collection_id)
+  collection_id <- collection_path_id(collection_id)
   edr_request(
     client,
     paste0("collections/", collection_id, "/queryables"),
@@ -146,7 +146,19 @@ check_collection_id <- function(collection_id, call = rlang::caller_env()) {
       call = call
     )
   }
+  if (grepl("/", collection_id, fixed = TRUE)) {
+    cli::cli_abort(
+      c("{.arg collection_id} must not contain {.val /}.",
+        i = "Collection ids are used as HTTP path segments."),
+      call = call
+    )
+  }
   collection_id
+}
+
+collection_path_id <- function(collection_id, call = rlang::caller_env()) {
+  collection_id <- check_collection_id(collection_id, call = call)
+  utils::URLencode(collection_id, reserved = TRUE)
 }
 
 collection_row <- function(c) {

@@ -20,7 +20,8 @@ edr_map(
   matched_color = "#2C7FB8",
   unmatched_color = "#BBBBBB",
   show_unmatched = TRUE,
-  legend = TRUE
+  legend = TRUE,
+  max_match_distance = NULL
 )
 }
 \arguments{
@@ -73,6 +74,11 @@ network. Set to \code{FALSE} to drop them entirely. Ignored when
 \item{legend}{If \code{TRUE} (default), add a legend distinguishing
 stations with data from those without. Suppressed automatically
 when there are no unmatched markers to label.}
+
+\item{max_match_distance}{Optional maximum coordinate distance for
+spatially matching \code{data} rows with \code{x} / \code{y} columns to stations.
+Units are those of the station coordinates. \code{NULL} (default) keeps
+the nearest-station fallback unlimited.}
 }
 \value{
 A \code{leaflet} htmlwidget. Pass it to \code{\link[=edr_save_html]{edr_save_html()}} to

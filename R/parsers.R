@@ -150,9 +150,11 @@ one_coverage <- function(cvg, params, coverage_id) {
   # character and remember which parameters started numeric so the
   # top-level call can name them in a single warning.
   types <- vapply(rows, function(r) typeof(r$value), character(1))
-  demoted <- character(0)
+  demoted <- unique(unlist(
+    lapply(rows, attr, "edr_demoted"), use.names = FALSE
+  ))
   if (length(unique(types)) > 1L) {
-    demoted <- names(rows)[types != "character"]
+    demoted <- unique(c(demoted, names(rows)[types != "character"]))
     rows <- lapply(rows, function(r) {
       if (!is.character(r$value)) r$value <- as.character(r$value)
       r
@@ -201,7 +203,10 @@ range_to_rows <- function(rng, pname, axes, axis_vals, params, coverage_id) {
     }
   }
 
-  tibble::tibble(
+  value <- coerce_values(values, n)
+  value_demoted <- isTRUE(attr(value, "edr_demoted"))
+  attr(value, "edr_demoted") <- NULL
+  out <- tibble::tibble(
     coverage_id     = coverage_id,
     parameter       = pname,
     parameter_label = param_label(params, pname),
@@ -210,8 +215,12 @@ range_to_rows <- function(rng, pname, axes, axis_vals, params, coverage_id) {
     x               = as.numeric(get_axis("x")),
     y               = as.numeric(get_axis("y")),
     z               = as.numeric(get_axis("z")),
-    value           = coerce_values(values, n)
+    value           = value
   )
+  if (value_demoted) {
+    attr(out, "edr_demoted") <- pname
+  }
+  out
 }
 
 axis_values_for <- function(name, axes) {
@@ -237,9 +246,13 @@ axis_chr <- function(ax) {
 coerce_values <- function(values, n) {
   if (length(values) == 0L) return(rep(NA_real_, n))
   num <- suppressWarnings(as.numeric(values))
-  if (all(is.na(num)) && !all(is.na(values))) {
-    # Non-numeric payload; keep as character.
-    return(as.character(values))
+  present <- !is.na(values)
+  parsed <- !is.na(num)
+  if (any(present & !parsed)) {
+    # Any real non-numeric payload means numeric conversion would lose data.
+    out <- as.character(values)
+    attr(out, "edr_demoted") <- any(parsed)
+    return(out)
   }
   num
 }

@@ -146,6 +146,36 @@ test_that("all-numeric responses emit no warning and keep numeric values", {
   expect_type(tb$value, "double")
 })
 
+test_that("mixed numeric and text values in one range preserve text", {
+  cov <- list(
+    type = "Coverage",
+    parameters = list(
+      reading = list(observedProperty = list(label = "Reading"))
+    ),
+    domain = list(
+      domainType = "PointSeries",
+      axes = list(
+        x = list(values = list(0)),
+        y = list(values = list(0)),
+        t = list(values = list(
+          "2020-01-01T00:00:00Z",
+          "2020-01-02T00:00:00Z",
+          "2020-01-03T00:00:00Z"
+        ))
+      )
+    ),
+    ranges = list(
+      reading = list(
+        type = "NdArray", axisNames = list("t"), shape = list(3L),
+        values = list("1.5", "suspect", NA)
+      )
+    )
+  )
+  expect_warning(tb <- covjson_to_tibble(cov), "reading")
+  expect_type(tb$value, "character")
+  expect_equal(tb$value, c("1.5", "suspect", NA_character_))
+})
+
 test_that("parse_datetime picks the first format that parses any element", {
   # Single-format axis: full parse.
   iso <- c("2023-01-01T00:00:00Z", "2023-01-02T00:00:00Z")

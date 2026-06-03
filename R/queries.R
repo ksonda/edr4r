@@ -31,7 +31,7 @@ edr_locations <- function(client,
                           format = c("geojson", "json"),
                           ...) {
   check_client(client)
-  collection_id <- check_collection_id(collection_id)
+  collection_id <- collection_path_id(collection_id)
   format <- match.arg(format)
 
   query <- common_query(
@@ -73,7 +73,7 @@ edr_location <- function(client,
                          format = c("covjson", "geojson", "csv", "json"),
                          ...) {
   check_client(client)
-  collection_id <- check_collection_id(collection_id)
+  collection_id <- collection_path_id(collection_id)
   loc <- check_path_id(location_id, "location_id")
   format <- match.arg(format)
 
@@ -108,7 +108,7 @@ edr_items <- function(client,
                       format = c("geojson", "json"),
                       ...) {
   check_client(client)
-  collection_id <- check_collection_id(collection_id)
+  collection_id <- collection_path_id(collection_id)
   format <- match.arg(format)
 
   query <- common_query(
@@ -132,7 +132,7 @@ edr_item <- function(client,
                      format = c("geojson", "json"),
                      ...) {
   check_client(client)
-  collection_id <- check_collection_id(collection_id)
+  collection_id <- collection_path_id(collection_id)
   it <- check_path_id(item_id, "item_id")
   format <- match.arg(format)
   resp <- edr_request(
@@ -163,7 +163,7 @@ edr_position <- function(client,
                          format = c("covjson", "json"),
                          ...) {
   check_client(client)
-  collection_id <- check_collection_id(collection_id)
+  collection_id <- collection_path_id(collection_id)
   format <- match.arg(format)
 
   query <- common_query(
@@ -202,7 +202,7 @@ edr_area <- function(client,
                      format = c("covjson", "json"),
                      ...) {
   check_client(client)
-  collection_id <- check_collection_id(collection_id)
+  collection_id <- collection_path_id(collection_id)
   format <- match.arg(format)
 
   query <- common_query(
@@ -238,7 +238,7 @@ edr_cube <- function(client,
                      format = c("covjson", "json"),
                      ...) {
   check_client(client)
-  collection_id <- check_collection_id(collection_id)
+  collection_id <- collection_path_id(collection_id)
   format <- match.arg(format)
   bbox <- check_bbox(bbox)
 
@@ -278,7 +278,7 @@ edr_radius <- function(client,
                        format = c("covjson", "json"),
                        ...) {
   check_client(client)
-  collection_id <- check_collection_id(collection_id)
+  collection_id <- collection_path_id(collection_id)
   format <- match.arg(format)
   if (!is.numeric(within) || length(within) != 1L) {
     cli::cli_abort("{.arg within} must be a single numeric value.")
@@ -320,7 +320,7 @@ edr_trajectory <- function(client,
                            format = c("covjson", "json"),
                            ...) {
   check_client(client)
-  collection_id <- check_collection_id(collection_id)
+  collection_id <- collection_path_id(collection_id)
   format <- match.arg(format)
 
   query <- common_query(
@@ -363,7 +363,7 @@ edr_corridor <- function(client,
                          format = c("covjson", "json"),
                          ...) {
   check_client(client)
-  collection_id <- check_collection_id(collection_id)
+  collection_id <- collection_path_id(collection_id)
   format <- match.arg(format)
 
   query <- common_query(

@@ -32,6 +32,26 @@ test_that("WKT coercion handles vectors, matrices, and strings", {
   expect_error(edr4r:::to_wkt_point("notwkt"), "WKT POINT")
 })
 
+test_that("WKT coercion rejects wrong geometry types and bad coordinates", {
+  expect_error(edr4r:::to_wkt_point("POLYGON((0 0, 1 0, 1 1, 0 0))"), "WKT POINT")
+  expect_error(edr4r:::to_wkt_polygon("LINESTRING(0 0, 1 1)"), "WKT POLYGON")
+  expect_error(edr4r:::to_wkt_linestring("POINT(0 0)"), "WKT LINESTRING")
+
+  expect_error(edr4r:::to_wkt_point(c(0, Inf)), "finite")
+  expect_error(
+    edr4r:::to_wkt_polygon(matrix(c(0, 0, 1, 1), ncol = 2, byrow = TRUE)),
+    "at least 3"
+  )
+  expect_error(
+    edr4r:::to_wkt_linestring(matrix(c(0, 0), ncol = 2)),
+    "at least 2"
+  )
+  expect_error(
+    edr4r:::to_wkt_polygon(data.frame(x = c("a", "b", "c"), y = c(1, 2, 3))),
+    "numeric"
+  )
+})
+
 test_that("bbox validation rejects bad lengths", {
   expect_error(edr4r:::check_bbox(c(1, 2, 3)), "length 4 or 6")
   expect_silent(edr4r:::check_bbox(c(1, 2, 3, 4)))

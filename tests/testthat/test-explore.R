@@ -113,6 +113,68 @@ test_that("edr_explore method = 'cube' uses one bulk call, no per-station N+1", 
   expect_match(popup_blob, "data:text/csv;base64,")
 })
 
+test_that("auto explore method requires matching spatial input", {
+  cols <- read_fixture("collections.json")
+  httr2::local_mocked_responses(function(req) mock_json_response(cols))
+
+  client <- test_client()
+  expect_equal(
+    edr4r:::resolve_explore_method(
+      client, "daily-values", "auto",
+      bbox = NULL,
+      coords = matrix(c(0, 0, 1, 0, 1, 1), ncol = 2, byrow = TRUE)
+    ),
+    "area"
+  )
+  expect_equal(
+    edr4r:::resolve_explore_method(
+      client, "daily-values", "auto",
+      bbox = c(-110, 35, -106, 38),
+      coords = NULL
+    ),
+    "cube"
+  )
+  expect_equal(
+    edr4r:::resolve_explore_method(
+      client, "daily-values", "auto",
+      bbox = NULL,
+      coords = NULL
+    ),
+    "per-location"
+  )
+  expect_equal(
+    edr4r:::resolve_explore_method(
+      client, "daily-values", "cube",
+      bbox = NULL,
+      coords = NULL
+    ),
+    "cube"
+  )
+})
+
+test_that("per-station fetches warn when stations fail", {
+  cov <- read_fixture("pointseries.covjson")
+  call_n <- 0L
+  httr2::local_mocked_responses(function(req) {
+    call_n <<- call_n + 1L
+    if (call_n == 1L) {
+      mock_json_response(cov)
+    } else {
+      mock_json_response(list(description = "station failed"), status = 500L)
+    }
+  })
+
+  expect_warning(
+    res <- edr4r:::fetch_per_station(
+      test_client(), "demo", c("ok", "bad"),
+      datetime = NULL, parameter_name = NULL, quiet = TRUE
+    ),
+    "Failed to fetch data"
+  )
+  expect_s3_class(res[[1]], "tbl_df")
+  expect_null(res[[2]])
+})
+
 test_that("edr_explore + edr_save_html round-trip to disk", {
   skip_if_not_installed("leaflet")
   skip_if_not_installed("sf")

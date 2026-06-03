@@ -30,7 +30,6 @@ Imports:
     vctrs
 Suggests:
     base64enc,
-    covr,
     ggplot2,
     htmlwidgets,
     knitr,
@@ -38,8 +37,7 @@ Suggests:
     rmarkdown,
     sf,
     svglite,
-    testthat (>= 3.0.0),
-    withr
+    testthat (>= 3.0.0)
 Config/testthat/edition: 3
 RoxygenNote: 7.3.3
 Roxygen: list(markdown = TRUE)

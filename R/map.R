@@ -54,30 +54,36 @@
 #' @param legend If `TRUE` (default), add a legend distinguishing
 #'   stations with data from those without. Suppressed automatically
 #'   when there are no unmatched markers to label.
+#' @param max_match_distance Optional maximum coordinate distance for
+#'   spatially matching `data` rows with `x` / `y` columns to stations.
+#'   Units are those of the station coordinates. `NULL` (default) keeps
+#'   the nearest-station fallback unlimited.
 #'
 #' @return A `leaflet` htmlwidget. Pass it to [edr_save_html()] to
 #'   write a selfcontained HTML file.
 #' @export
 edr_map <- function(locations,
-                    data            = NULL,
-                    popup           = c("plot+csv", "plot", "csv", "table", "all"),
-                    location_col    = "coverage_id",
-                    id_col          = NULL,
-                    label_col       = NULL,
-                    parameter       = NULL,
-                    plot_width      = 7,
-                    plot_height     = 3.5,
-                    plot_dpi        = 72,
-                    tile_provider   = "CartoDB.Positron",
-                    marker_radius   = 6,
-                    matched_color   = "#2C7FB8",
-                    unmatched_color = "#BBBBBB",
-                    show_unmatched  = TRUE,
-                    legend          = TRUE) {
+                    data               = NULL,
+                    popup              = c("plot+csv", "plot", "csv", "table", "all"),
+                    location_col       = "coverage_id",
+                    id_col             = NULL,
+                    label_col          = NULL,
+                    parameter          = NULL,
+                    plot_width         = 7,
+                    plot_height        = 3.5,
+                    plot_dpi           = 72,
+                    tile_provider      = "CartoDB.Positron",
+                    marker_radius      = 6,
+                    matched_color      = "#2C7FB8",
+                    unmatched_color    = "#BBBBBB",
+                    show_unmatched     = TRUE,
+                    legend             = TRUE,
+                    max_match_distance = NULL) {
   check_installed_for("leaflet", "render maps")
   check_installed_for("sf",      "render maps")
   popup <- match.arg(popup)
   locations <- as_locations_sf(locations)
+  check_max_match_distance(max_match_distance)
 
   needs_data <- popup %in% c("plot", "csv", "plot+csv", "all")
   if (needs_data && is.null(data)) {
@@ -90,7 +96,9 @@ edr_map <- function(locations,
   attr_table <- sf::st_drop_geometry(locations)
   ids    <- detect_id_column(attr_table, id_col)
   labels <- detect_labels(attr_table, label_col, ids)
-  per_feature_data <- per_feature_split(data, ids, location_col, locations)
+  per_feature_data <- per_feature_split(
+    data, ids, location_col, locations, max_match_distance
+  )
   # When `data` is NULL the matched/unmatched distinction doesn't apply —
   # everyone is drawn as a regular station marker.
   has_data <- if (is.null(data)) {
@@ -281,7 +289,8 @@ detect_labels <- function(df, label_col, ids) {
 #   - Tibble with x/y columns (e.g. from edr_cube / edr_area) where
 #     `coverage_id` is a server-assigned sequence number that doesn't
 #     match feature ids → spatial-proximity join via centroid distance.
-per_feature_split <- function(data, ids, location_col, locations) {
+per_feature_split <- function(data, ids, location_col, locations,
+                              max_match_distance = NULL) {
   if (is.null(data)) return(rep(list(NULL), length(ids)))
   if (is.list(data) && !is.data.frame(data)) {
     return(lapply(ids, function(i) data[[as.character(i)]]))
@@ -300,7 +309,7 @@ per_feature_split <- function(data, ids, location_col, locations) {
   # 2. Spatial fallback via x/y columns (the shape covjson_to_tibble
   #    produces from /cube and /area responses).
   if (all(c("x", "y") %in% names(df))) {
-    return(spatial_split(df, locations, ids))
+    return(spatial_split(df, locations, ids, max_match_distance))
   }
 
   cli::cli_abort(
@@ -312,7 +321,7 @@ per_feature_split <- function(data, ids, location_col, locations) {
 # Group `df` by its (x, y) coordinates and assign each group to the
 # nearest feature in `locations`. Returns a list aligned to `ids` (NULL
 # where no coverage matched).
-spatial_split <- function(df, locations, ids) {
+spatial_split <- function(df, locations, ids, max_match_distance = NULL) {
   geom <- sf::st_geometry(locations)
   if (!all(sf::st_geometry_type(geom) == "POINT")) {
     geom <- suppressWarnings(sf::st_centroid(geom))
@@ -331,9 +340,25 @@ spatial_split <- function(df, locations, ids) {
     cov_xy <- c(sub$x[[1]], sub$y[[1]])
     d2 <- (feat_xy[, 1] - cov_xy[[1]])^2 + (feat_xy[, 2] - cov_xy[[2]])^2
     i <- which.min(d2)
-    if (length(i) == 1L && !is.na(i)) out[[i]] <- sub
+    if (length(i) == 1L && !is.na(i) &&
+        (is.null(max_match_distance) || sqrt(d2[[i]]) <= max_match_distance)) {
+      out[[i]] <- sub
+    }
   }
   out
+}
+
+check_max_match_distance <- function(max_match_distance,
+                                     call = rlang::caller_env()) {
+  if (is.null(max_match_distance)) return(invisible())
+  if (!is.numeric(max_match_distance) || length(max_match_distance) != 1L ||
+      !is.finite(max_match_distance) || max_match_distance < 0) {
+    cli::cli_abort(
+      "{.arg max_match_distance} must be a single non-negative number or NULL.",
+      call = call
+    )
+  }
+  invisible()
 }
 
 build_feature_popup <- function(df,

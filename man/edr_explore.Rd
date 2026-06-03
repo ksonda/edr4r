@@ -27,8 +27,9 @@ edr_explore(
 
 \item{bbox}{Optional numeric length-4 bbox. Used both to filter
 the locations index (if the server honours it) and as the bbox
-for the cube fetch. If omitted, derived from the bounding box of
-the returned locations sf.}
+for the cube fetch in \code{method = "auto"}. If omitted with
+\code{method = "cube"}, derived from the bounding box of the returned
+locations sf.}
 
 \item{coords}{Polygon coords for \code{area}. Forwarded to \code{\link[=edr_area]{edr_area()}}.}
 
@@ -75,16 +76,17 @@ collection advertises in its \code{data_queries}:
 \itemize{
 \item \strong{cube} -- one HTTP call returning a CoverageCollection across
 the whole bbox. Fast. Used when the collection supports \code{cube}
-\emph{and} a \code{bbox} is supplied (or derivable from the locations sf).
+\emph{and} a \code{bbox} is supplied.
 \item \strong{area} -- like cube but uses a polygon. Used when \code{coords} is
 supplied and the collection supports \code{area}.
 \item \strong{per-location} -- the fallback: one HTTP call per station via
-\code{\link[=edr_location]{edr_location()}}. Slower (N+1), used when neither \code{cube} nor
-\code{area} is supported.
+\code{\link[=edr_location]{edr_location()}}. Slower (N+1), used when neither spatial bulk
+query is supported or the matching spatial input was not supplied.
 }
 
 Force a specific path by setting \code{method}. \code{coords} is required for
-\code{area}.
+\code{area}; if \code{method = "cube"} and \code{bbox} is omitted, the bbox is
+derived from the returned locations.
 }
 \examples{
 \dontrun{

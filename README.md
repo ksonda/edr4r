@@ -237,7 +237,7 @@ edr_request(client, "collections/daily-values/instances", format = "json")
 Every query verb accepts the standard EDR filters:
 
 - `datetime` — an ISO-8601 instant or interval. Accepts `"2020-01-01/2020-12-31"`, an open interval `"2020-01-01/.."`, or a length-2 character vector `c("2020-01-01", "2020-12-31")`.
-- `parameter_name` — a character vector of parameter names; sent as a comma-separated `parameter-name=` query. Use `edr_queryables()` to discover valid names.
+- `parameter_name` — a character vector of parameter names; sent as a comma-separated `parameter-name=` query. Use `edr_parameters()` to discover valid names.
 - `bbox` — numeric length-4 (`minx, miny, maxx, maxy`) or length-6 (with z).
 - `coords` — for `position`/`area`/`radius`/`trajectory`/`corridor`: a WKT string, a numeric vector / 2-column matrix of lon-lat, or an `sf`/`sfc` geometry.
 - `z`, `crs`, `limit` — passed through when supplied.

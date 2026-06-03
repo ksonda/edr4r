@@ -11,22 +11,24 @@
 #'
 #' * **cube** -- one HTTP call returning a CoverageCollection across
 #'   the whole bbox. Fast. Used when the collection supports `cube`
-#'   *and* a `bbox` is supplied (or derivable from the locations sf).
+#'   *and* a `bbox` is supplied.
 #' * **area** -- like cube but uses a polygon. Used when `coords` is
 #'   supplied and the collection supports `area`.
 #' * **per-location** -- the fallback: one HTTP call per station via
-#'   [edr_location()]. Slower (N+1), used when neither `cube` nor
-#'   `area` is supported.
+#'   [edr_location()]. Slower (N+1), used when neither spatial bulk
+#'   query is supported or the matching spatial input was not supplied.
 #'
 #' Force a specific path by setting `method`. `coords` is required for
-#' `area`.
+#' `area`; if `method = "cube"` and `bbox` is omitted, the bbox is
+#' derived from the returned locations.
 #'
 #' @param client An `edr_client`.
 #' @param collection_id Collection identifier.
 #' @param bbox Optional numeric length-4 bbox. Used both to filter
 #'   the locations index (if the server honours it) and as the bbox
-#'   for the cube fetch. If omitted, derived from the bounding box of
-#'   the returned locations sf.
+#'   for the cube fetch in `method = "auto"`. If omitted with
+#'   `method = "cube"`, derived from the bounding box of the returned
+#'   locations sf.
 #' @param coords Polygon coords for `area`. Forwarded to [edr_area()].
 #' @param datetime ISO-8601 interval forwarded to the data fetch.
 #' @param parameter_name Character vector of parameter ids; forwarded
@@ -158,8 +160,8 @@ resolve_explore_method <- function(client, collection_id, method, bbox, coords) 
     hit <- cols$data_queries[cols$id == collection_id]
     if (length(hit) == 1L) hit[[1]] else character(0)
   } else character(0)
-  if ("cube" %in% dq) return("cube")
   if (!is.null(coords) && "area" %in% dq) return("area")
+  if (!is.null(bbox) && "cube" %in% dq) return("cube")
   "per-location"
 }
 
@@ -184,8 +186,9 @@ fetch_per_station <- function(client, collection_id, ids,
   }
   out <- vector("list", n)
   names(out) <- as.character(ids)
+  failures <- list()
   for (i in seq_along(ids)) {
-    out[[i]] <- tryCatch(
+    result <- tryCatch(
       {
         args <- list(
           client, collection_id,
@@ -197,9 +200,26 @@ fetch_per_station <- function(client, collection_id, ids,
         resp <- do.call(edr_location, args)
         covjson_to_tibble(resp)
       },
-      error = function(e) NULL
+      error = function(e) {
+        failures[[as.character(ids[[i]])]] <<- conditionMessage(e)
+        NULL
+      }
     )
+    out[i] <- list(result)
     if (!quiet && n > 5L) cli::cli_progress_update(.envir = parent.frame())
   }
+  warn_fetch_failures(failures, n)
   out
+}
+
+warn_fetch_failures <- function(failures, n) {
+  if (length(failures) == 0L) return(invisible())
+  ids <- names(failures)
+  details <- paste0(ids, ": ", unlist(failures, use.names = FALSE))
+  details <- paste(utils::head(details, 3L), collapse = "; ")
+  cli::cli_warn(c(
+    "Failed to fetch data for {length(failures)} of {n} stations.",
+    i = "First failures: {details}"
+  ))
+  invisible()
 }

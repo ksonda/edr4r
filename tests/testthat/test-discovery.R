@@ -32,4 +32,16 @@ test_that("edr_conformance flattens the URI list", {
 test_that("collection id is validated", {
   expect_error(edr_collection(test_client(), ""), "non-empty")
   expect_error(edr_collection(test_client(), c("a", "b")), "single non-empty")
+  expect_error(edr_collection(test_client(), "a/b"), "must not contain")
+})
+
+test_that("collection ids are encoded as path segments", {
+  captured <- NULL
+  httr2::local_mocked_responses(function(req) {
+    captured <<- req
+    mock_json_response(list(ok = TRUE))
+  })
+
+  edr_collection(test_client(), "daily values?")
+  expect_match(captured$url, "collections/daily%20values%3F", fixed = TRUE)
 })

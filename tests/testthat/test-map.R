@@ -44,6 +44,28 @@ test_that("plot/csv popup modes need data", {
   expect_error(edr_map(locs, popup = "plot+csv"), "required for popup mode")
 })
 
+test_that("spatial data matching can enforce a maximum distance", {
+  skip_if_not_installed("sf")
+  locs <- geojson_to_sf(read_fixture("locations.geojson"))
+  ids <- as.character(sf::st_drop_geometry(locs)$id)
+  df <- tibble::tibble(
+    coverage_id = "server-assigned",
+    parameter = "discharge",
+    datetime = "2020-01-01",
+    value = 1,
+    x = -150,
+    y = 0
+  )
+
+  unlimited <- edr4r:::spatial_split(df, locs, ids)
+  expect_true(any(!vapply(unlimited, is.null, logical(1))))
+
+  capped <- edr4r:::spatial_split(df, locs, ids, max_match_distance = 0.01)
+  expect_true(all(vapply(capped, is.null, logical(1))))
+  expect_error(edr4r:::check_max_match_distance(-1), "non-negative")
+  expect_error(edr4r:::check_max_match_distance(Inf), "non-negative")
+})
+
 test_that("edr_save_html writes a non-trivial HTML file", {
   skip_if_not_installed("leaflet")
   skip_if_not_installed("sf")
