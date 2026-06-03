@@ -68,9 +68,9 @@ Convert EDR responses to tidy R objects.
 Plot time series, map stations with popups, save to standalone HTML.
 
 - [`edr_plot()`](https://ksonda.github.io/edr4r/reference/edr_plot.md) :
-  Plot an EDR time-series response as a ggplot
+  Plot an EDR response as a ggplot
 - [`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md) :
-  Map EDR locations with optional per-station popups
+  Map EDR locations or coverage data
 - [`edr_save_html()`](https://ksonda.github.io/edr4r/reference/edr_save_html.md)
   : Save a map to a standalone HTML file
 - [`edr_explore()`](https://ksonda.github.io/edr4r/reference/edr_explore.md)

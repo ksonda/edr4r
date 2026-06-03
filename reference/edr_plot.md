@@ -1,11 +1,11 @@
-# Plot an EDR time-series response as a ggplot
+# Plot an EDR response as a ggplot
 
 Convenience wrapper around
 [`ggplot2::ggplot()`](https://ggplot2.tidyverse.org/reference/ggplot.html)
 for the long tibble returned by
 [`covjson_to_tibble()`](https://ksonda.github.io/edr4r/reference/covjson_to_tibble.md).
-By default each parameter gets its own facet (so different units don't
-share a y-axis), and each location is drawn in its own colour.
+Automatically chooses a sensible view for time series, vertical
+profiles, and x/y grids.
 
 ## Usage
 
@@ -17,7 +17,8 @@ edr_plot(
   facet = "parameter",
   scales = "free_y",
   geom = c("line", "point", "both"),
-  facet_labels = TRUE
+  facet_labels = TRUE,
+  view = c("auto", "time", "profile", "grid")
 )
 ```
 
@@ -58,6 +59,13 @@ edr_plot(
 
   If `TRUE` (default), facet strip labels include the unit (e.g.
   `"discharge (ft3/s)"`).
+
+- view:
+
+  Plot view. `"auto"` (default) detects grids from varying `x` and `y`,
+  profiles from varying `z`, and otherwise falls back to a time-series
+  view. Set to `"time"`, `"profile"`, or `"grid"` to force a specific
+  layout.
 
 ## Value
 

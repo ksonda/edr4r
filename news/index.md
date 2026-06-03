@@ -6,6 +6,20 @@
   of silently converting text values to `NA`.
 - Make `edr_explore(method = "auto")` choose bulk spatial queries only
   when the matching spatial input is supplied.
+- Add grid and vertical-profile plot views to
+  [`edr_plot()`](https://ksonda.github.io/edr4r/reference/edr_plot.md),
+  with automatic view detection.
+- Allow
+  [`edr_explore()`](https://ksonda.github.io/edr4r/reference/edr_explore.md)
+  to return plots or data for gridded/profile coverage queries,
+  including `method = "position"` for profile-style responses.
+- Add interactive coverage maps to
+  [`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md) and
+  [`edr_explore()`](https://ksonda.github.io/edr4r/reference/edr_explore.md),
+  with in-map selectors for gridded coverage slices (`parameter`,
+  `datetime`, `z`) and profile selectors for `parameter` / `datetime`.
+- Materialize CoverageJSON regular-grid axes declared with `start`,
+  `stop`, and `num`, as used by the WWDH `usgs-prism` collection.
 - Warn when per-station
   [`edr_explore()`](https://ksonda.github.io/edr4r/reference/edr_explore.md)
   fallback fetches fail.

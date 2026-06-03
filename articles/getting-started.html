@@ -272,6 +272,58 @@ directory):</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/edr_save_html.html">edr_save_html</a></span><span class="op">(</span><span class="va">m</span>, <span class="st">"wwdh-southwest.html"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
+<h2 id="map-a-gridded-prism-coverage">7. Map a gridded PRISM coverage<a class="anchor" aria-label="anchor" href="#map-a-gridded-prism-coverage"></a>
+</h2>
+<p>Station maps are only one side of EDR. The Western Water Datahub also
+publishes gridded PRISM climate data as the <code>usgs-prism</code>
+collection. That collection advertises <code>cube</code>, so you can
+request a small bounding box and map the returned grid directly.</p>
+<p>This example pulls two monthly PRISM variables over a small northern
+Arizona window. <code><a href="../reference/edr_map.html">edr_map()</a></code> detects the grid and puts the
+parameter and time selectors inside the leaflet map, so the slice choice
+lives with the interactive map rather than in a separate plotting
+call.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">prism</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_cube.html">edr_cube</a></span><span class="op">(</span></span>
+<span>  <span class="va">client</span>, <span class="st">"usgs-prism"</span>,</span>
+<span>  bbox           <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">112.6</span>, <span class="fl">36.7</span>, <span class="op">-</span><span class="fl">112.2</span>, <span class="fl">37.1</span><span class="op">)</span>,</span>
+<span>  datetime       <span class="op">=</span> <span class="st">"2023-01-01/2023-02-28"</span>,</span>
+<span>  parameter_name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ppt"</span>, <span class="st">"tmx"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">prism_grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">prism</span><span class="op">)</span></span>
+<span><span class="va">prism_grid</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"parameter"</span>, <span class="st">"datetime"</span>, <span class="st">"x"</span>, <span class="st">"y"</span>, <span class="st">"value"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt; # A tibble: 324 x 5</span></span>
+<span><span class="co">#&gt;   parameter datetime                x     y value</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;     &lt;dttm&gt;              &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1 ppt       2023-01-01 00:00:00 -113.  37.1  116.</span></span>
+<span><span class="co">#&gt; 2 ppt       2023-01-01 00:00:00 -113.  37.1  120.</span></span>
+<span><span class="co">#&gt; 3 ppt       2023-01-01 00:00:00 -112.  37.1  131.</span></span>
+<span><span class="co">#&gt; 4 ppt       2023-01-01 00:00:00 -112.  37.1  126.</span></span>
+<span><span class="co">#&gt; 5 ppt       2023-01-01 00:00:00 -112.  37.1  115.</span></span>
+<span><span class="co">#&gt; # i 319 more rows</span></span>
+<span></span>
+<span><span class="va">prism_map</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_map.html">edr_map</a></span><span class="op">(</span></span>
+<span>  <span class="va">prism_grid</span>,</span>
+<span>  initial <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>parameter <span class="op">=</span> <span class="st">"ppt"</span>, datetime <span class="op">=</span> <span class="st">"2023-01-01"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">prism_map</span></span></code></pre></div>
+<p>Use the selectors in the top-right of the map to switch between
+precipitation (<code>ppt</code>) and maximum monthly temperature
+(<code>tmx</code>), and between January and February 2023. Each grid
+cell is clickable and reports the active value for the selected
+slice.</p>
+<p>The same one-shot helper works for gridded collections too:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/edr_explore.html">edr_explore</a></span><span class="op">(</span></span>
+<span>  <span class="va">client</span>, <span class="st">"usgs-prism"</span>,</span>
+<span>  bbox           <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">112.6</span>, <span class="fl">36.7</span>, <span class="op">-</span><span class="fl">112.2</span>, <span class="fl">37.1</span><span class="op">)</span>,</span>
+<span>  datetime       <span class="op">=</span> <span class="st">"2023-01-01/2023-02-28"</span>,</span>
+<span>  parameter_name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ppt"</span>, <span class="st">"tmx"</span><span class="op">)</span>,</span>
+<span>  method         <span class="op">=</span> <span class="st">"cube"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
 <h2 id="a-few-things-worth-knowing">A few things worth knowing<a class="anchor" aria-label="anchor" href="#a-few-things-worth-knowing"></a>
 </h2>
 <ul>

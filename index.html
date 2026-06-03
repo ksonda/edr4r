@@ -167,19 +167,27 @@
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_plot.html">edr_plot</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span>            <span class="co"># accepts an edr_response directly</span></span></code></pre></div>
 <p>Facets by parameter (so different units don’t share a y-axis) and colours by station. Add layers or themes like any other ggplot.</p>
+<p>It also auto-detects common non-station shapes:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/edr_plot.html">edr_plot</a></span><span class="op">(</span><span class="va">cube</span><span class="op">)</span>            <span class="co"># x/y grid -&gt; tile map</span></span>
+<span><span class="fu"><a href="reference/edr_plot.html">edr_plot</a></span><span class="op">(</span><span class="va">profile</span><span class="op">)</span>         <span class="co"># varying z -&gt; vertical profile</span></span>
+<span></span>
+<span><span class="co"># or force the layout</span></span>
+<span><span class="fu"><a href="reference/edr_plot.html">edr_plot</a></span><span class="op">(</span><span class="va">profile</span>, view <span class="op">=</span> <span class="st">"profile"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/edr_plot.html">edr_plot</a></span><span class="op">(</span><span class="va">cube</span>, view <span class="op">=</span> <span class="st">"grid"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="map-stations-with-per-station-popups">Map stations with per-station popups<a class="anchor" aria-label="anchor" href="#map-stations-with-per-station-popups"></a>
 </h3>
 <p><code><a href="reference/edr_map.html">edr_map()</a></code> puts the stations on a leaflet basemap. Pass <code>data =</code> as a named list keyed by station id (the shape [edr_explore()] produces) and each marker gets a popup with an inline plot and a “Download CSV” link for that station’s data — embedded as a <code>data:</code> URI so the saved HTML is selfcontained:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stations</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_locations.html">edr_locations</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"monitoring-locations"</span>,</span>
 <span>                          bbox <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">116</span>, <span class="fl">35.5</span>, <span class="op">-</span><span class="fl">114</span>, <span class="fl">36.5</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">data_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"3514"</span> <span class="op">=</span> <span class="fu"><a href="reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_map.html">edr_map</a></span><span class="op">(</span><span class="va">stations</span>, data <span class="op">=</span> <span class="va">data_list</span>, popup <span class="op">=</span> <span class="st">"plot+csv"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/edr_save_html.html">edr_save_html</a></span><span class="op">(</span><span class="va">m</span>, <span class="st">"stations.html"</span><span class="op">)</span></span></code></pre></div>
 <p>For a quick exploratory pass over a whole collection, <code><a href="reference/edr_explore.html">edr_explore()</a></code> does the fetch + plot + map in one call:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_explore.html">edr_explore</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>, <span class="st">"daily-values"</span>,</span>
 <span>  bbox           <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">116</span>, <span class="fl">35.5</span>, <span class="op">-</span><span class="fl">114</span>, <span class="fl">36.5</span><span class="op">)</span>,</span>
@@ -188,20 +196,40 @@
 <span>  limit          <span class="op">=</span> <span class="fl">25</span>,</span>
 <span>  file           <span class="op">=</span> <span class="st">"snapshot.html"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
+<p>Gridded coverages and vertical profiles can be mapped too. <code><a href="reference/edr_map.html">edr_map()</a></code> detects tidy CoverageJSON grids/profiles and puts slice selectors inside the leaflet widget when there are multiple parameters or datetimes; grids also get a <code>z</code> selector when multiple vertical levels are present:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">cube</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/edr_map.html">edr_map</a></span><span class="op">(</span><span class="va">grid</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">profile</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">profile_resp</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/edr_map.html">edr_map</a></span><span class="op">(</span><span class="va">profile</span><span class="op">)</span></span></code></pre></div>
+<p><code><a href="reference/edr_explore.html">edr_explore()</a></code> uses the same behavior for bulk coverage queries. Use <code>output = "plot"</code> when you want a ggplot instead of the interactive map:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/edr_explore.html">edr_explore</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"gridded-collection"</span>,</span>
+<span>            bbox <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">120</span>, <span class="fl">39</span>, <span class="op">-</span><span class="fl">118</span>, <span class="fl">41</span><span class="op">)</span>,</span>
+<span>            method <span class="op">=</span> <span class="st">"cube"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="reference/edr_explore.html">edr_explore</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"profile-collection"</span>,</span>
+<span>            coords <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">119</span>, <span class="fl">40</span><span class="op">)</span>,</span>
+<span>            method <span class="op">=</span> <span class="st">"position"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="reference/edr_explore.html">edr_explore</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"profile-collection"</span>,</span>
+<span>            coords <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">119</span>, <span class="fl">40</span><span class="op">)</span>,</span>
+<span>            method <span class="op">=</span> <span class="st">"position"</span>, output <span class="op">=</span> <span class="st">"plot"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="weird-ids-csv-and-an-escape-hatch">Weird IDs, CSV, and an escape hatch<a class="anchor" aria-label="anchor" href="#weird-ids-csv-and-an-escape-hatch"></a>
 </h3>
 <p>Some monitoring networks use compound station IDs — colon-separated triplets are a common pattern. The client URL-encodes reserved characters for you:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_location.html">edr_location</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"station-network"</span>, <span class="st">"1185:CO:SNTL"</span>,</span>
 <span>             datetime <span class="op">=</span> <span class="st">"2024-01-01/.."</span><span class="op">)</span></span></code></pre></div>
 <p>If the server advertises CSV, you can ask for it instead of CovJSON:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_location.html">edr_location</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"daily-values"</span>, <span class="st">"08313000"</span>,</span>
 <span>             datetime <span class="op">=</span> <span class="st">"2010-01-01/.."</span>, format <span class="op">=</span> <span class="st">"csv"</span><span class="op">)</span></span></code></pre></div>
 <p>And if you need to hit an endpoint the package doesn’t wrap (instances, custom queryables, anything weird), <code><a href="reference/edr_request.html">edr_request()</a></code> is the raw escape hatch:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_request.html">edr_request</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"collections/daily-values/instances"</span>, format <span class="op">=</span> <span class="st">"json"</span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>

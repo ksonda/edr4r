@@ -41,6 +41,10 @@
 <h2 class="pkg-version" data-toc-text="development version" id="edr4r-development-version">edr4r (development version)<a class="anchor" aria-label="anchor" href="#edr4r-development-version"></a></h2>
 <ul><li>Preserve mixed numeric/text CoverageJSON values as character instead of silently converting text values to <code>NA</code>.</li>
 <li>Make <code>edr_explore(method = "auto")</code> choose bulk spatial queries only when the matching spatial input is supplied.</li>
+<li>Add grid and vertical-profile plot views to <code><a href="../reference/edr_plot.html">edr_plot()</a></code>, with automatic view detection.</li>
+<li>Allow <code><a href="../reference/edr_explore.html">edr_explore()</a></code> to return plots or data for gridded/profile coverage queries, including <code>method = "position"</code> for profile-style responses.</li>
+<li>Add interactive coverage maps to <code><a href="../reference/edr_map.html">edr_map()</a></code> and <code><a href="../reference/edr_explore.html">edr_explore()</a></code>, with in-map selectors for gridded coverage slices (<code>parameter</code>, <code>datetime</code>, <code>z</code>) and profile selectors for <code>parameter</code> / <code>datetime</code>.</li>
+<li>Materialize CoverageJSON regular-grid axes declared with <code>start</code>, <code>stop</code>, and <code>num</code>, as used by the WWDH <code>usgs-prism</code> collection.</li>
 <li>Warn when per-station <code><a href="../reference/edr_explore.html">edr_explore()</a></code> fallback fetches fail.</li>
 <li>Tighten collection-id, coordinate, and WKT validation.</li>
 <li>Add <code>max_match_distance</code> to <code><a href="../reference/edr_map.html">edr_map()</a></code> for bounded spatial matching.</li>

@@ -23,7 +23,9 @@ edr_explore(
   record_limit = NULL,
   file = NULL,
   popup = "plot+csv",
-  method = c("auto", "cube", "area", "per-location"),
+  method = c("auto", "cube", "area", "position", "per-location"),
+  output = c("auto", "map", "plot", "data"),
+  plot_view = c("auto", "time", "profile", "grid"),
   quiet = FALSE,
   ...
 )
@@ -48,7 +50,10 @@ edr_explore(
 
 - coords:
 
-  Polygon coords for `area`. Forwarded to
+  Point coords for `position`, or polygon coords for `area`. Forwarded
+  to
+  [`edr_position()`](https://ksonda.github.io/edr4r/reference/edr_position.md)
+  /
   [`edr_area()`](https://ksonda.github.io/edr4r/reference/edr_area.md).
 
 - datetime:
@@ -86,8 +91,20 @@ edr_explore(
 
 - method:
 
-  One of `"auto"` (default), `"cube"`, `"area"`, or `"per-location"`.
-  See above.
+  One of `"auto"` (default), `"cube"`, `"area"`, `"position"`, or
+  `"per-location"`. See above.
+
+- output:
+
+  One of `"auto"` (default), `"map"`, `"plot"`, or `"data"`. `"auto"`
+  returns a station map for station time-series results and an
+  interactive coverage map for gridded/profile results.
+
+- plot_view:
+
+  Plot view passed to
+  [`edr_plot()`](https://ksonda.github.io/edr4r/reference/edr_plot.md)
+  when returning a plot. Defaults to `"auto"`.
 
 - quiet:
 
@@ -97,11 +114,13 @@ edr_explore(
 - ...:
 
   Forwarded to
-  [`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md).
+  [`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md)
+  when returning a map.
 
 ## Value
 
-A `leaflet` htmlwidget, or `invisible(file)` when `file` is set.
+A `leaflet` htmlwidget, a `ggplot`, a tidy tibble/list when
+`output = "data"`, or `invisible(file)` when a map is saved.
 
 ## Details
 
@@ -115,14 +134,17 @@ advertises in its `data_queries`:
 - **area** – like cube but uses a polygon. Used when `coords` is
   supplied and the collection supports `area`.
 
+- **position** – one HTTP call at a point. Useful for vertical profiles
+  returned by position queries.
+
 - **per-location** – the fallback: one HTTP call per station via
   [`edr_location()`](https://ksonda.github.io/edr4r/reference/edr_location.md).
   Slower (N+1), used when neither spatial bulk query is supported or the
   matching spatial input was not supplied.
 
 Force a specific path by setting `method`. `coords` is required for
-`area`; if `method = "cube"` and `bbox` is omitted, the bbox is derived
-from the returned locations.
+`area` and `position`; if `method = "cube"` and `bbox` is omitted, the
+bbox is derived from the returned locations.
 
 ## Examples
 
