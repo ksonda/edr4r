@@ -26,7 +26,8 @@ edr_map(
   matched_color = "#2C7FB8",
   unmatched_color = "#BBBBBB",
   show_unmatched = TRUE,
-  legend = TRUE
+  legend = TRUE,
+  max_match_distance = NULL
 )
 ```
 
@@ -108,6 +109,13 @@ edr_map(
   If `TRUE` (default), add a legend distinguishing stations with data
   from those without. Suppressed automatically when there are no
   unmatched markers to label.
+
+- max_match_distance:
+
+  Optional maximum coordinate distance for spatially matching `data`
+  rows with `x` / `y` columns to stations. Units are those of the
+  station coordinates. `NULL` (default) keeps the nearest-station
+  fallback unlimited.
 
 ## Value
 

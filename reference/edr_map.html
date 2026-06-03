@@ -69,7 +69,8 @@ embedded as a <code>data:</code> URI so the resulting HTML is selfcontained).</p
 <span>  matched_color <span class="op">=</span> <span class="st">"#2C7FB8"</span>,</span>
 <span>  unmatched_color <span class="op">=</span> <span class="st">"#BBBBBB"</span>,</span>
 <span>  show_unmatched <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  legend <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  legend <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  max_match_distance <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -155,6 +156,13 @@ network. Set to <code>FALSE</code> to drop them entirely. Ignored when
 <dd><p>If <code>TRUE</code> (default), add a legend distinguishing
 stations with data from those without. Suppressed automatically
 when there are no unmatched markers to label.</p></dd>
+
+
+<dt id="arg-max-match-distance">max_match_distance<a class="anchor" aria-label="anchor" href="#arg-max-match-distance"></a></dt>
+<dd><p>Optional maximum coordinate distance for
+spatially matching <code>data</code> rows with <code>x</code> / <code>y</code> columns to stations.
+Units are those of the station coordinates. <code>NULL</code> (default) keeps
+the nearest-station fallback unlimited.</p></dd>
 
 </dl></div>
     <div class="section level2">

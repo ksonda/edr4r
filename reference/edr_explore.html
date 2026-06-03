@@ -88,8 +88,9 @@ selfcontained HTML file.</p>
 <dt id="arg-bbox">bbox<a class="anchor" aria-label="anchor" href="#arg-bbox"></a></dt>
 <dd><p>Optional numeric length-4 bbox. Used both to filter
 the locations index (if the server honours it) and as the bbox
-for the cube fetch. If omitted, derived from the bounding box of
-the returned locations sf.</p></dd>
+for the cube fetch in <code>method = "auto"</code>. If omitted with
+<code>method = "cube"</code>, derived from the bounding box of the returned
+locations sf.</p></dd>
 
 
 <dt id="arg-coords">coords<a class="anchor" aria-label="anchor" href="#arg-coords"></a></dt>
@@ -150,14 +151,15 @@ set.</p>
     <p>The default <code>method = "auto"</code> picks the cheapest route the
 collection advertises in its <code>data_queries</code>:</p><ul><li><p><strong>cube</strong> – one HTTP call returning a CoverageCollection across
 the whole bbox. Fast. Used when the collection supports <code>cube</code>
-<em>and</em> a <code>bbox</code> is supplied (or derivable from the locations sf).</p></li>
+<em>and</em> a <code>bbox</code> is supplied.</p></li>
 <li><p><strong>area</strong> – like cube but uses a polygon. Used when <code>coords</code> is
 supplied and the collection supports <code>area</code>.</p></li>
 <li><p><strong>per-location</strong> – the fallback: one HTTP call per station via
-<code><a href="edr_location.html">edr_location()</a></code>. Slower (N+1), used when neither <code>cube</code> nor
-<code>area</code> is supported.</p></li>
+<code><a href="edr_location.html">edr_location()</a></code>. Slower (N+1), used when neither spatial bulk
+query is supported or the matching spatial input was not supplied.</p></li>
 </ul><p>Force a specific path by setting <code>method</code>. <code>coords</code> is required for
-<code>area</code>.</p>
+<code>area</code>; if <code>method = "cube"</code> and <code>bbox</code> is omitted, the bbox is
+derived from the returned locations.</p>
     </div>
 
     <div class="section level2">

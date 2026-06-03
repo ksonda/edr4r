@@ -265,7 +265,7 @@ Every query verb accepts the standard EDR filters:
   length-2 character vector `c("2020-01-01", "2020-12-31")`.
 - `parameter_name` — a character vector of parameter names; sent as a
   comma-separated `parameter-name=` query. Use
-  [`edr_queryables()`](https://ksonda.github.io/edr4r/reference/edr_queryables.md)
+  [`edr_parameters()`](https://ksonda.github.io/edr4r/reference/edr_parameters.md)
   to discover valid names.
 - `bbox` — numeric length-4 (`minx, miny, maxx, maxy`) or length-6 (with
   z).

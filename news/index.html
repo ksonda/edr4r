@@ -38,6 +38,14 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="development version" id="edr4r-development-version">edr4r (development version)<a class="anchor" aria-label="anchor" href="#edr4r-development-version"></a></h2>
+<ul><li>Preserve mixed numeric/text CoverageJSON values as character instead of silently converting text values to <code>NA</code>.</li>
+<li>Make <code>edr_explore(method = "auto")</code> choose bulk spatial queries only when the matching spatial input is supplied.</li>
+<li>Warn when per-station <code><a href="../reference/edr_explore.html">edr_explore()</a></code> fallback fetches fail.</li>
+<li>Tighten collection-id, coordinate, and WKT validation.</li>
+<li>Add <code>max_match_distance</code> to <code><a href="../reference/edr_map.html">edr_map()</a></code> for bounded spatial matching.</li>
+</ul></div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="edr4r-010">edr4r 0.1.0<a class="anchor" aria-label="anchor" href="#edr4r-010"></a></h2>
 <ul><li>Initial release.</li>
 <li>Discovery: <code><a href="../reference/edr_landing.html">edr_landing()</a></code>, <code><a href="../reference/edr_conformance.html">edr_conformance()</a></code>, <code><a href="../reference/edr_collections.html">edr_collections()</a></code>, <code><a href="../reference/edr_collection.html">edr_collection()</a></code>, <code><a href="../reference/edr_queryables.html">edr_queryables()</a></code>.</li>
@@ -45,7 +53,8 @@
 <li>Low-level escape hatch: <code><a href="../reference/edr_request.html">edr_request()</a></code>.</li>
 <li>Parsers: <code><a href="../reference/covjson_to_tibble.html">covjson_to_tibble()</a></code> for CoverageJSON, <code><a href="../reference/geojson_to_sf.html">geojson_to_sf()</a></code> for GeoJSON.</li>
 </ul></div>
-  </main></div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

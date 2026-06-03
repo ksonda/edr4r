@@ -42,9 +42,9 @@ edr_explore(
 - bbox:
 
   Optional numeric length-4 bbox. Used both to filter the locations
-  index (if the server honours it) and as the bbox for the cube fetch.
-  If omitted, derived from the bounding box of the returned locations
-  sf.
+  index (if the server honours it) and as the bbox for the cube fetch in
+  `method = "auto"`. If omitted with `method = "cube"`, derived from the
+  bounding box of the returned locations sf.
 
 - coords:
 
@@ -110,17 +110,19 @@ advertises in its `data_queries`:
 
 - **cube** – one HTTP call returning a CoverageCollection across the
   whole bbox. Fast. Used when the collection supports `cube` *and* a
-  `bbox` is supplied (or derivable from the locations sf).
+  `bbox` is supplied.
 
 - **area** – like cube but uses a polygon. Used when `coords` is
   supplied and the collection supports `area`.
 
 - **per-location** – the fallback: one HTTP call per station via
   [`edr_location()`](https://ksonda.github.io/edr4r/reference/edr_location.md).
-  Slower (N+1), used when neither `cube` nor `area` is supported.
+  Slower (N+1), used when neither spatial bulk query is supported or the
+  matching spatial input was not supplied.
 
 Force a specific path by setting `method`. `coords` is required for
-`area`.
+`area`; if `method = "cube"` and `bbox` is omitted, the bbox is derived
+from the returned locations.
 
 ## Examples
 
