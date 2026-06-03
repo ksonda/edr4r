@@ -37,14 +37,30 @@ jobs:
           covr::to_cobertura(cov)
         shell: Rscript {0}
 
+      # Debug: confirm the secret actually reached the runner.
+      # The token itself is masked in logs; we only print its length.
+      - name: Check CODECOV_TOKEN is set
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          if [ -z "$CODECOV_TOKEN" ]; then
+            echo "::warning ::CODECOV_TOKEN secret is empty — coverage upload will be tokenless and likely rejected."
+          else
+            echo "CODECOV_TOKEN is set (length=${#CODECOV_TOKEN})."
+          fi
+
       - uses: codecov/codecov-action@v5
         # Codecov requires an upload token even on public repos as of
-        # 2024+. To get the badge working: go to https://codecov.io,
-        # link the repo, copy the upload token, then add it as a
-        # `CODECOV_TOKEN` secret on the GitHub repo (Settings →
-        # Secrets and variables → Actions). Until that's done this
-        # step continues-on-error so the rest of the run stays green.
+        # 2024+. Set it once on the repo: https://codecov.io → link
+        # ksonda/edr4r → copy the upload token → GitHub repo Settings →
+        # Secrets and variables → Actions → New repository secret named
+        # `CODECOV_TOKEN`. If the upload still fails the rest of the
+        # run stays green (continue-on-error).
         continue-on-error: true
+        env:
+          # Some codecov-action versions read the env var rather than
+          # the `with: token:` input. Set both to belt-and-braces.
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
           fail_ci_if_error: false
           files: ./cobertura.xml
