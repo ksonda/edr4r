@@ -149,6 +149,17 @@ edr_plot(resp)            # accepts an edr_response directly
 Facets by parameter (so different units don't share a y-axis) and
 colours by station. Add layers or themes like any other ggplot.
 
+It also auto-detects common non-station shapes:
+
+```r
+edr_plot(cube)            # x/y grid -> tile map
+edr_plot(profile)         # varying z -> vertical profile
+
+# or force the layout
+edr_plot(profile, view = "profile")
+edr_plot(cube, view = "grid")
+```
+
 ### Map stations with per-station popups
 
 `edr_map()` puts the stations on a leaflet basemap. Pass `data =` as a
@@ -177,6 +188,36 @@ edr_explore(
   limit          = 25,
   file           = "snapshot.html"
 )
+```
+
+Gridded coverages and vertical profiles can be mapped too. `edr_map()`
+detects tidy CoverageJSON grids/profiles and puts slice selectors inside
+the leaflet widget when there are multiple parameters or datetimes; grids
+also get a `z` selector when multiple vertical levels are present:
+
+```r
+grid <- covjson_to_tibble(cube)
+edr_map(grid)
+
+profile <- covjson_to_tibble(profile_resp)
+edr_map(profile)
+```
+
+`edr_explore()` uses the same behavior for bulk coverage queries. Use
+`output = "plot"` when you want a ggplot instead of the interactive map:
+
+```r
+edr_explore(client, "gridded-collection",
+            bbox = c(-120, 39, -118, 41),
+            method = "cube")
+
+edr_explore(client, "profile-collection",
+            coords = c(-119, 40),
+            method = "position")
+
+edr_explore(client, "profile-collection",
+            coords = c(-119, 40),
+            method = "position", output = "plot")
 ```
 
 ### Weird IDs, CSV, and an escape hatch

@@ -2,7 +2,7 @@
 % Please edit documentation in R/map.R
 \name{edr_map}
 \alias{edr_map}
-\title{Map EDR locations with optional per-station popups}
+\title{Map EDR locations or coverage data}
 \usage{
 edr_map(
   locations,
@@ -21,12 +21,17 @@ edr_map(
   unmatched_color = "#BBBBBB",
   show_unmatched = TRUE,
   legend = TRUE,
-  max_match_distance = NULL
+  max_match_distance = NULL,
+  mode = c("auto", "stations", "grid", "profile"),
+  controls = TRUE,
+  initial = list(),
+  grid_opacity = 0.75
 )
 }
 \arguments{
-\item{locations}{An \code{sf} object from \code{\link[=edr_locations]{edr_locations()}} or an
-\code{edr_response} wrapping GeoJSON.}
+\item{locations}{An \code{sf} object from \code{\link[=edr_locations]{edr_locations()}}, an
+\code{edr_response} wrapping GeoJSON, or tidy coverage data from
+\code{\link[=covjson_to_tibble]{covjson_to_tibble()}} / a CoverageJSON \code{edr_response}.}
 
 \item{data}{See above. Defaults to \code{NULL}.}
 
@@ -79,16 +84,31 @@ when there are no unmatched markers to label.}
 spatially matching \code{data} rows with \code{x} / \code{y} columns to stations.
 Units are those of the station coordinates. \code{NULL} (default) keeps
 the nearest-station fallback unlimited.}
+
+\item{mode}{Map mode. \code{"auto"} (default) uses station markers for
+spatial feature inputs, grid cells for gridded coverage data, and
+profile markers for vertical profiles. Use \code{"stations"}, \code{"grid"},
+or \code{"profile"} to force a mode.}
+
+\item{controls}{If \code{TRUE} (default), coverage maps include in-map
+controls for available slice dimensions (\code{parameter}, \code{datetime},
+and \code{z} for grids).}
+
+\item{initial}{Named list of initial coverage-map selections, e.g.
+\code{list(parameter = "temperature", datetime = "2024-01-01", z = 0)}.}
+
+\item{grid_opacity}{Fill opacity for gridded coverage cells.}
 }
 \value{
 A \code{leaflet} htmlwidget. Pass it to \code{\link[=edr_save_html]{edr_save_html()}} to
 write a selfcontained HTML file.
 }
 \description{
-Builds a \link[leaflet:leaflet]{leaflet::leaflet} map of station features. When \code{data} is supplied,
-each marker gets a popup containing a small inline plot of the
-station's time series and a "Download CSV" link (the CSV is
-embedded as a \verb{data:} URI so the resulting HTML is selfcontained).
+Builds a \link[leaflet:leaflet]{leaflet::leaflet} map of station features or gridded/profile
+CoverageJSON data. Station maps can show per-station popups with
+inline plots and CSV downloads. Coverage maps keep all supplied
+parameters, times, and vertical levels in the widget and expose
+in-map controls for choosing the active slice.
 }
 \details{
 \code{data} can be one of:

@@ -15,7 +15,9 @@ edr_explore(
   record_limit = NULL,
   file = NULL,
   popup = "plot+csv",
-  method = c("auto", "cube", "area", "per-location"),
+  method = c("auto", "cube", "area", "position", "per-location"),
+  output = c("auto", "map", "plot", "data"),
+  plot_view = c("auto", "time", "profile", "grid"),
   quiet = FALSE,
   ...
 )
@@ -31,7 +33,8 @@ for the cube fetch in \code{method = "auto"}. If omitted with
 \code{method = "cube"}, derived from the bounding box of the returned
 locations sf.}
 
-\item{coords}{Polygon coords for \code{area}. Forwarded to \code{\link[=edr_area]{edr_area()}}.}
+\item{coords}{Point coords for \code{position}, or polygon coords for
+\code{area}. Forwarded to \code{\link[=edr_position]{edr_position()}} / \code{\link[=edr_area]{edr_area()}}.}
 
 \item{datetime}{ISO-8601 interval forwarded to the data fetch.}
 
@@ -51,17 +54,25 @@ the \code{leaflet} map.}
 
 \item{popup}{Popup mode (forwarded to \code{\link[=edr_map]{edr_map()}}).}
 
-\item{method}{One of \code{"auto"} (default), \code{"cube"}, \code{"area"}, or
-\code{"per-location"}. See above.}
+\item{method}{One of \code{"auto"} (default), \code{"cube"}, \code{"area"},
+\code{"position"}, or \code{"per-location"}. See above.}
+
+\item{output}{One of \code{"auto"} (default), \code{"map"}, \code{"plot"}, or
+\code{"data"}. \code{"auto"} returns a station map for station time-series
+results and an interactive coverage map for gridded/profile
+results.}
+
+\item{plot_view}{Plot view passed to \code{\link[=edr_plot]{edr_plot()}} when returning a
+plot. Defaults to \code{"auto"}.}
 
 \item{quiet}{If \code{FALSE} (default), print a cli progress bar when
 falling back to per-location fetches.}
 
-\item{...}{Forwarded to \code{\link[=edr_map]{edr_map()}}.}
+\item{...}{Forwarded to \code{\link[=edr_map]{edr_map()}} when returning a map.}
 }
 \value{
-A \code{leaflet} htmlwidget, or \code{invisible(file)} when \code{file} is
-set.
+A \code{leaflet} htmlwidget, a \code{ggplot}, a tidy tibble/list when
+\code{output = "data"}, or \code{invisible(file)} when a map is saved.
 }
 \description{
 Convenience wrapper that finds stations via \code{\link[=edr_locations]{edr_locations()}},
@@ -79,14 +90,16 @@ the whole bbox. Fast. Used when the collection supports \code{cube}
 \emph{and} a \code{bbox} is supplied.
 \item \strong{area} -- like cube but uses a polygon. Used when \code{coords} is
 supplied and the collection supports \code{area}.
+\item \strong{position} -- one HTTP call at a point. Useful for vertical
+profiles returned by position queries.
 \item \strong{per-location} -- the fallback: one HTTP call per station via
 \code{\link[=edr_location]{edr_location()}}. Slower (N+1), used when neither spatial bulk
 query is supported or the matching spatial input was not supplied.
 }
 
 Force a specific path by setting \code{method}. \code{coords} is required for
-\code{area}; if \code{method = "cube"} and \code{bbox} is omitted, the bbox is
-derived from the returned locations.
+\code{area} and \code{position}; if \code{method = "cube"} and \code{bbox} is omitted,
+the bbox is derived from the returned locations.
 }
 \examples{
 \dontrun{

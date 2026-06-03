@@ -226,21 +226,37 @@ range_to_rows <- function(rng, pname, axes, axis_vals, params, coverage_id) {
 axis_values_for <- function(name, axes) {
   ax <- axes[[name]]
   if (is.null(ax)) return(NA)
-  ax$values %||% NA
+  materialize_axis_values(ax) %||% NA
 }
 
 axis_numeric <- function(ax) {
   if (is.null(ax)) return(NULL)
-  v <- ax$values %||% NULL
+  v <- materialize_axis_values(ax)
   if (is.null(v)) return(NULL)
   suppressWarnings(as.numeric(unlist(v, use.names = FALSE)))
 }
 
 axis_chr <- function(ax) {
   if (is.null(ax)) return(NULL)
-  v <- ax$values %||% NULL
+  v <- materialize_axis_values(ax)
   if (is.null(v)) return(NULL)
   as.character(unlist(v, use.names = FALSE))
+}
+
+materialize_axis_values <- function(ax) {
+  if (!is.null(ax$values)) return(ax$values)
+
+  if (is.null(ax$start) || is.null(ax$stop) || is.null(ax$num)) {
+    return(NULL)
+  }
+  start <- suppressWarnings(as.numeric(ax$start[[1]]))
+  stop <- suppressWarnings(as.numeric(ax$stop[[1]]))
+  n <- suppressWarnings(as.integer(ax$num[[1]]))
+  if (!is.finite(start) || !is.finite(stop) || is.na(n) || n < 1L) {
+    return(NULL)
+  }
+  if (n == 1L) return(start)
+  seq(start, stop, length.out = n)
 }
 
 coerce_values <- function(values, n) {

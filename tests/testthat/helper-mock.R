@@ -56,3 +56,7 @@ extract_popup_html <- function(m) {
   }
   paste(pieces, collapse = "")
 }
+
+extract_render_payload <- function(m) {
+  m$jsHooks$render[[1]]$data
+}

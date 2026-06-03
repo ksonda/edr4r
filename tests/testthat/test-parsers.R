@@ -43,6 +43,40 @@ test_that("covjson_to_tibble respects NdArray row-major ordering", {
   expect_equal(v(30, 2), 23)
 })
 
+test_that("covjson_to_tibble materializes regular grid axes", {
+  cov <- list(
+    type = "Coverage",
+    parameters = list(ppt = list(unit = list(symbol = "mm/month"),
+                                 observedProperty = list(label = "Precip"))),
+    domain = list(
+      domainType = "Grid",
+      axes = list(
+        x = list(start = -113, stop = -112, num = 3L),
+        y = list(start = 37, stop = 36, num = 2L),
+        t = list(values = list("2023-01-01"))
+      )
+    ),
+    ranges = list(
+      ppt = list(
+        type = "NdArray",
+        axisNames = list("t", "y", "x"),
+        shape = list(1L, 2L, 3L),
+        values = list(11, 12, 13, 21, 22, 23)
+      )
+    )
+  )
+  tb <- covjson_to_tibble(cov)
+  expect_equal(nrow(tb), 6)
+  expect_equal(sort(unique(tb$x)), c(-113, -112.5, -112))
+  expect_equal(unique(tb$y), c(37, 36))
+
+  v <- function(xx, yy) tb$value[tb$x == xx & tb$y == yy]
+  expect_equal(v(-113, 37), 11)
+  expect_equal(v(-112, 37), 13)
+  expect_equal(v(-113, 36), 21)
+  expect_equal(v(-112, 36), 23)
+})
+
 test_that("covjson_to_tibble accepts an edr_response wrapper", {
   cov <- read_fixture("pointseries.covjson")
   wrapped <- structure(list(covjson = cov),

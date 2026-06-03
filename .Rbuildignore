@@ -13,3 +13,5 @@
 ^vignettes/precompute\.R$
 ^doc$
 ^Meta$
+^.*\.Rcheck$
+^.*\.tar\.gz$

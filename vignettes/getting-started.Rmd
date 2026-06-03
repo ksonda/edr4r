@@ -236,6 +236,62 @@ directory):
 edr_save_html(m, "wwdh-southwest.html")
 ```
 
+## 7. Map a gridded PRISM coverage
+
+Station maps are only one side of EDR. The Western Water Datahub also
+publishes gridded PRISM climate data as the `usgs-prism` collection.
+That collection advertises `cube`, so you can request a small bounding
+box and map the returned grid directly.
+
+This example pulls two monthly PRISM variables over a small northern
+Arizona window. `edr_map()` detects the grid and puts the parameter and
+time selectors inside the leaflet map, so the slice choice lives with
+the interactive map rather than in a separate plotting call.
+
+``` r
+prism <- edr_cube(
+  client, "usgs-prism",
+  bbox           = c(-112.6, 36.7, -112.2, 37.1),
+  datetime       = "2023-01-01/2023-02-28",
+  parameter_name = c("ppt", "tmx")
+)
+
+prism_grid <- covjson_to_tibble(prism)
+prism_grid[, c("parameter", "datetime", "x", "y", "value")]
+#> # A tibble: 324 x 5
+#>   parameter datetime                x     y value
+#>   <chr>     <dttm>              <dbl> <dbl> <dbl>
+#> 1 ppt       2023-01-01 00:00:00 -113.  37.1  116.
+#> 2 ppt       2023-01-01 00:00:00 -113.  37.1  120.
+#> 3 ppt       2023-01-01 00:00:00 -112.  37.1  131.
+#> 4 ppt       2023-01-01 00:00:00 -112.  37.1  126.
+#> 5 ppt       2023-01-01 00:00:00 -112.  37.1  115.
+#> # i 319 more rows
+
+prism_map <- edr_map(
+  prism_grid,
+  initial = list(parameter = "ppt", datetime = "2023-01-01")
+)
+prism_map
+```
+
+Use the selectors in the top-right of the map to switch between
+precipitation (`ppt`) and maximum monthly temperature (`tmx`), and
+between January and February 2023. Each grid cell is clickable and
+reports the active value for the selected slice.
+
+The same one-shot helper works for gridded collections too:
+
+``` r
+edr_explore(
+  client, "usgs-prism",
+  bbox           = c(-112.6, 36.7, -112.2, 37.1),
+  datetime       = "2023-01-01/2023-02-28",
+  parameter_name = c("ppt", "tmx"),
+  method         = "cube"
+)
+```
+
 ## A few things worth knowing
 
 - `datetime` is forgiving: pass `"start/end"`, an open interval like

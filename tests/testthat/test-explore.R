@@ -1,3 +1,54 @@
+explore_grid_cov <- function() {
+  list(
+    type = "Coverage",
+    parameters = list(
+      temp = list(unit = list(symbol = "degC"),
+                  observedProperty = list(label = "Temperature"))
+    ),
+    domain = list(
+      domainType = "Grid",
+      axes = list(
+        x = list(values = list(-110, -109, -108)),
+        y = list(values = list(40, 41))
+      )
+    ),
+    ranges = list(
+      temp = list(
+        type = "NdArray",
+        axisNames = list("y", "x"),
+        shape = list(2L, 3L),
+        values = list(1, 2, 3, 4, 5, 6)
+      )
+    )
+  )
+}
+
+explore_profile_cov <- function() {
+  list(
+    type = "Coverage",
+    parameters = list(
+      temp = list(unit = list(symbol = "degC"),
+                  observedProperty = list(label = "Temperature"))
+    ),
+    domain = list(
+      domainType = "VerticalProfile",
+      axes = list(
+        x = list(values = list(-110)),
+        y = list(values = list(40)),
+        z = list(values = list(0, 10, 20))
+      )
+    ),
+    ranges = list(
+      temp = list(
+        type = "NdArray",
+        axisNames = list("z"),
+        shape = list(3L),
+        values = list(12, 10, 8)
+      )
+    )
+  )
+}
+
 test_that("edr_explore fetches per-station data and returns a leaflet map", {
   skip_if_not_installed("leaflet")
   skip_if_not_installed("sf")
@@ -173,6 +224,89 @@ test_that("per-station fetches warn when stations fail", {
   )
   expect_s3_class(res[[1]], "tbl_df")
   expect_null(res[[2]])
+})
+
+test_that("edr_explore can return a plot for gridded cube data", {
+  skip_if_not_installed("ggplot2")
+  call_n <- 0L
+  httr2::local_mocked_responses(function(req) {
+    call_n <<- call_n + 1L
+    mock_json_response(explore_grid_cov())
+  })
+
+  p <- edr_explore(
+    test_client(), "grid-demo",
+    bbox = c(-110, 40, -108, 41),
+    method = "cube",
+    output = "plot"
+  )
+  expect_s3_class(p, "ggplot")
+  expect_true(inherits(p$layers[[1]]$geom, "GeomTile"))
+  expect_equal(call_n, 1L)
+})
+
+test_that("edr_explore can return a profile plot from position data", {
+  skip_if_not_installed("ggplot2")
+  httr2::local_mocked_responses(function(req) {
+    mock_json_response(explore_profile_cov())
+  })
+
+  p <- edr_explore(
+    test_client(), "profile-demo",
+    coords = c(-110, 40),
+    method = "position",
+    output = "plot"
+  )
+  expect_s3_class(p, "ggplot")
+  expect_true(inherits(p$layers[[1]]$geom, "GeomPath"))
+})
+
+test_that("edr_explore auto falls back to coverage maps when locations are unavailable", {
+  skip_if_not_installed("leaflet")
+  skip_if_not_installed("htmlwidgets")
+  call_n <- 0L
+  httr2::local_mocked_responses(function(req) {
+    call_n <<- call_n + 1L
+    if (call_n == 1L) {
+      mock_json_response(list(description = "no locations"), status = 404L)
+    } else {
+      mock_json_response(explore_grid_cov())
+    }
+  })
+
+  p <- edr_explore(
+    test_client(), "grid-demo",
+    bbox = c(-110, 40, -108, 41),
+    method = "cube",
+    output = "auto"
+  )
+  expect_s3_class(p, "leaflet")
+  expect_equal(extract_render_payload(p)$mode, "grid")
+  expect_equal(call_n, 2L)
+})
+
+test_that("edr_explore output = 'map' can return coverage maps without locations", {
+  skip_if_not_installed("leaflet")
+  skip_if_not_installed("htmlwidgets")
+  call_n <- 0L
+  httr2::local_mocked_responses(function(req) {
+    call_n <<- call_n + 1L
+    if (call_n == 1L) {
+      mock_json_response(list(description = "no locations"), status = 404L)
+    } else {
+      mock_json_response(explore_profile_cov())
+    }
+  })
+
+  m <- edr_explore(
+    test_client(), "profile-demo",
+    coords = c(-110, 40),
+    method = "position",
+    output = "map"
+  )
+  expect_s3_class(m, "leaflet")
+  expect_equal(extract_render_payload(m)$mode, "profile")
+  expect_equal(call_n, 2L)
 })
 
 test_that("edr_explore + edr_save_html round-trip to disk", {

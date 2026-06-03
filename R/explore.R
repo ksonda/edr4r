@@ -14,13 +14,15 @@
 #'   *and* a `bbox` is supplied.
 #' * **area** -- like cube but uses a polygon. Used when `coords` is
 #'   supplied and the collection supports `area`.
+#' * **position** -- one HTTP call at a point. Useful for vertical
+#'   profiles returned by position queries.
 #' * **per-location** -- the fallback: one HTTP call per station via
 #'   [edr_location()]. Slower (N+1), used when neither spatial bulk
 #'   query is supported or the matching spatial input was not supplied.
 #'
 #' Force a specific path by setting `method`. `coords` is required for
-#' `area`; if `method = "cube"` and `bbox` is omitted, the bbox is
-#' derived from the returned locations.
+#' `area` and `position`; if `method = "cube"` and `bbox` is omitted,
+#' the bbox is derived from the returned locations.
 #'
 #' @param client An `edr_client`.
 #' @param collection_id Collection identifier.
@@ -29,7 +31,8 @@
 #'   for the cube fetch in `method = "auto"`. If omitted with
 #'   `method = "cube"`, derived from the bounding box of the returned
 #'   locations sf.
-#' @param coords Polygon coords for `area`. Forwarded to [edr_area()].
+#' @param coords Point coords for `position`, or polygon coords for
+#'   `area`. Forwarded to [edr_position()] / [edr_area()].
 #' @param datetime ISO-8601 interval forwarded to the data fetch.
 #' @param parameter_name Character vector of parameter ids; forwarded
 #'   to the data fetch. Use [edr_parameters()] to discover valid ids.
@@ -42,14 +45,20 @@
 #'   [edr_save_html()] and return `file` invisibly. Otherwise return
 #'   the `leaflet` map.
 #' @param popup Popup mode (forwarded to [edr_map()]).
-#' @param method One of `"auto"` (default), `"cube"`, `"area"`, or
-#'   `"per-location"`. See above.
+#' @param method One of `"auto"` (default), `"cube"`, `"area"`,
+#'   `"position"`, or `"per-location"`. See above.
+#' @param output One of `"auto"` (default), `"map"`, `"plot"`, or
+#'   `"data"`. `"auto"` returns a station map for station time-series
+#'   results and an interactive coverage map for gridded/profile
+#'   results.
+#' @param plot_view Plot view passed to [edr_plot()] when returning a
+#'   plot. Defaults to `"auto"`.
 #' @param quiet If `FALSE` (default), print a cli progress bar when
 #'   falling back to per-location fetches.
-#' @param ... Forwarded to [edr_map()].
+#' @param ... Forwarded to [edr_map()] when returning a map.
 #'
-#' @return A `leaflet` htmlwidget, or `invisible(file)` when `file` is
-#'   set.
+#' @return A `leaflet` htmlwidget, a `ggplot`, a tidy tibble/list when
+#'   `output = "data"`, or `invisible(file)` when a map is saved.
 #' @export
 #'
 #' @examples
@@ -75,63 +84,66 @@ edr_explore <- function(client,
                         record_limit   = NULL,
                         file           = NULL,
                         popup          = "plot+csv",
-                        method         = c("auto", "cube", "area", "per-location"),
+                        method         = c("auto", "cube", "area", "position", "per-location"),
+                        output         = c("auto", "map", "plot", "data"),
+                        plot_view      = c("auto", "time", "profile", "grid"),
                         quiet          = FALSE,
                         ...) {
   check_client(client)
   collection_id <- check_collection_id(collection_id)
-  check_installed_for("sf", "explore a collection")
   method <- match.arg(method)
+  output <- match.arg(output)
+  plot_view <- match.arg(plot_view)
 
-  locations <- edr_locations(client, collection_id, bbox = bbox, limit = limit)
-  if (!inherits(locations, "sf")) {
-    cli::cli_abort(
-      "The {.field locations} endpoint did not return a spatial result; install {.pkg sf} or use {.fn edr_map} directly."
-    )
-  }
-  if (!is.null(limit)) {
-    locations <- utils::head(locations, n = as.integer(limit))
-  }
-  if (nrow(locations) == 0L) {
-    cli::cli_abort("No stations found for collection {.val {collection_id}}.")
-  }
-
+  locations <- fetch_explore_locations(
+    client, collection_id,
+    bbox = bbox, limit = limit, output = output
+  )
   method <- resolve_explore_method(client, collection_id, method, bbox, coords)
 
-  data <- switch(method,
-    cube = {
-      bb <- bbox %||% sf_bbox_vec(locations)
-      resp <- edr_cube(
-        client, collection_id,
-        bbox = bb,
-        datetime = datetime,
-        parameter_name = parameter_name
-      )
-      covjson_to_tibble(resp)
-    },
-    area = {
-      if (is.null(coords)) {
-        cli::cli_abort('{.code method = "area"} requires {.arg coords}.')
-      }
-      resp <- edr_area(
-        client, collection_id,
-        coords = coords,
-        datetime = datetime,
-        parameter_name = parameter_name
-      )
-      covjson_to_tibble(resp)
-    },
-    `per-location` = {
-      ids <- detect_id_column(sf::st_drop_geometry(locations), id_col = NULL)
-      fetch_per_station(
-        client, collection_id, ids,
-        datetime       = datetime,
-        parameter_name = parameter_name,
-        record_limit   = record_limit,
-        quiet          = quiet
+  data <- fetch_explore_data(
+    method, client, collection_id,
+    bbox = bbox, coords = coords, locations = locations,
+    datetime = datetime, parameter_name = parameter_name,
+    record_limit = record_limit, quiet = quiet
+  )
+
+  if (output == "data") return(data)
+
+  if (output == "plot") {
+    if (!is.null(file)) {
+      cli::cli_abort(
+        "{.arg file} is only supported when {.fn edr_explore} returns a map."
       )
     }
-  )
+    return(edr_plot(
+      explore_plot_data(data),
+      parameter = parameter_name,
+      view = plot_view
+    ))
+  }
+
+  coverage_mode <- explore_coverage_map_mode(data, plot_view)
+  if (!is.null(coverage_mode)) {
+    m <- edr_map(
+      data,
+      mode = coverage_mode,
+      initial = explore_initial_selection(parameter_name),
+      ...
+    )
+    if (!is.null(file)) {
+      edr_save_html(m, file)
+      return(invisible(file))
+    }
+    return(m)
+  }
+
+  if (is.null(locations)) {
+    cli::cli_abort(
+      c("Could not build a station map for collection {.val {collection_id}}.",
+        i = "Use {.code output = \"plot\"} or supply a collection with a spatial locations endpoint.")
+    )
+  }
 
   m <- edr_map(
     locations,
@@ -160,9 +172,136 @@ resolve_explore_method <- function(client, collection_id, method, bbox, coords) 
     hit <- cols$data_queries[cols$id == collection_id]
     if (length(hit) == 1L) hit[[1]] else character(0)
   } else character(0)
+  if (!is.null(coords) && coords_looks_point(coords) && "position" %in% dq) {
+    return("position")
+  }
   if (!is.null(coords) && "area" %in% dq) return("area")
   if (!is.null(bbox) && "cube" %in% dq) return("cube")
   "per-location"
+}
+
+fetch_explore_locations <- function(client, collection_id, bbox, limit, output) {
+  if (output == "plot") return(NULL)
+  if (!rlang::is_installed("sf")) {
+    return(NULL)
+  }
+  locations <- tryCatch(
+    edr_locations(client, collection_id, bbox = bbox, limit = limit),
+    error = function(e) e
+  )
+  if (inherits(locations, "error")) {
+    return(NULL)
+  }
+  if (!inherits(locations, "sf")) {
+    return(NULL)
+  }
+  if (!is.null(limit)) {
+    locations <- utils::head(locations, n = as.integer(limit))
+  }
+  if (nrow(locations) == 0L) {
+    return(NULL)
+  }
+  locations
+}
+
+fetch_explore_data <- function(method, client, collection_id,
+                               bbox, coords, locations,
+                               datetime, parameter_name,
+                               record_limit, quiet) {
+  switch(method,
+    cube = {
+      bb <- bbox %||% {
+        if (is.null(locations)) {
+          cli::cli_abort(
+            '{.code method = "cube"} requires {.arg bbox} when locations are unavailable.'
+          )
+        }
+        sf_bbox_vec(locations)
+      }
+      resp <- edr_cube(
+        client, collection_id,
+        bbox = bb,
+        datetime = datetime,
+        parameter_name = parameter_name
+      )
+      covjson_to_tibble(resp)
+    },
+    area = {
+      if (is.null(coords)) {
+        cli::cli_abort('{.code method = "area"} requires {.arg coords}.')
+      }
+      resp <- edr_area(
+        client, collection_id,
+        coords = coords,
+        datetime = datetime,
+        parameter_name = parameter_name
+      )
+      covjson_to_tibble(resp)
+    },
+    position = {
+      if (is.null(coords)) {
+        cli::cli_abort('{.code method = "position"} requires {.arg coords}.')
+      }
+      resp <- edr_position(
+        client, collection_id,
+        coords = coords,
+        datetime = datetime,
+        parameter_name = parameter_name
+      )
+      covjson_to_tibble(resp)
+    },
+    `per-location` = {
+      if (is.null(locations)) {
+        cli::cli_abort(
+          c("Per-location exploration requires a spatial locations endpoint.",
+            i = "Supply {.arg bbox} / {.arg coords} with a bulk method, or use {.code output = \"plot\"}.")
+        )
+      }
+      ids <- detect_id_column(sf::st_drop_geometry(locations), id_col = NULL)
+      fetch_per_station(
+        client, collection_id, ids,
+        datetime       = datetime,
+        parameter_name = parameter_name,
+        record_limit   = record_limit,
+        quiet          = quiet
+      )
+    }
+  )
+}
+
+coords_looks_point <- function(coords) {
+  is_wkt_type(coords, "POINT") ||
+    (is.numeric(coords) && length(coords) %in% c(2L, 3L)) ||
+    (inherits(coords, c("sf", "sfc", "sfg")) &&
+       rlang::is_installed("sf") &&
+       is_wkt_type(sf_to_wkt(coords), "POINT"))
+}
+
+explore_coverage_map_mode <- function(data, plot_view) {
+  if (is.data.frame(data)) {
+    view <- detect_plot_view(data, plot_view)
+    if (view %in% c("grid", "profile")) return(view)
+  }
+  NULL
+}
+
+explore_initial_selection <- function(parameter_name) {
+  if (!is.null(parameter_name) && length(parameter_name) == 1L) {
+    return(list(parameter = as.character(parameter_name)))
+  }
+  list()
+}
+
+explore_plot_data <- function(data) {
+  if (is.data.frame(data)) return(data)
+  if (is.list(data)) {
+    pieces <- data[!vapply(data, is.null, logical(1))]
+    if (length(pieces) == 0L) {
+      cli::cli_abort("No fetched station data is available to plot.")
+    }
+    return(vctrs::vec_rbind(!!!pieces))
+  }
+  data
 }
 
 # Return c(minx, miny, maxx, maxy) from an sf object.

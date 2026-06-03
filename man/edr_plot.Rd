@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot.R
 \name{edr_plot}
 \alias{edr_plot}
-\title{Plot an EDR time-series response as a ggplot}
+\title{Plot an EDR response as a ggplot}
 \usage{
 edr_plot(
   data,
@@ -11,7 +11,8 @@ edr_plot(
   facet = "parameter",
   scales = "free_y",
   geom = c("line", "point", "both"),
-  facet_labels = TRUE
+  facet_labels = TRUE,
+  view = c("auto", "time", "profile", "grid")
 )
 }
 \arguments{
@@ -37,15 +38,19 @@ gives each parameter its own y-axis range.}
 
 \item{facet_labels}{If \code{TRUE} (default), facet strip labels include
 the unit (e.g. \code{"discharge (ft3/s)"}).}
+
+\item{view}{Plot view. \code{"auto"} (default) detects grids from varying
+\code{x} and \code{y}, profiles from varying \code{z}, and otherwise falls back
+to a time-series view. Set to \code{"time"}, \code{"profile"}, or \code{"grid"} to
+force a specific layout.}
 }
 \value{
 A \code{ggplot} object.
 }
 \description{
 Convenience wrapper around \code{\link[ggplot2:ggplot]{ggplot2::ggplot()}} for the long tibble
-returned by \code{\link[=covjson_to_tibble]{covjson_to_tibble()}}. By default each parameter gets its
-own facet (so different units don't share a y-axis), and each
-location is drawn in its own colour.
+returned by \code{\link[=covjson_to_tibble]{covjson_to_tibble()}}. Automatically chooses a sensible
+view for time series, vertical profiles, and x/y grids.
 }
 \examples{
 \dontrun{
