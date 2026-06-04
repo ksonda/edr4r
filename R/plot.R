@@ -215,7 +215,9 @@ grid_plot <- function(data, facet, scales) {
     p <- p + ggplot2::scale_fill_viridis_c(na.value = "transparent")
   }
 
-  finish_plot(p, data, facet, scales, colour = FALSE, fill = TRUE)
+  # `coord_equal()` needs fixed facet scales; free scales error when
+  # ggplot renders the grobs.
+  finish_plot(p, data, facet, "fixed", colour = FALSE, fill = TRUE)
 }
 
 add_grid_panel <- function(data) {

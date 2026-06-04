@@ -61,6 +61,9 @@ test_that("edr_plot auto-detects gridded coverages", {
   p <- edr_plot(tb)
   expect_s3_class(p, "ggplot")
   expect_true(inherits(p$layers[[1]]$geom, "GeomTile"))
+  grDevices::png(tempfile(fileext = ".png"))
+  on.exit(grDevices::dev.off(), add = TRUE)
+  expect_silent(print(p))
 })
 
 test_that("edr_plot auto-detects vertical profiles", {
