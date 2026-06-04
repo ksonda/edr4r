@@ -5,7 +5,7 @@ Thin wrapper around
 for the leaflet map returned by
 [`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md) or
 [`edr_explore()`](https://ksonda.github.io/edr4r/reference/edr_explore.md).
-With `selfcontained = TRUE` (the default), popup chart data and CSV
+With `selfcontained = TRUE` (the default), embedded plot SVGs and CSV
 download links live inside the file – no sidecar directory.
 
 ## Usage
