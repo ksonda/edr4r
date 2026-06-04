@@ -75,18 +75,20 @@ csv_data_uri <- function(df) {
 }
 
 # Build popup HTML for one feature. `mode` selects content:
-#   "plot"     - just the inline SVG
+#   "plot"     - just the interactive chart
 #   "csv"      - just a download link
 #   "plot+csv" - both (default)
 #   "table"    - just the attributes table
 #   "all"      - attribute table + plot + csv
 feature_popup_html <- function(plot_uri     = NULL,
+                               chart_payload = NULL,
                                csv_uri      = NULL,
                                attrs        = NULL,
                                label        = NULL,
                                mode         = "plot+csv",
                                csv_filename = "data.csv",
-                               plot_width   = 360) {
+                               plot_width   = 560,
+                               plot_height  = 300) {
   pieces <- character(0)
   if (!is.null(label)) {
     pieces <- c(pieces, sprintf(
@@ -97,7 +99,13 @@ feature_popup_html <- function(plot_uri     = NULL,
   if (mode %in% c("table", "all") && length(attrs) > 0L) {
     pieces <- c(pieces, attrs_to_table_html(attrs))
   }
-  if (mode %in% c("plot", "plot+csv", "all") && !is.null(plot_uri)) {
+  if (mode %in% c("plot", "plot+csv", "all") && !is.null(chart_payload)) {
+    pieces <- c(pieces, interactive_chart_html(
+      chart_payload,
+      width = plot_width,
+      height = plot_height
+    ))
+  } else if (mode %in% c("plot", "plot+csv", "all") && !is.null(plot_uri)) {
     pieces <- c(pieces, sprintf(
       "<img src='%s' style='width:%dpx; max-width:100%%; display:block' alt='time series' />",
       plot_uri, as.integer(plot_width)
@@ -111,10 +119,62 @@ feature_popup_html <- function(plot_uri     = NULL,
   }
   paste0(
     "<div style='font-family:system-ui,sans-serif; font-size:12px; max-width:",
-    plot_width + 24, "px'>",
+    plot_width + 32, "px'>",
     paste(pieces, collapse = ""),
     "</div>"
   )
+}
+
+popup_chart_width_px <- function(plot_width, plot_dpi) {
+  max(as.integer(plot_width * plot_dpi), 560L)
+}
+
+popup_chart_height_px <- function(plot_height, plot_dpi) {
+  max(as.integer(plot_height * plot_dpi), 300L)
+}
+
+interactive_chart_payload <- function(df, title = NULL, width = 560, height = 300) {
+  rows <- lapply(seq_len(nrow(df)), function(i) {
+    list(
+      x = if ("datetime" %in% names(df)) as.character(df$datetime[[i]]) else as.character(i),
+      value = numeric_or_null(df$value[[i]]),
+      parameter = if ("parameter" %in% names(df)) as.character(df$parameter[[i]]) else "value",
+      unit = if ("unit" %in% names(df)) as.character(df$unit[[i]]) else "",
+      coverage_id = if ("coverage_id" %in% names(df)) as.character(df$coverage_id[[i]]) else "",
+      z = if ("z" %in% names(df) && !is.na(df$z[[i]])) as.character(df$z[[i]]) else ""
+    )
+  })
+  list(
+    title = title %||% "",
+    width = as.integer(width),
+    height = as.integer(height),
+    rows = rows
+  )
+}
+
+interactive_chart_html <- function(payload, width = 560, height = 300) {
+  json <- jsonlite::toJSON(
+    payload,
+    auto_unbox = TRUE,
+    null = "null",
+    na = "null",
+    POSIXt = "ISO8601"
+  )
+  encoded <- utils::URLencode(json, reserved = TRUE, repeated = TRUE)
+  sprintf(
+    paste0(
+      "<div class='edr-popup-chart' data-edr-chart='%s' ",
+      "style='width:%dpx;max-width:100%%;height:%dpx'></div>"
+    ),
+    escape_html(encoded),
+    as.integer(width),
+    as.integer(height)
+  )
+}
+
+numeric_or_null <- function(x) {
+  out <- suppressWarnings(as.numeric(x))
+  if (length(out) != 1L || !is.finite(out)) NA_real_ else out
 }
 
 attrs_to_table_html <- function(attrs) {
