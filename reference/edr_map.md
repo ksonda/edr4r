@@ -3,9 +3,11 @@
 Builds a
 [leaflet::leaflet](https://rstudio.github.io/leaflet/reference/leaflet.html)
 map of station features or gridded/profile CoverageJSON data. Station
-maps can show per-station popups with inline plots and CSV downloads.
-Coverage maps keep all supplied parameters, times, and vertical levels
-in the widget and expose in-map controls for choosing the active slice.
+maps can show per-station popups with interactive time-series charts and
+CSV downloads. Coverage maps keep all supplied parameters, times, and
+vertical levels in the widget and expose in-map controls for choosing
+the active slice; grid cells open popups with a time-series chart for
+the clicked cell.
 
 ## Usage
 
@@ -76,13 +78,13 @@ edr_map(
 
 - plot_width, plot_height:
 
-  Popup plot dimensions in inches (passed to the underlying SVG device).
-  Display size in pixels is `plot_width * plot_dpi` by
-  `plot_height * plot_dpi`.
+  Popup chart dimensions in inches. Display size in pixels is
+  `plot_width * plot_dpi` by `plot_height * plot_dpi`, with a larger
+  minimum size for readable interactive popups.
 
 - plot_dpi:
 
-  Display dots-per-inch for the inline SVG. Default 72; bump to 90+ if
+  Display dots-per-inch for popup charts. Default 72; bump to 90+ if
   popups look small on hi-DPI displays.
 
 - tile_provider:
