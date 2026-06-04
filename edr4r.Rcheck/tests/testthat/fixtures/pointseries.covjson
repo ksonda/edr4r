@@ -1,0 +1,48 @@
+{
+  "type": "CoverageCollection",
+  "domainType": "PointSeries",
+  "parameters": {
+    "discharge": {
+      "type": "Parameter",
+      "description": { "en": "Streamflow discharge" },
+      "unit": { "symbol": "ft3/s" },
+      "observedProperty": { "id": "discharge", "label": { "en": "Discharge" } }
+    },
+    "gage_height": {
+      "type": "Parameter",
+      "unit": { "label": { "en": "feet" } },
+      "observedProperty": { "id": "gage_height", "label": { "en": "Gage height" } }
+    }
+  },
+  "coverages": [
+    {
+      "type": "Coverage",
+      "id": "08313000",
+      "domain": {
+        "type": "Domain",
+        "domainType": "PointSeries",
+        "axes": {
+          "x": { "values": [-109.83] },
+          "y": { "values": [37.02] },
+          "t": { "values": ["2020-01-01T00:00:00Z", "2020-01-02T00:00:00Z", "2020-01-03T00:00:00Z"] }
+        }
+      },
+      "ranges": {
+        "discharge": {
+          "type": "NdArray",
+          "dataType": "float",
+          "axisNames": ["t"],
+          "shape": [3],
+          "values": [100.5, null, 102.7]
+        },
+        "gage_height": {
+          "type": "NdArray",
+          "dataType": "float",
+          "axisNames": ["t"],
+          "shape": [3],
+          "values": [5.41, 5.42, 5.43]
+        }
+      }
+    }
+  ]
+}
