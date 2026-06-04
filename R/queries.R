@@ -414,14 +414,11 @@ common_query <- function(...) {
 }
 
 # Validate a single path-segment id (location_id / item_id) and return it
-# percent-encoded. We pre-encode reserved chars because httr2's
-# req_url_path_append() does NOT escape unsafe segment characters (space,
-# '?', '#'); the later req_url_query() pass normalises the URL so
-# segment-safe reserved chars (e.g. ':' in colon-separated station
-# triplets) come back literal. '/' is rejected outright: even when
-# pre-encoded as %2F, URL normalisation and server-side decoding both
-# turn it back into a path separator, so there is no safe round-trip
-# for an id containing a slash.
+# percent-encoded. We pre-encode reserved chars so ids containing spaces,
+# query delimiters, or fragments remain a single HTTP path segment. '/' is
+# rejected outright: even when pre-encoded as %2F, URL normalisation and
+# server-side decoding both turn it back into a path separator, so there
+# is no safe round-trip for an id containing a slash.
 check_path_id <- function(id, arg, call = rlang::caller_env()) {
   if (length(id) != 1L || is.na(id)) {
     cli::cli_abort("{.arg {arg}} must be a single non-NA value.", call = call)
@@ -437,7 +434,7 @@ check_path_id <- function(id, arg, call = rlang::caller_env()) {
       call = call
     )
   }
-  utils::URLencode(id, reserved = TRUE)
+  utils::URLencode(id, reserved = TRUE, repeated = TRUE)
 }
 
 check_bbox <- function(bbox, call = rlang::caller_env()) {

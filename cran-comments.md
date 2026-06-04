@@ -4,6 +4,14 @@
 * win-builder: R-devel, Windows Server 2022 x64, R Under development
   (2026-06-03 r90099 ucrt)
 
+## Resubmission
+
+This resubmission fixes the Debian R-devel incoming pretest failure in
+`tests/testthat/test-queries.R`. URL construction now preserves
+percent-encoded path identifiers when query parameters are added, so reserved
+characters in location/item ids remain inside the intended path segment across
+curl/httr2 builds.
+
 ## R CMD check results
 
 0 errors | 0 warnings | 2 notes
@@ -18,8 +26,7 @@ There are no downstream dependencies; this is a new submission.
 
 ## win-builder results
 
-Final compact/full-vignette tarball submitted to win-builder; result pending by
-email.
+0 errors | 0 warnings | 1 note
 
 * New submission.
 * Possibly misspelled words in DESCRIPTION are domain acronyms, product names,

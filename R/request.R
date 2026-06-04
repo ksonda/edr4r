@@ -34,16 +34,14 @@ edr_request <- function(client,
     cli::cli_abort("{.arg path} must be a single string.")
   }
   path <- sub("^/+", "", path)
-  # Append discrete segments so any pre-encoding on a segment (e.g. a
-  # station id with reserved characters) survives. httr2 passes segments
-  # through verbatim, but re-parses (and may decode) a single pre-joined
-  # path string.
-  segments <- strsplit(path, "/", fixed = TRUE)[[1]]
-  segments <- segments[nzchar(segments)]
 
   query <- prepare_query(query, format = format)
+  # Build the URL string ourselves so already-encoded path ids stay
+  # encoded when query parameters are added. Some curl/httr2 builds
+  # normalise %26 in a path back to '&' during URL reassembly.
+  url <- build_request_url(client$base_url, path, query)
 
-  req <- httr2::request(client$base_url) |>
+  req <- httr2::request(url) |>
     httr2::req_user_agent(client$user_agent) |>
     httr2::req_timeout(client$timeout) |>
     httr2::req_retry(
@@ -51,16 +49,6 @@ edr_request <- function(client,
       is_transient = is_transient_edr
     ) |>
     httr2::req_error(body = edr_error_body)
-
-  if (length(segments) > 0) {
-    # do.call (not !!!) because req_url_path_append() takes plain dots,
-    # and we want each segment appended (and escaped) independently.
-    req <- do.call(httr2::req_url_path_append, c(list(req), as.list(segments)))
-  }
-
-  if (length(query) > 0) {
-    req <- httr2::req_url_query(req, !!!query, .multi = "comma")
-  }
 
   if (length(client$headers) > 0) {
     req <- httr2::req_headers(req, !!!as.list(client$headers))
@@ -78,6 +66,67 @@ edr_request <- function(client,
     return(resp)
   }
   parse_response(resp, format = format)
+}
+
+build_request_url <- function(base_url, path, query) {
+  base_url <- sub("/+$", "", base_url)
+  if (nzchar(path)) {
+    url <- paste0(base_url, "/", path)
+  } else {
+    url <- base_url
+  }
+
+  query_string <- build_query_string(query)
+  if (nzchar(query_string)) {
+    paste0(url, "?", query_string)
+  } else {
+    url
+  }
+}
+
+build_query_string <- function(query, call = rlang::caller_env()) {
+  if (length(query) == 0L) return("")
+
+  nms <- names(query)
+  if (is.null(nms) || any(!nzchar(nms))) {
+    cli::cli_abort(
+      "All components of {.arg query} must be named.",
+      call = call
+    )
+  }
+
+  parts <- Map(build_query_pair, nms, query)
+  paste(unlist(parts, use.names = FALSE), collapse = "&")
+}
+
+build_query_pair <- function(name, value, call = rlang::caller_env()) {
+  if (!is.atomic(value) && !inherits(value, "AsIs")) {
+    cli::cli_abort(
+      "All elements of {.arg query} must be atomic vectors or {.code NULL}.",
+      call = call
+    )
+  }
+
+  name <- utils::URLencode(name, reserved = TRUE, repeated = TRUE)
+  values <- encode_query_value(value, name, call = call)
+  paste0(name, "=", values)
+}
+
+encode_query_value <- function(value, name, call = rlang::caller_env()) {
+  if (inherits(value, "AsIs")) {
+    value <- unclass(value)
+    if (!is.character(value)) {
+      cli::cli_abort(
+        "Escaped query value {.val {name}} must be a character vector.",
+        call = call
+      )
+    }
+    return(paste(value, collapse = ","))
+  }
+
+  value <- format(value, scientific = FALSE, trim = TRUE, justify = "none")
+  value <- utils::URLencode(value, reserved = TRUE, repeated = TRUE)
+  paste(value, collapse = ",")
 }
 
 prepare_query <- function(query, format) {

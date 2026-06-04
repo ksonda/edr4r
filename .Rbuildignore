@@ -1,5 +1,6 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.git$
 ^LICENSE\.md$
 ^README\.Rmd$
 ^\.github$
@@ -16,3 +17,4 @@
 ^Meta$
 ^.*\.Rcheck$
 ^.*\.tar\.gz$
+^CRAN-SUBMISSION$

@@ -7,15 +7,13 @@ test_that("edr_location URL-encodes ids and sends filters", {
   })
 
   # A colon-separated triplet id (the kind used by some snow / forecast
-  # networks) exercises the path-segment encoding path: colons are legal
-  # in a path segment per RFC 3986, so the normalised URL preserves them
-  # literally.
+  # networks) exercises the path-segment encoding path.
   res <- edr_location(test_client(), "station-network",
                       location_id = "1185:CO:SNTL",
                       datetime = "2020-01-01/..",
                       parameter_name = "swe")
   expect_s3_class(res, "edr_covjson")
-  expect_match(captured$url, "locations/1185:CO:SNTL")
+  expect_match(captured$url, "locations/1185(%3A|:)CO(%3A|:)SNTL")
   expect_match(captured$url, "datetime=2020-01-01")
   expect_match(captured$url, "parameter-name=swe")
 })

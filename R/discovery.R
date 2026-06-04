@@ -158,7 +158,7 @@ check_collection_id <- function(collection_id, call = rlang::caller_env()) {
 
 collection_path_id <- function(collection_id, call = rlang::caller_env()) {
   collection_id <- check_collection_id(collection_id, call = call)
-  utils::URLencode(collection_id, reserved = TRUE)
+  utils::URLencode(collection_id, reserved = TRUE, repeated = TRUE)
 }
 
 collection_row <- function(c) {
