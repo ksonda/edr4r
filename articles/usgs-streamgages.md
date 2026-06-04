@@ -72,8 +72,8 @@ names(q$properties)
 
 `parameter_code` is the filter you’d pass as `parameter_name =` in a
 query. USGS uses the standard [NWIS parameter
-codes](https://help.waterdata.usgs.gov/codes-and-parameters/parameters)
-– a few common ones for streamgages:
+codes](https://waterdata.usgs.gov/code-dictionary) – a few common ones
+for streamgages:
 
 | Code    | Meaning                | Unit      |
 |---------|------------------------|-----------|
@@ -257,5 +257,5 @@ edr_save_html(m, "triangle-streamgages.html")
   – same workflow against the Western Water Datahub, which advertises
   `cube` for fast bulk fetches.
 - The [USGS NWIS parameter code
-  dictionary](https://help.waterdata.usgs.gov/codes-and-parameters/parameters)
-  for picking the right `parameter_code`.
+  dictionary](https://waterdata.usgs.gov/code-dictionary) for picking
+  the right `parameter_code`.
