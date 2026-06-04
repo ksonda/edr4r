@@ -52,11 +52,12 @@ detected id column.}
 \item{parameter}{Optional character vector restricting which
 parameters get plotted in each popup.}
 
-\item{plot_width, plot_height}{Popup plot dimensions in inches
-(passed to the underlying SVG device). Display size in pixels is
-\code{plot_width * plot_dpi} by \code{plot_height * plot_dpi}.}
+\item{plot_width, plot_height}{Popup chart dimensions in inches.
+Display size in pixels is \code{plot_width * plot_dpi} by
+\code{plot_height * plot_dpi}, with a larger minimum size for readable
+interactive popups.}
 
-\item{plot_dpi}{Display dots-per-inch for the inline SVG. Default 72;
+\item{plot_dpi}{Display dots-per-inch for popup charts. Default 72;
 bump to 90+ if popups look small on hi-DPI displays.}
 
 \item{tile_provider}{Leaflet basemap. Default \code{"CartoDB.Positron"}.}
@@ -106,9 +107,10 @@ write a selfcontained HTML file.
 \description{
 Builds a \link[leaflet:leaflet]{leaflet::leaflet} map of station features or gridded/profile
 CoverageJSON data. Station maps can show per-station popups with
-inline plots and CSV downloads. Coverage maps keep all supplied
-parameters, times, and vertical levels in the widget and expose
-in-map controls for choosing the active slice.
+interactive time-series charts and CSV downloads. Coverage maps keep
+all supplied parameters, times, and vertical levels in the widget and
+expose in-map controls for choosing the active slice; grid cells open
+popups with a time-series chart for the clicked cell.
 }
 \details{
 \code{data} can be one of:

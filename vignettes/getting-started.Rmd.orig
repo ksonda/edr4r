@@ -135,7 +135,7 @@ per-station popups -- much faster than fetching one station at a
 time. `rise-edr` advertises `cube`, so the default `method = "auto"`
 takes that path.
 
-```{r explore-wwdh, results = "asis"}
+```{r explore-wwdh, eval = FALSE}
 m <- edr_explore(
   client, "rise-edr",
   bbox           = c(-114, 32, -111, 38),         # SW US
@@ -145,20 +145,44 @@ m <- edr_explore(
   label_col      = "locationName",
   quiet          = TRUE
 )
-# Embed the interactive map inline via a base64 data URI so the vignette
-# is fully selfcontained (no sidecar files in inst/doc/).
+```
+
+```{r build-full-station-map, echo = FALSE, results = "asis", warning = FALSE, message = FALSE}
+m <- edr_explore(
+  client, "rise-edr",
+  bbox           = c(-114, 32, -111, 38),
+  datetime       = "2023-01-01/2023-06-30",
+  parameter_name = "3",
+  popup          = "plot+csv",
+  label_col      = "locationName",
+  quiet          = TRUE
+)
+full_dir <- "getting-started-full"
+dir.create(full_dir, showWarnings = FALSE)
 tmp <- tempfile(fileext = ".html")
 edr_save_html(m, tmp)
-data_uri <- paste0(
-  "data:text/html;charset=utf-8;base64,",
-  base64enc::base64encode(tmp)
-)
-unlink(tmp)
-cat(sprintf(
+station_map <- file.path(full_dir, "station-map-iframe.html")
+writeLines(sprintf(
   '<iframe src="%s" width="100%%" height="520" style="border:1px solid #ddd;"></iframe>',
-  data_uri
-))
+  paste0(
+    "data:text/html;charset=utf-8;base64,",
+    base64enc::base64encode(tmp)
+  )
+), station_map)
+unlink(tmp)
+cat("```{r include-full-station-map, echo=FALSE, results='asis'}\n")
+cat("if (Sys.getenv(\"EDR4R_FULL_VIGNETTES\") == \"true\") {\n")
+cat("  station_map <- \"getting-started-full/station-map-iframe.html\"\n")
+cat("  if (!file.exists(station_map)) {\n")
+cat("    stop(\"Full station map output is missing: \", station_map)\n")
+cat("  }\n")
+cat("  cat(readLines(station_map, warn = FALSE), sep = \"\\n\")\n")
+cat("}\n")
+cat("```\n")
 ```
+
+The object prints as an interactive leaflet map in an R session;
+each blue marker opens the larger plot/CSV popup for the station.
 
 Markers with data are blue (clickable popup with plot + CSV);
 stations the bbox covers that returned no data for the requested
@@ -170,6 +194,83 @@ directory):
 
 ```{r, eval = FALSE}
 edr_save_html(m, "wwdh-southwest.html")
+```
+
+## 7. Map a gridded PRISM coverage
+
+Station maps are only one side of EDR. The Western Water Datahub also
+publishes gridded PRISM climate data as the `usgs-prism` collection.
+That collection advertises `cube`, so you can request a small bounding
+box and map the returned grid directly.
+
+This example pulls two monthly PRISM variables over a small northern
+Arizona window. `edr_map()` detects the grid and puts the parameter and
+time selectors inside the leaflet map, so the slice choice lives with
+the interactive map rather than in a separate plotting call.
+
+```{r prism-grid-data}
+prism <- edr_cube(
+  client, "usgs-prism",
+  bbox           = c(-112.6, 36.7, -112.2, 37.1),
+  datetime       = "2023-01-01/2023-02-28",
+  parameter_name = c("ppt", "tmx")
+)
+
+prism_grid <- covjson_to_tibble(prism)
+prism_grid[, c("parameter", "datetime", "x", "y", "value")]
+```
+
+```{r build-full-prism-map, echo = FALSE, results = "asis", warning = FALSE, message = FALSE}
+full_dir <- "getting-started-full"
+dir.create(full_dir, showWarnings = FALSE)
+prism_map <- edr_map(
+  prism_grid,
+  initial = list(parameter = "ppt", datetime = "2023-01-01")
+)
+
+tmp <- tempfile(fileext = ".html")
+edr_save_html(prism_map, tmp)
+prism_map_file <- file.path(full_dir, "prism-map-iframe.html")
+writeLines(sprintf(
+  '<iframe src="%s" width="100%%" height="520" style="border:1px solid #ddd;"></iframe>',
+  paste0(
+    "data:text/html;charset=utf-8;base64,",
+    base64enc::base64encode(tmp)
+  )
+), prism_map_file)
+unlink(tmp)
+cat("```{r include-full-prism-map, echo=FALSE, results='asis'}\n")
+cat("if (Sys.getenv(\"EDR4R_FULL_VIGNETTES\") == \"true\") {\n")
+cat("  prism_map <- \"getting-started-full/prism-map-iframe.html\"\n")
+cat("  if (!file.exists(prism_map)) {\n")
+cat("    stop(\"Full PRISM map output is missing: \", prism_map)\n")
+cat("  }\n")
+cat("  cat(readLines(prism_map, warn = FALSE), sep = \"\\n\")\n")
+cat("}\n")
+cat("```\n")
+```
+
+```{r prism-grid, echo = FALSE, fig.cap = "PRISM precipitation and maximum monthly temperature over the sample bounding box."}
+edr_plot(prism_grid) +
+  ggtitle("PRISM grid: precipitation and maximum temperature")
+```
+
+Use the selectors in the top-right of the map to switch between
+precipitation (`ppt`) and maximum monthly temperature (`tmx`), and
+between January and February 2023. The map colors stay focused on the
+selected slice; click a grid cell to open the active value and a
+time-series chart for that pixel across the available dates.
+
+The same one-shot helper works for gridded collections too:
+
+```{r, eval = FALSE}
+edr_explore(
+  client, "usgs-prism",
+  bbox           = c(-112.6, 36.7, -112.2, 37.1),
+  datetime       = "2023-01-01/2023-02-28",
+  parameter_name = c("ppt", "tmx"),
+  method         = "cube"
+)
 ```
 
 ## A few things worth knowing

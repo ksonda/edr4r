@@ -8,10 +8,9 @@ test_that("edr_map returns a leaflet htmlwidget", {
   expect_s3_class(m, "htmlwidget")
 })
 
-test_that("popup HTML embeds plot SVG and CSV URIs", {
+test_that("popup HTML embeds interactive charts and CSV URIs", {
   skip_if_not_installed("leaflet")
   skip_if_not_installed("sf")
-  skip_if_not_installed("ggplot2")
   skip_if_not_installed("base64enc")
 
   locs <- geojson_to_sf(read_fixture("locations.geojson"))
@@ -25,8 +24,10 @@ test_that("popup HTML embeds plot SVG and CSV URIs", {
   # Pull the popup HTML out of the underlying leaflet call. It's stored
   # in the m$x$calls structure.
   popup_blob <- extract_popup_html(m)
-  expect_match(popup_blob, "data:image/svg\\+xml;base64,")
+  expect_match(popup_blob, "edr-popup-chart")
+  expect_match(popup_blob, "data-edr-chart")
   expect_match(popup_blob, "data:text/csv;base64,")
+  expect_match(m$jsHooks$render[[1]]$code, "edrRenderPopupCharts")
 })
 
 test_that("popup = 'table' works without data", {
@@ -94,7 +95,9 @@ test_that("edr_map renders gridded coverage data with slice controls", {
   expect_equal(payload$initial$parameter, "precip")
   expect_equal(payload$initial$datetime, "2020-01-02")
   expect_equal(payload$initial$z, "10")
-  expect_true(all(c("xmin", "xmax", "ymin", "ymax") %in% names(payload$rows[[1]])))
+  expect_true(all(c("xmin", "xmax", "ymin", "ymax", "unit") %in% names(payload$rows[[1]])))
+  expect_match(m$jsHooks$render[[1]]$code, "gridTimeSeriesRows")
+  expect_match(m$jsHooks$render[[1]]$code, "edrPopupChartHtml")
 })
 
 test_that("edr_map renders profile coverage data with controls but keeps z as profile axis", {

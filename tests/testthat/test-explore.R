@@ -52,7 +52,6 @@ explore_profile_cov <- function() {
 test_that("edr_explore fetches per-station data and returns a leaflet map", {
   skip_if_not_installed("leaflet")
   skip_if_not_installed("sf")
-  skip_if_not_installed("ggplot2")
   skip_if_not_installed("base64enc")
 
   gj  <- read_fixture("locations.geojson")
@@ -78,16 +77,17 @@ test_that("edr_explore fetches per-station data and returns a leaflet map", {
   expect_s3_class(m, "leaflet")
 
   # The two CovJSON calls (one per station) should have produced popups
-  # with both plot and CSV URIs.
+  # with both interactive chart payloads and CSV URIs.
   popup_blob <- extract_popup_html(m)
-  expect_match(popup_blob, "data:image/svg\\+xml;base64,")
+  expect_match(popup_blob, "edr-popup-chart")
+  expect_match(popup_blob, "data-edr-chart")
   expect_match(popup_blob, "data:text/csv;base64,")
+  expect_match(m$jsHooks$render[[1]]$code, "edrRenderPopupCharts")
 })
 
 test_that("edr_explore method = 'cube' uses one bulk call, no per-station N+1", {
   skip_if_not_installed("leaflet")
   skip_if_not_installed("sf")
-  skip_if_not_installed("ggplot2")
   skip_if_not_installed("base64enc")
 
   gj  <- read_fixture("locations.geojson")
@@ -160,7 +160,8 @@ test_that("edr_explore method = 'cube' uses one bulk call, no per-station N+1", 
   expect_equal(call_n, 2L)
 
   popup_blob <- extract_popup_html(m)
-  expect_match(popup_blob, "data:image/svg\\+xml;base64,")
+  expect_match(popup_blob, "edr-popup-chart")
+  expect_match(popup_blob, "data-edr-chart")
   expect_match(popup_blob, "data:text/csv;base64,")
 })
 

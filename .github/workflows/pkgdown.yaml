@@ -37,11 +37,30 @@ jobs:
           needs: website
 
       - name: Build site
-        run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
+        run: |
+          site_url <- if (Sys.getenv("GITHUB_REF_NAME") == "dev") {
+            "https://ksonda.github.io/edr4r/dev/"
+          } else {
+            "https://ksonda.github.io/edr4r/"
+          }
+          pkgdown::build_site_github_pages(
+            new_process = FALSE,
+            install = FALSE,
+            override = list(url = site_url)
+          )
         shell: Rscript {0}
 
-      - name: Deploy to GitHub pages 🚀
-        if: github.event_name != 'pull_request'
+      - name: Deploy dev docs to GitHub pages 🚀
+        if: github.event_name != 'pull_request' && github.ref_name == 'dev'
+        uses: JamesIves/github-pages-deploy-action@v4.5.0
+        with:
+          clean: false
+          branch: gh-pages
+          folder: docs
+          target-folder: dev
+
+      - name: Deploy release docs to GitHub pages 🚀
+        if: github.event_name != 'pull_request' && github.ref_name != 'dev'
         uses: JamesIves/github-pages-deploy-action@v4.5.0
         with:
           clean: false

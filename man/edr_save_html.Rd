@@ -21,6 +21,6 @@ Invisibly returns \code{file}.
 \description{
 Thin wrapper around \code{\link[htmlwidgets:saveWidget]{htmlwidgets::saveWidget()}} for the leaflet
 map returned by \code{\link[=edr_map]{edr_map()}} or \code{\link[=edr_explore]{edr_explore()}}. With
-\code{selfcontained = TRUE} (the default), embedded plot SVGs and CSV
+\code{selfcontained = TRUE} (the default), popup chart data and CSV
 download links live inside the file -- no sidecar directory.
 }

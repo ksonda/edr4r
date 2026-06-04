@@ -2,9 +2,10 @@
 #'
 #' Builds a [leaflet] map of station features or gridded/profile
 #' CoverageJSON data. Station maps can show per-station popups with
-#' inline plots and CSV downloads. Coverage maps keep all supplied
-#' parameters, times, and vertical levels in the widget and expose
-#' in-map controls for choosing the active slice.
+#' interactive time-series charts and CSV downloads. Coverage maps keep
+#' all supplied parameters, times, and vertical levels in the widget and
+#' expose in-map controls for choosing the active slice; grid cells open
+#' popups with a time-series chart for the clicked cell.
 #'
 #' `data` can be one of:
 #'
@@ -36,10 +37,11 @@
 #'   detected id column.
 #' @param parameter Optional character vector restricting which
 #'   parameters get plotted in each popup.
-#' @param plot_width,plot_height Popup plot dimensions in inches
-#'   (passed to the underlying SVG device). Display size in pixels is
-#'   `plot_width * plot_dpi` by `plot_height * plot_dpi`.
-#' @param plot_dpi Display dots-per-inch for the inline SVG. Default 72;
+#' @param plot_width,plot_height Popup chart dimensions in inches.
+#'   Display size in pixels is `plot_width * plot_dpi` by
+#'   `plot_height * plot_dpi`, with a larger minimum size for readable
+#'   interactive popups.
+#' @param plot_dpi Display dots-per-inch for popup charts. Default 72;
 #'   bump to 90+ if popups look small on hi-DPI displays.
 #' @param tile_provider Leaflet basemap. Default `"CartoDB.Positron"`.
 #' @param marker_radius Marker radius in pixels for stations that have
@@ -181,7 +183,7 @@ edr_map <- function(locations,
   coords <- sf::st_coordinates(geom)
 
   popup_opts <- leaflet::popupOptions(
-    maxWidth = ceiling(plot_width * plot_dpi + 48)
+    maxWidth = popup_chart_width_px(plot_width, plot_dpi) + 72
   )
 
   m <- leaflet::leaflet() |>
@@ -248,6 +250,11 @@ edr_map <- function(locations,
     m <- leaflet::setView(m, lng = coords[1, 1], lat = coords[1, 2], zoom = 9)
   }
 
+  if (popup %in% c("plot", "plot+csv", "all")) {
+    check_installed_for("htmlwidgets", "render interactive popup charts")
+    m <- htmlwidgets::onRender(m, popup_chart_js())
+  }
+
   m
 }
 
@@ -255,7 +262,7 @@ edr_map <- function(locations,
 #'
 #' Thin wrapper around [htmlwidgets::saveWidget()] for the leaflet
 #' map returned by [edr_map()] or [edr_explore()]. With
-#' `selfcontained = TRUE` (the default), embedded plot SVGs and CSV
+#' `selfcontained = TRUE` (the default), popup chart data and CSV
 #' download links live inside the file -- no sidecar directory.
 #'
 #' @param map A `leaflet` or `htmlwidget`.
@@ -357,6 +364,7 @@ coverage_map_payload <- function(data, mode, controls, initial,
       parameter = data$.edr_parameter[[i]],
       datetime = data$.edr_datetime[[i]],
       z = data$.edr_z[[i]],
+      unit = if ("unit" %in% names(data)) as.character(data$unit[[i]]) else "",
       coverage_id = if ("coverage_id" %in% names(data)) as.character(data$coverage_id[[i]]) else ""
     )
     if (mode == "grid") {
@@ -454,14 +462,306 @@ axis_cell_edges <- function(values) {
   )
 }
 
-coverage_map_js <- function() {
+popup_chart_js <- function() {
+  paste0(
+    "
+function(el, x) {
+  var map = this;
+",
+    popup_chart_renderer_js(),
+    "
+  map.on('popupopen', function(e) {
+    edrRenderPopupCharts(e.popup.getElement());
+  });
+}
+"
+  )
+}
+
+popup_chart_renderer_js <- function() {
   "
+  function edrAsText(v) {
+    return v === null || v === undefined ? '' : String(v);
+  }
+
+  function edrEscapeHtml(v) {
+    return edrAsText(v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function edrFiniteNumber(v) {
+    var n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function edrFormatNumber(v) {
+    var n = edrFiniteNumber(v);
+    if (n === null) return '';
+    if (Math.abs(n) >= 1000 || (Math.abs(n) > 0 && Math.abs(n) < 0.01)) {
+      return n.toExponential(3);
+    }
+    return Number(n.toPrecision(5)).toString();
+  }
+
+  function edrSeriesName(row) {
+    var bits = [];
+    if (edrAsText(row.parameter) !== '') bits.push(edrAsText(row.parameter));
+    if (edrAsText(row.z) !== '') bits.push('z=' + edrAsText(row.z));
+    if (bits.length === 0) bits.push('value');
+    if (edrAsText(row.unit) !== '') bits[bits.length - 1] += ' (' + edrAsText(row.unit) + ')';
+    return bits.join(' | ');
+  }
+
+  function edrParseX(value, index) {
+    var text = edrAsText(value);
+    var parsed = Date.parse(text);
+    if (text !== '' && Number.isFinite(parsed)) {
+      return {value: parsed, isDate: true, label: text};
+    }
+    var num = Number(text);
+    if (Number.isFinite(num)) {
+      return {value: num, isDate: false, label: text};
+    }
+    return {value: index, isDate: false, label: text || String(index + 1)};
+  }
+
+  function edrFormatX(value, isDate) {
+    if (isDate) {
+      var d = new Date(value);
+      if (!Number.isFinite(d.getTime())) return '';
+      var iso = d.toISOString();
+      return iso.slice(0, 10) + (iso.slice(11, 16) === '00:00' ? '' : ' ' + iso.slice(11, 16));
+    }
+    return edrFormatNumber(value);
+  }
+
+  function edrTicks(min, max, n) {
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return [];
+    if (max <= min) max = min + 1;
+    var out = [];
+    for (var i = 0; i < n; i++) {
+      out.push(min + (max - min) * i / Math.max(1, n - 1));
+    }
+    return out;
+  }
+
+  function edrReadChartSpec(holder) {
+    try {
+      return JSON.parse(decodeURIComponent(holder.getAttribute('data-edr-chart') || ''));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function edrPopupChartHtml(spec) {
+    var width = Math.max(360, Number(spec.width) || 560);
+    var height = Math.max(240, Number(spec.height) || 300);
+    var encoded = encodeURIComponent(JSON.stringify(spec));
+    return '<div class=\"edr-popup-chart\" data-edr-chart=\"' +
+      edrEscapeHtml(encoded) +
+      '\" style=\"width:' + width + 'px;max-width:100%;height:' + height + 'px\"></div>';
+  }
+
+  function edrRenderPopupCharts(root) {
+    if (!root || !root.querySelectorAll) return;
+    var holders = root.querySelectorAll('.edr-popup-chart');
+    Array.prototype.forEach.call(holders, function(holder) {
+      if (holder._edrRendered) return;
+      var spec = edrReadChartSpec(holder);
+      holder._edrRendered = true;
+      edrRenderPopupChart(holder, spec);
+    });
+  }
+
+  function edrRenderPopupChart(holder, spec) {
+    spec = spec || {};
+    var rows = spec.rows || [];
+    var colors = ['#2c7fb8', '#d95f02', '#1b9e77', '#7570b3', '#e7298a', '#66a61e'];
+    var points = [];
+    rows.forEach(function(row, i) {
+      var y = edrFiniteNumber(row.value);
+      if (y === null) return;
+      var x = edrParseX(row.x || row.datetime, i);
+      points.push({
+        x: x.value,
+        xLabel: x.label,
+        isDate: x.isDate,
+        y: y,
+        series: edrSeriesName(row),
+        row: row
+      });
+    });
+    if (points.length === 0) {
+      holder.innerHTML = '<div style=\"padding:12px;color:#666\">No numeric values to plot.</div>';
+      return;
+    }
+
+    var useDate = points.every(function(p) { return p.isDate; });
+    var series = [];
+    points.forEach(function(p) {
+      if (series.indexOf(p.series) < 0) series.push(p.series);
+    });
+    var colorForSeries = {};
+    series.forEach(function(name, i) {
+      colorForSeries[name] = colors[i % colors.length];
+    });
+
+    var width = Math.max(360, Number(spec.width) || holder.clientWidth || 560);
+    var height = Math.max(240, Number(spec.height) || 300);
+    var margin = {top: edrAsText(spec.title) === '' ? 34 : 50, right: 22, bottom: 44, left: 58};
+    var innerW = Math.max(1, width - margin.left - margin.right);
+    var innerH = Math.max(1, height - margin.top - margin.bottom);
+    var minX = Math.min.apply(null, points.map(function(p) { return p.x; }));
+    var maxX = Math.max.apply(null, points.map(function(p) { return p.x; }));
+    var minY = Math.min.apply(null, points.map(function(p) { return p.y; }));
+    var maxY = Math.max.apply(null, points.map(function(p) { return p.y; }));
+    if (maxX <= minX) maxX = minX + 1;
+    if (maxY <= minY) {
+      var pad = Math.abs(minY) || 1;
+      minY -= pad * 0.5;
+      maxY += pad * 0.5;
+    }
+
+    function sx(x) { return margin.left + (x - minX) / (maxX - minX) * innerW; }
+    function sy(y) { return margin.top + (maxY - y) / (maxY - minY) * innerH; }
+
+    var xTicks = edrTicks(minX, maxX, 5);
+    var yTicks = edrTicks(minY, maxY, 5);
+    var grid = '';
+    yTicks.forEach(function(t) {
+      var y = sy(t);
+      grid += '<line x1=\"' + margin.left + '\" y1=\"' + y.toFixed(1) +
+        '\" x2=\"' + (width - margin.right) + '\" y2=\"' + y.toFixed(1) +
+        '\" stroke=\"#e5e7eb\" />';
+      grid += '<text x=\"' + (margin.left - 8) + '\" y=\"' + (y + 3).toFixed(1) +
+        '\" text-anchor=\"end\" font-size=\"10\" fill=\"#4b5563\">' +
+        edrEscapeHtml(edrFormatNumber(t)) + '</text>';
+    });
+    xTicks.forEach(function(t) {
+      var x = sx(t);
+      grid += '<line x1=\"' + x.toFixed(1) + '\" y1=\"' + margin.top +
+        '\" x2=\"' + x.toFixed(1) + '\" y2=\"' + (height - margin.bottom) +
+        '\" stroke=\"#f0f2f5\" />';
+      grid += '<text x=\"' + x.toFixed(1) + '\" y=\"' + (height - 16) +
+        '\" text-anchor=\"middle\" font-size=\"10\" fill=\"#4b5563\">' +
+        edrEscapeHtml(edrFormatX(t, useDate)) + '</text>';
+    });
+
+    var screenPoints = [];
+    var paths = '';
+    series.forEach(function(name) {
+      var pts = points.filter(function(p) { return p.series === name; })
+        .sort(function(a, b) { return a.x - b.x; });
+      var path = pts.map(function(p, i) {
+        p.sx = sx(p.x);
+        p.sy = sy(p.y);
+        p.color = colorForSeries[name];
+        screenPoints.push(p);
+        return (i === 0 ? 'M' : 'L') + p.sx.toFixed(1) + ',' + p.sy.toFixed(1);
+      }).join(' ');
+      paths += '<path d=\"' + path + '\" fill=\"none\" stroke=\"' +
+        colorForSeries[name] + '\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\" />';
+      pts.forEach(function(p) {
+        paths += '<circle cx=\"' + p.sx.toFixed(1) + '\" cy=\"' + p.sy.toFixed(1) +
+          '\" r=\"2.7\" fill=\"white\" stroke=\"' + colorForSeries[name] + '\" stroke-width=\"1.5\" />';
+      });
+    });
+
+    var legend = '';
+    series.slice(0, 4).forEach(function(name, i) {
+      var lx = margin.left + i * 120;
+      var ly = edrAsText(spec.title) === '' ? 18 : 34;
+      legend += '<circle cx=\"' + lx + '\" cy=\"' + ly + '\" r=\"4\" fill=\"' + colorForSeries[name] + '\" />' +
+        '<text x=\"' + (lx + 8) + '\" y=\"' + (ly + 3) + '\" font-size=\"11\" fill=\"#374151\">' +
+        edrEscapeHtml(name.length > 18 ? name.slice(0, 17) + '...' : name) + '</text>';
+    });
+
+    var title = edrAsText(spec.title) === '' ? '' :
+      '<text x=\"' + margin.left + '\" y=\"18\" font-size=\"13\" font-weight=\"600\" fill=\"#111827\">' +
+      edrEscapeHtml(spec.title) + '</text>';
+
+    holder.style.position = 'relative';
+    holder.style.height = height + 'px';
+    holder.innerHTML =
+      '<svg class=\"edr-popup-chart-svg\" width=\"100%\" height=\"100%\" viewBox=\"0 0 ' + width + ' ' + height + '\" role=\"img\" aria-label=\"time series chart\" style=\"display:block;background:white;border:1px solid #d1d5db;border-radius:6px\">' +
+      '<rect width=\"100%\" height=\"100%\" fill=\"white\" />' +
+      title + legend + grid +
+      '<line x1=\"' + margin.left + '\" y1=\"' + (height - margin.bottom) + '\" x2=\"' + (width - margin.right) + '\" y2=\"' + (height - margin.bottom) + '\" stroke=\"#9ca3af\" />' +
+      '<line x1=\"' + margin.left + '\" y1=\"' + margin.top + '\" x2=\"' + margin.left + '\" y2=\"' + (height - margin.bottom) + '\" stroke=\"#9ca3af\" />' +
+      paths +
+      '<line class=\"edr-hover-line\" x1=\"0\" x2=\"0\" y1=\"' + margin.top + '\" y2=\"' + (height - margin.bottom) + '\" stroke=\"#111827\" stroke-dasharray=\"3 3\" opacity=\"0\" />' +
+      '<circle class=\"edr-hover-dot\" cx=\"0\" cy=\"0\" r=\"4\" fill=\"#111827\" opacity=\"0\" />' +
+      '<rect class=\"edr-hover-overlay\" x=\"' + margin.left + '\" y=\"' + margin.top + '\" width=\"' + innerW + '\" height=\"' + innerH + '\" fill=\"transparent\" style=\"cursor:crosshair\" />' +
+      '</svg>' +
+      '<div class=\"edr-chart-tooltip\" style=\"display:none;position:absolute;z-index:5;pointer-events:none;background:rgba(17,24,39,0.94);color:white;border-radius:4px;padding:6px 8px;font:12px system-ui,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.25)\"></div>';
+
+    var svg = holder.querySelector('svg');
+    var overlay = holder.querySelector('.edr-hover-overlay');
+    var line = holder.querySelector('.edr-hover-line');
+    var dot = holder.querySelector('.edr-hover-dot');
+    var tip = holder.querySelector('.edr-chart-tooltip');
+    if (!svg || !overlay || !screenPoints.length) return;
+
+    overlay.addEventListener('mousemove', function(evt) {
+      var box = svg.getBoundingClientRect();
+      var mx = (evt.clientX - box.left) / Math.max(1, box.width) * width;
+      var my = (evt.clientY - box.top) / Math.max(1, box.height) * height;
+      var best = null;
+      var bestD = Infinity;
+      screenPoints.forEach(function(p) {
+        var dx = p.sx - mx;
+        var dy = p.sy - my;
+        var d = dx * dx + dy * dy;
+        if (d < bestD) {
+          bestD = d;
+          best = p;
+        }
+      });
+      if (!best) return;
+      line.setAttribute('x1', best.sx);
+      line.setAttribute('x2', best.sx);
+      line.setAttribute('opacity', '0.55');
+      dot.setAttribute('cx', best.sx);
+      dot.setAttribute('cy', best.sy);
+      dot.setAttribute('fill', best.color);
+      dot.setAttribute('opacity', '1');
+      tip.style.display = 'block';
+      tip.innerHTML = '<strong>' + edrEscapeHtml(best.series) + '</strong><br>' +
+        edrEscapeHtml(best.xLabel) + '<br>value: ' + edrEscapeHtml(edrFormatNumber(best.y));
+      var left = best.sx / width * box.width + 12;
+      var top = best.sy / height * box.height - 12;
+      tip.style.left = Math.min(Math.max(4, left), Math.max(4, box.width - 180)) + 'px';
+      tip.style.top = Math.max(4, top) + 'px';
+    });
+    overlay.addEventListener('mouseleave', function() {
+      line.setAttribute('opacity', '0');
+      dot.setAttribute('opacity', '0');
+      tip.style.display = 'none';
+    });
+  }
+"
+}
+
+coverage_map_js <- function() {
+  paste0(
+    "
 function(el, x, payload) {
   var map = this;
   var rows = payload.rows || [];
   var active = payload.initial || {};
   var layer = L.layerGroup().addTo(map);
   var legendControl = null;
+",
+    popup_chart_renderer_js(),
+    "
+
+  map.on('popupopen', function(e) {
+    edrRenderPopupCharts(e.popup.getElement());
+  });
 
   function asText(v) {
     return v === null || v === undefined ? '' : String(v);
@@ -583,6 +883,47 @@ function(el, x, payload) {
       '</svg>';
   }
 
+  function gridTimeSeriesRows(row) {
+    var targetParameter = Object.prototype.hasOwnProperty.call(active, 'parameter') ? active.parameter : row.parameter;
+    var targetZ = Object.prototype.hasOwnProperty.call(active, 'z') ? active.z : row.z;
+    var targetCoverage = row.coverage_id;
+    var out = rows.filter(function(candidate) {
+      if (asText(candidate.x) !== asText(row.x) || asText(candidate.y) !== asText(row.y)) return false;
+      if (asText(candidate.parameter) !== asText(targetParameter)) return false;
+      if (asText(targetZ) !== '' && asText(candidate.z) !== asText(targetZ)) return false;
+      if (asText(targetCoverage) !== '' && asText(candidate.coverage_id) !== asText(targetCoverage)) return false;
+      return true;
+    });
+    out.sort(function(a, b) {
+      var ad = Date.parse(asText(a.datetime));
+      var bd = Date.parse(asText(b.datetime));
+      if (Number.isFinite(ad) && Number.isFinite(bd)) return ad - bd;
+      return asText(a.datetime).localeCompare(asText(b.datetime));
+    });
+    return out;
+  }
+
+  function gridPopupHtml(row) {
+    var tsRows = gridTimeSeriesRows(row);
+    var title = 'x ' + asText(row.x) + ', y ' + asText(row.y);
+    var chartRows = tsRows.map(function(r, i) {
+      return {
+        x: asText(r.datetime) || String(i + 1),
+        value: r.value,
+        parameter: r.parameter,
+        unit: r.unit,
+        coverage_id: r.coverage_id,
+        z: r.z
+      };
+    });
+    return '<div style=\"font-family:system-ui,sans-serif;font-size:12px;max-width:620px\">' +
+      '<div style=\"font-weight:600;margin-bottom:6px\">' + escapeHtml(title) + '</div>' +
+      popupRows(row) +
+      '<div style=\"font-size:11px;color:#4b5563;margin:8px 0 4px\">Time series for this grid cell</div>' +
+      edrPopupChartHtml({title: title, width: 580, height: 320, rows: chartRows}) +
+      '</div>';
+  }
+
   function renderGrid(slice) {
     var numeric = slice.map(function(row) {
       return finiteNumber(row.value);
@@ -598,7 +939,7 @@ function(el, x, payload) {
           fillColor: colorFor(row.value, min, max),
           fillOpacity: payload.opacity == null ? 0.75 : payload.opacity
         }
-      ).bindPopup(popupRows(row)).addTo(layer);
+      ).bindPopup(gridPopupHtml(row), {maxWidth: 680, minWidth: 560}).addTo(layer);
     });
     addLegend(min, max);
   }
@@ -681,6 +1022,7 @@ function(el, x, payload) {
   }
 }
 "
+  )
 }
 
 detect_id_column <- function(df, id_col) {
@@ -809,32 +1151,39 @@ build_feature_popup <- function(df,
                                 plot_height,
                                 plot_dpi,
                                 csv_name) {
-  display_px <- as.integer(plot_width * plot_dpi)
+  display_px <- popup_chart_width_px(plot_width, plot_dpi)
+  display_height_px <- popup_chart_height_px(plot_height, plot_dpi)
   if (is.null(df) || nrow(df) == 0L) {
     return(feature_popup_html(
       attrs = attrs, label = label, mode = "table",
-      plot_width = display_px
+      plot_width = display_px,
+      plot_height = display_height_px
     ))
   }
   if (!is.null(parameter)) {
     df <- df[df$parameter %in% parameter, , drop = FALSE]
   }
-  plot_uri <- NULL
+  chart_payload <- NULL
   csv_uri  <- NULL
   if (popup_mode %in% c("plot", "plot+csv", "all")) {
-    p <- edr_plot(df, parameter = parameter)
-    plot_uri <- plot_to_svg_uri(p, width = plot_width, height = plot_height)
+    chart_payload <- interactive_chart_payload(
+      df,
+      title = label,
+      width = display_px,
+      height = display_height_px
+    )
   }
   if (popup_mode %in% c("csv", "plot+csv", "all")) {
     csv_uri <- csv_data_uri(df)
   }
   feature_popup_html(
-    plot_uri     = plot_uri,
+    chart_payload = chart_payload,
     csv_uri      = csv_uri,
     attrs        = attrs,
     label        = label,
     mode         = popup_mode,
     csv_filename = csv_name,
-    plot_width   = display_px
+    plot_width   = display_px,
+    plot_height  = display_height_px
   )
 }
