@@ -151,6 +151,12 @@ Accept: application/json</code></pre>
 collection has an <code>id</code>, <code>title</code>,
 <code>extent</code>, <code>links</code>, and sometimes a
 <code>data_queries</code> object.</p>
+<p>The same document may also have a top-level
+<code>parameterGroups</code> array. Use <code>parameterGroups</code>
+when you want to translate a water-data concept across collections. For
+example, the <code>Lake/Reservoir Storage</code> group currently maps
+USBR RISE parameter <code>3</code> to USACE storage parameters such as
+<code>Flood Storage</code> and <code>Conservation Storage</code>.</p>
 <p>As of June 4, 2026, examples include:</p>
 <table class="table">
 <colgroup>
@@ -217,6 +223,9 @@ collection has an <code>id</code>, <code>title</code>,
 <li>
 <code>parameter_names</code>: data variables you can request with
 <code>parameter-name</code>.</li>
+<li>
+<code>parameterGroups</code>: cross-collection concept groups, when
+present.</li>
 <li>
 <code>data_queries</code>: supported EDR query types for that
 collection.</li>
@@ -420,12 +429,27 @@ collection may return 404 or 500 for another.</p>
 <td>Corridor width units</td>
 <td><code>width-units=km</code></td>
 </tr>
+<tr class="odd">
+<td><code>{queryable}</code></td>
+<td><code>items</code></td>
+<td>Feature property filter advertised by <code>/queryables</code>
+</td>
+<td><code>provider=SPL</code></td>
+</tr>
 </tbody>
 </table>
 <p>Coordinates are longitude, latitude. A bbox is always:</p>
 <pre class="text"><code>min_lon,min_lat,max_lon,max_lat</code></pre>
 <p>Multiple parameters are comma-separated:</p>
 <pre class="text"><code>parameter-name=ppt,tmx</code></pre>
+<p>Some parameter ids contain spaces. Encode them in a hand-built
+URL:</p>
+<pre class="text"><code>parameter-name=Flood%20Storage</code></pre>
+<p>or let <code>curl</code> encode them:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sS</span> <span class="at">-G</span> <span class="st">'https://api.wwdh.internetofwater.app/collections/usace-edr/locations/157145'</span> <span class="dt">\</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>  <span class="at">--data-urlencode</span> <span class="st">'f=json'</span> <span class="dt">\</span></span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>  <span class="at">--data-urlencode</span> <span class="st">'datetime=2024-01-01/2024-12-31'</span> <span class="dt">\</span></span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>  <span class="at">--data-urlencode</span> <span class="st">'parameter-name=Flood Storage'</span></span></code></pre></div>
 <p>Intervals use a slash:</p>
 <pre class="text"><code><span><span class="va">datetime</span><span class="op">=</span><span class="fl">2024</span><span class="op">-</span><span class="fl">01</span><span class="op">-</span><span class="fl">01</span><span class="op">/</span><span class="fl">2024</span><span class="op">-</span><span class="fl">03</span><span class="op">-</span><span class="fl">31</span></span></code></pre>
 <p>Open intervals may be supported by some providers:</p>
@@ -453,7 +477,7 @@ ids.</p>
 <h2 id="finding-parameters">6. Finding parameters<a class="anchor" aria-label="anchor" href="#finding-parameters"></a>
 </h2>
 <p>Collection metadata is where EDR data variables live.</p>
-<div class="sourceCode" id="cb17"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sS</span> <span class="st">'https://api.wwdh.internetofwater.app/collections/usgs-prism?f=json'</span></span></code></pre></div>
+<div class="sourceCode" id="cb19"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sS</span> <span class="st">'https://api.wwdh.internetofwater.app/collections/usgs-prism?f=json'</span></span></code></pre></div>
 <p>In the response, inspect <code>parameter_names</code>.</p>
 <p>Example <code>usgs-prism</code> parameter ids:</p>
 <table class="table">
@@ -512,41 +536,79 @@ ids.</p>
 </table>
 <p>Example reservoir/stage parameter ids:</p>
 <table class="table">
+<colgroup>
+<col width="25%">
+<col width="25%">
+<col width="25%">
+<col width="25%">
+</colgroup>
 <thead><tr class="header">
 <th>Collection</th>
 <th>Parameter id</th>
 <th>Meaning</th>
+<th>Unit</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>rise-edr</code></td>
 <td><code>3</code></td>
 <td>Daily lake/reservoir storage</td>
+<td>acre-ft</td>
 </tr>
 <tr class="even">
 <td><code>rise-edr</code></td>
 <td><code>1830</code></td>
 <td>Lake/reservoir release - total</td>
+<td>cfs</td>
 </tr>
 <tr class="odd">
 <td><code>usace-edr</code></td>
-<td><code>Stage</code></td>
-<td>Stage</td>
+<td><code>Flood Storage</code></td>
+<td>Flood storage</td>
+<td>acre-ft</td>
 </tr>
 <tr class="even">
 <td><code>usace-edr</code></td>
-<td><code>Outflow</code></td>
-<td>Outflow</td>
+<td><code>Conservation Storage</code></td>
+<td>Conservation storage</td>
+<td>acre-ft</td>
 </tr>
 <tr class="odd">
+<td><code>usace-edr</code></td>
+<td><code>Outflow</code></td>
+<td>Outflow</td>
+<td>cfs</td>
+</tr>
+<tr class="even">
 <td><code>resviz-edr</code></td>
 <td><code>raw</code></td>
 <td>Daily lake/reservoir storage</td>
+<td>provider-defined</td>
 </tr>
 </tbody>
 </table>
 <p>Use the exact <code>parameter_names</code> keys in the URL. Labels
 are for humans; keys are for requests.</p>
+<p>For cross-collection work, use the top-level
+<code>parameterGroups</code> block from <code>/collections?f=json</code>
+to find conceptually equivalent parameters. For example:</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sS</span> <span class="st">'https://api.wwdh.internetofwater.app/collections?f=json'</span> <span class="kw">|</span></span>
+<span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a>  <span class="ex">jq</span> <span class="st">'.parameterGroups[] | select(.name == "Lake/Reservoir Storage") | {name, members}'</span></span></code></pre></div>
+<p>Live response summary on June 4, 2026:</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a>  <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"Lake/Reservoir Storage"</span><span class="fu">,</span></span>
+<span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a>  <span class="dt">"members"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb21-4"><a href="#cb21-4" tabindex="-1"></a>    <span class="dt">"rise-edr"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"1470"</span><span class="ot">,</span> <span class="st">"56"</span><span class="ot">,</span> <span class="st">"51"</span><span class="ot">,</span> <span class="st">"47"</span><span class="ot">,</span> <span class="st">"3"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a>    <span class="dt">"usace-edr"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb21-6"><a href="#cb21-6" tabindex="-1"></a>      <span class="st">"Flood Storage"</span><span class="ot">,</span></span>
+<span id="cb21-7"><a href="#cb21-7" tabindex="-1"></a>      <span class="st">"Conservation Storage"</span><span class="ot">,</span></span>
+<span id="cb21-8"><a href="#cb21-8" tabindex="-1"></a>      <span class="st">"Percent Flood Pool"</span><span class="ot">,</span></span>
+<span id="cb21-9"><a href="#cb21-9" tabindex="-1"></a>      <span class="st">"Percent Conservation Pool"</span></span>
+<span id="cb21-10"><a href="#cb21-10" tabindex="-1"></a>    <span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb21-11"><a href="#cb21-11" tabindex="-1"></a>    <span class="dt">"resviz-edr"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"avg"</span><span class="ot">,</span> <span class="st">"p10"</span><span class="ot">,</span> <span class="st">"p90"</span><span class="ot">,</span> <span class="st">"raw"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb21-12"><a href="#cb21-12" tabindex="-1"></a>    <span class="dt">"teacup-edr"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"avg"</span><span class="ot">,</span> <span class="st">"p10"</span><span class="ot">,</span> <span class="st">"p90"</span><span class="ot">,</span> <span class="st">"raw"</span><span class="ot">]</span></span>
+<span id="cb21-13"><a href="#cb21-13" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb21-14"><a href="#cb21-14" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="finding-stations-or-locations">7. Finding stations or locations<a class="anchor" aria-label="anchor" href="#finding-stations-or-locations"></a>
@@ -559,28 +621,28 @@ Accept: application/geo+json, application/json</code></pre>
 <p>Full URL:</p>
 <pre class="text"><code>https://api.wwdh.internetofwater.app/collections/snotel-edr/locations?f=json&amp;bbox=-107,37,-105,40</code></pre>
 <p>Equivalent <code>curl</code>:</p>
-<div class="sourceCode" id="cb20"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sS</span> <span class="dt">\</span></span>
-<span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a>  <span class="st">'https://api.wwdh.internetofwater.app/collections/snotel-edr/locations?f=json&amp;bbox=-107,37,-105,40'</span></span></code></pre></div>
+<div class="sourceCode" id="cb24"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb24-1"><a href="#cb24-1" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sS</span> <span class="dt">\</span></span>
+<span id="cb24-2"><a href="#cb24-2" tabindex="-1"></a>  <span class="st">'https://api.wwdh.internetofwater.app/collections/snotel-edr/locations?f=json&amp;bbox=-107,37,-105,40'</span></span></code></pre></div>
 <p>Expected response shape:</p>
-<div class="sourceCode" id="cb21"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"FeatureCollection"</span><span class="fu">,</span></span>
-<span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a>  <span class="dt">"features"</span><span class="fu">:</span> <span class="ot">[</span></span>
-<span id="cb21-4"><a href="#cb21-4" tabindex="-1"></a>    <span class="fu">{</span></span>
-<span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"Feature"</span><span class="fu">,</span></span>
-<span id="cb21-6"><a href="#cb21-6" tabindex="-1"></a>      <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"303"</span><span class="fu">,</span></span>
-<span id="cb21-7"><a href="#cb21-7" tabindex="-1"></a>      <span class="dt">"geometry"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb21-8"><a href="#cb21-8" tabindex="-1"></a>        <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"Point"</span><span class="fu">,</span></span>
-<span id="cb21-9"><a href="#cb21-9" tabindex="-1"></a>        <span class="dt">"coordinates"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">-105.0</span><span class="ot">,</span> <span class="fl">37.3</span><span class="ot">]</span></span>
-<span id="cb21-10"><a href="#cb21-10" tabindex="-1"></a>      <span class="fu">},</span></span>
-<span id="cb21-11"><a href="#cb21-11" tabindex="-1"></a>      <span class="dt">"properties"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb21-12"><a href="#cb21-12" tabindex="-1"></a>        <span class="dt">"stationTriplet"</span><span class="fu">:</span> <span class="st">"303:CO:SNTL"</span><span class="fu">,</span></span>
-<span id="cb21-13"><a href="#cb21-13" tabindex="-1"></a>        <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"Apishapa"</span><span class="fu">,</span></span>
-<span id="cb21-14"><a href="#cb21-14" tabindex="-1"></a>        <span class="dt">"stateCode"</span><span class="fu">:</span> <span class="st">"CO"</span><span class="fu">,</span></span>
-<span id="cb21-15"><a href="#cb21-15" tabindex="-1"></a>        <span class="dt">"networkCode"</span><span class="fu">:</span> <span class="st">"SNTL"</span></span>
-<span id="cb21-16"><a href="#cb21-16" tabindex="-1"></a>      <span class="fu">}</span></span>
-<span id="cb21-17"><a href="#cb21-17" tabindex="-1"></a>    <span class="fu">}</span></span>
-<span id="cb21-18"><a href="#cb21-18" tabindex="-1"></a>  <span class="ot">]</span></span>
-<span id="cb21-19"><a href="#cb21-19" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb25"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb25-1"><a href="#cb25-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb25-2"><a href="#cb25-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"FeatureCollection"</span><span class="fu">,</span></span>
+<span id="cb25-3"><a href="#cb25-3" tabindex="-1"></a>  <span class="dt">"features"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb25-4"><a href="#cb25-4" tabindex="-1"></a>    <span class="fu">{</span></span>
+<span id="cb25-5"><a href="#cb25-5" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"Feature"</span><span class="fu">,</span></span>
+<span id="cb25-6"><a href="#cb25-6" tabindex="-1"></a>      <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"303"</span><span class="fu">,</span></span>
+<span id="cb25-7"><a href="#cb25-7" tabindex="-1"></a>      <span class="dt">"geometry"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb25-8"><a href="#cb25-8" tabindex="-1"></a>        <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"Point"</span><span class="fu">,</span></span>
+<span id="cb25-9"><a href="#cb25-9" tabindex="-1"></a>        <span class="dt">"coordinates"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">-105.0</span><span class="ot">,</span> <span class="fl">37.3</span><span class="ot">]</span></span>
+<span id="cb25-10"><a href="#cb25-10" tabindex="-1"></a>      <span class="fu">},</span></span>
+<span id="cb25-11"><a href="#cb25-11" tabindex="-1"></a>      <span class="dt">"properties"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb25-12"><a href="#cb25-12" tabindex="-1"></a>        <span class="dt">"stationTriplet"</span><span class="fu">:</span> <span class="st">"303:CO:SNTL"</span><span class="fu">,</span></span>
+<span id="cb25-13"><a href="#cb25-13" tabindex="-1"></a>        <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"Apishapa"</span><span class="fu">,</span></span>
+<span id="cb25-14"><a href="#cb25-14" tabindex="-1"></a>        <span class="dt">"stateCode"</span><span class="fu">:</span> <span class="st">"CO"</span><span class="fu">,</span></span>
+<span id="cb25-15"><a href="#cb25-15" tabindex="-1"></a>        <span class="dt">"networkCode"</span><span class="fu">:</span> <span class="st">"SNTL"</span></span>
+<span id="cb25-16"><a href="#cb25-16" tabindex="-1"></a>      <span class="fu">}</span></span>
+<span id="cb25-17"><a href="#cb25-17" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb25-18"><a href="#cb25-18" tabindex="-1"></a>  <span class="ot">]</span></span>
+<span id="cb25-19"><a href="#cb25-19" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <p>The exact fields vary by provider. For RISE reservoirs you may see
 properties such as <code>_id</code>, <code>locationName</code>,
 <code>timezone</code>, <code>elevation</code>, and
@@ -601,27 +663,27 @@ Accept: application/prs.coverage+json, application/json</code></pre>
 <p>Full URL:</p>
 <pre class="text"><code>https://api.wwdh.internetofwater.app/collections/rise-edr/locations/3514?f=json&amp;datetime=2023-01-01/2023-01-31&amp;parameter-name=3</code></pre>
 <p>Equivalent <code>curl</code>:</p>
-<div class="sourceCode" id="cb24"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb24-1"><a href="#cb24-1" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sS</span> <span class="dt">\</span></span>
-<span id="cb24-2"><a href="#cb24-2" tabindex="-1"></a>  <span class="st">'https://api.wwdh.internetofwater.app/collections/rise-edr/locations/3514?f=json&amp;datetime=2023-01-01/2023-01-31&amp;parameter-name=3'</span></span></code></pre></div>
+<div class="sourceCode" id="cb28"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb28-1"><a href="#cb28-1" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sS</span> <span class="dt">\</span></span>
+<span id="cb28-2"><a href="#cb28-2" tabindex="-1"></a>  <span class="st">'https://api.wwdh.internetofwater.app/collections/rise-edr/locations/3514?f=json&amp;datetime=2023-01-01/2023-01-31&amp;parameter-name=3'</span></span></code></pre></div>
 <p>Expected response shape:</p>
-<div class="sourceCode" id="cb25"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb25-1"><a href="#cb25-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb25-2"><a href="#cb25-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"Coverage"</span><span class="fu">,</span></span>
-<span id="cb25-3"><a href="#cb25-3" tabindex="-1"></a>  <span class="dt">"domain"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb25-4"><a href="#cb25-4" tabindex="-1"></a>    <span class="dt">"domainType"</span><span class="fu">:</span> <span class="st">"PointSeries"</span><span class="fu">,</span></span>
-<span id="cb25-5"><a href="#cb25-5" tabindex="-1"></a>    <span class="dt">"axes"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb25-6"><a href="#cb25-6" tabindex="-1"></a>      <span class="dt">"x"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">-114.7</span><span class="ot">]</span><span class="fu">},</span></span>
-<span id="cb25-7"><a href="#cb25-7" tabindex="-1"></a>      <span class="dt">"y"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">36.0</span><span class="ot">]</span><span class="fu">},</span></span>
-<span id="cb25-8"><a href="#cb25-8" tabindex="-1"></a>      <span class="dt">"t"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"2023-01-01T07:00:00Z"</span><span class="ot">]</span><span class="fu">}</span></span>
-<span id="cb25-9"><a href="#cb25-9" tabindex="-1"></a>    <span class="fu">}</span></span>
-<span id="cb25-10"><a href="#cb25-10" tabindex="-1"></a>  <span class="fu">},</span></span>
-<span id="cb25-11"><a href="#cb25-11" tabindex="-1"></a>  <span class="dt">"ranges"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb25-12"><a href="#cb25-12" tabindex="-1"></a>    <span class="dt">"3"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb25-13"><a href="#cb25-13" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"NdArray"</span><span class="fu">,</span></span>
-<span id="cb25-14"><a href="#cb25-14" tabindex="-1"></a>      <span class="dt">"axisNames"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"t"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb25-15"><a href="#cb25-15" tabindex="-1"></a>      <span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="dv">25000000</span><span class="ot">]</span></span>
-<span id="cb25-16"><a href="#cb25-16" tabindex="-1"></a>    <span class="fu">}</span></span>
-<span id="cb25-17"><a href="#cb25-17" tabindex="-1"></a>  <span class="fu">}</span></span>
-<span id="cb25-18"><a href="#cb25-18" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb29"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb29-1"><a href="#cb29-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb29-2"><a href="#cb29-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"Coverage"</span><span class="fu">,</span></span>
+<span id="cb29-3"><a href="#cb29-3" tabindex="-1"></a>  <span class="dt">"domain"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb29-4"><a href="#cb29-4" tabindex="-1"></a>    <span class="dt">"domainType"</span><span class="fu">:</span> <span class="st">"PointSeries"</span><span class="fu">,</span></span>
+<span id="cb29-5"><a href="#cb29-5" tabindex="-1"></a>    <span class="dt">"axes"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb29-6"><a href="#cb29-6" tabindex="-1"></a>      <span class="dt">"x"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">-114.7</span><span class="ot">]</span><span class="fu">},</span></span>
+<span id="cb29-7"><a href="#cb29-7" tabindex="-1"></a>      <span class="dt">"y"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">36.0</span><span class="ot">]</span><span class="fu">},</span></span>
+<span id="cb29-8"><a href="#cb29-8" tabindex="-1"></a>      <span class="dt">"t"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"2023-01-01T07:00:00Z"</span><span class="ot">]</span><span class="fu">}</span></span>
+<span id="cb29-9"><a href="#cb29-9" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb29-10"><a href="#cb29-10" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb29-11"><a href="#cb29-11" tabindex="-1"></a>  <span class="dt">"ranges"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb29-12"><a href="#cb29-12" tabindex="-1"></a>    <span class="dt">"3"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb29-13"><a href="#cb29-13" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"NdArray"</span><span class="fu">,</span></span>
+<span id="cb29-14"><a href="#cb29-14" tabindex="-1"></a>      <span class="dt">"axisNames"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"t"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb29-15"><a href="#cb29-15" tabindex="-1"></a>      <span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="dv">25000000</span><span class="ot">]</span></span>
+<span id="cb29-16"><a href="#cb29-16" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb29-17"><a href="#cb29-17" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb29-18"><a href="#cb29-18" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <p>CoverageJSON is compact and array-oriented. To make a table, pair the
 axis values in <code>domain.axes</code> with the values in each
 <code>ranges</code> parameter.</p>
@@ -639,37 +701,37 @@ Accept: application/prs.coverage+json, application/json</code></pre>
 <p>Full URL:</p>
 <pre class="text"><code>https://api.wwdh.internetofwater.app/collections/snotel-edr/cube?f=json&amp;bbox=-106.2,39.6,-105.8,40.0&amp;datetime=2024-02-01/2024-04-30&amp;parameter-name=WTEQ</code></pre>
 <p>PRISM grid example with two parameters:</p>
-<div class="sourceCode" id="cb28"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb28-1"><a href="#cb28-1" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sS</span> <span class="dt">\</span></span>
-<span id="cb28-2"><a href="#cb28-2" tabindex="-1"></a>  <span class="st">'https://api.wwdh.internetofwater.app/collections/usgs-prism/cube?f=json&amp;bbox=-112.6,36.7,-112.2,37.1&amp;datetime=2023-01-01/2023-02-28&amp;parameter-name=ppt,tmx'</span></span></code></pre></div>
+<div class="sourceCode" id="cb32"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb32-1"><a href="#cb32-1" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sS</span> <span class="dt">\</span></span>
+<span id="cb32-2"><a href="#cb32-2" tabindex="-1"></a>  <span class="st">'https://api.wwdh.internetofwater.app/collections/usgs-prism/cube?f=json&amp;bbox=-112.6,36.7,-112.2,37.1&amp;datetime=2023-01-01/2023-02-28&amp;parameter-name=ppt,tmx'</span></span></code></pre></div>
 <p>Expected CoverageJSON shape:</p>
-<div class="sourceCode" id="cb29"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb29-1"><a href="#cb29-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb29-2"><a href="#cb29-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"CoverageCollection"</span><span class="fu">,</span></span>
-<span id="cb29-3"><a href="#cb29-3" tabindex="-1"></a>  <span class="dt">"parameters"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb29-4"><a href="#cb29-4" tabindex="-1"></a>    <span class="dt">"ppt"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb29-5"><a href="#cb29-5" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"Parameter"</span><span class="fu">,</span></span>
-<span id="cb29-6"><a href="#cb29-6" tabindex="-1"></a>      <span class="dt">"description"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"en"</span><span class="fu">:</span> <span class="st">"Mean monthly precipitation"</span><span class="fu">}</span></span>
-<span id="cb29-7"><a href="#cb29-7" tabindex="-1"></a>    <span class="fu">}</span></span>
-<span id="cb29-8"><a href="#cb29-8" tabindex="-1"></a>  <span class="fu">},</span></span>
-<span id="cb29-9"><a href="#cb29-9" tabindex="-1"></a>  <span class="dt">"coverages"</span><span class="fu">:</span> <span class="ot">[</span></span>
-<span id="cb29-10"><a href="#cb29-10" tabindex="-1"></a>    <span class="fu">{</span></span>
-<span id="cb29-11"><a href="#cb29-11" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"Coverage"</span><span class="fu">,</span></span>
-<span id="cb29-12"><a href="#cb29-12" tabindex="-1"></a>      <span class="dt">"domain"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb29-13"><a href="#cb29-13" tabindex="-1"></a>        <span class="dt">"domainType"</span><span class="fu">:</span> <span class="st">"Grid"</span><span class="fu">,</span></span>
-<span id="cb29-14"><a href="#cb29-14" tabindex="-1"></a>        <span class="dt">"axes"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb29-15"><a href="#cb29-15" tabindex="-1"></a>          <span class="dt">"x"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">-112.56</span><span class="ot">,</span> <span class="fl">-112.52</span><span class="ot">]</span><span class="fu">},</span></span>
-<span id="cb29-16"><a href="#cb29-16" tabindex="-1"></a>          <span class="dt">"y"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">37.06</span><span class="ot">,</span> <span class="fl">37.02</span><span class="ot">]</span><span class="fu">},</span></span>
-<span id="cb29-17"><a href="#cb29-17" tabindex="-1"></a>          <span class="dt">"t"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"2023-01-01"</span><span class="ot">]</span><span class="fu">}</span></span>
-<span id="cb29-18"><a href="#cb29-18" tabindex="-1"></a>        <span class="fu">}</span></span>
-<span id="cb29-19"><a href="#cb29-19" tabindex="-1"></a>      <span class="fu">},</span></span>
-<span id="cb29-20"><a href="#cb29-20" tabindex="-1"></a>      <span class="dt">"ranges"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb29-21"><a href="#cb29-21" tabindex="-1"></a>        <span class="dt">"ppt"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb29-22"><a href="#cb29-22" tabindex="-1"></a>          <span class="dt">"axisNames"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"t"</span><span class="ot">,</span> <span class="st">"y"</span><span class="ot">,</span> <span class="st">"x"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb29-23"><a href="#cb29-23" tabindex="-1"></a>          <span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">116.0</span><span class="ot">,</span> <span class="fl">120.0</span><span class="ot">]</span></span>
-<span id="cb29-24"><a href="#cb29-24" tabindex="-1"></a>        <span class="fu">}</span></span>
-<span id="cb29-25"><a href="#cb29-25" tabindex="-1"></a>      <span class="fu">}</span></span>
-<span id="cb29-26"><a href="#cb29-26" tabindex="-1"></a>    <span class="fu">}</span></span>
-<span id="cb29-27"><a href="#cb29-27" tabindex="-1"></a>  <span class="ot">]</span></span>
-<span id="cb29-28"><a href="#cb29-28" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb33"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb33-1"><a href="#cb33-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb33-2"><a href="#cb33-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"CoverageCollection"</span><span class="fu">,</span></span>
+<span id="cb33-3"><a href="#cb33-3" tabindex="-1"></a>  <span class="dt">"parameters"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb33-4"><a href="#cb33-4" tabindex="-1"></a>    <span class="dt">"ppt"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb33-5"><a href="#cb33-5" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"Parameter"</span><span class="fu">,</span></span>
+<span id="cb33-6"><a href="#cb33-6" tabindex="-1"></a>      <span class="dt">"description"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"en"</span><span class="fu">:</span> <span class="st">"Mean monthly precipitation"</span><span class="fu">}</span></span>
+<span id="cb33-7"><a href="#cb33-7" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb33-8"><a href="#cb33-8" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb33-9"><a href="#cb33-9" tabindex="-1"></a>  <span class="dt">"coverages"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb33-10"><a href="#cb33-10" tabindex="-1"></a>    <span class="fu">{</span></span>
+<span id="cb33-11"><a href="#cb33-11" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"Coverage"</span><span class="fu">,</span></span>
+<span id="cb33-12"><a href="#cb33-12" tabindex="-1"></a>      <span class="dt">"domain"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb33-13"><a href="#cb33-13" tabindex="-1"></a>        <span class="dt">"domainType"</span><span class="fu">:</span> <span class="st">"Grid"</span><span class="fu">,</span></span>
+<span id="cb33-14"><a href="#cb33-14" tabindex="-1"></a>        <span class="dt">"axes"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb33-15"><a href="#cb33-15" tabindex="-1"></a>          <span class="dt">"x"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">-112.56</span><span class="ot">,</span> <span class="fl">-112.52</span><span class="ot">]</span><span class="fu">},</span></span>
+<span id="cb33-16"><a href="#cb33-16" tabindex="-1"></a>          <span class="dt">"y"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">37.06</span><span class="ot">,</span> <span class="fl">37.02</span><span class="ot">]</span><span class="fu">},</span></span>
+<span id="cb33-17"><a href="#cb33-17" tabindex="-1"></a>          <span class="dt">"t"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"2023-01-01"</span><span class="ot">]</span><span class="fu">}</span></span>
+<span id="cb33-18"><a href="#cb33-18" tabindex="-1"></a>        <span class="fu">}</span></span>
+<span id="cb33-19"><a href="#cb33-19" tabindex="-1"></a>      <span class="fu">},</span></span>
+<span id="cb33-20"><a href="#cb33-20" tabindex="-1"></a>      <span class="dt">"ranges"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb33-21"><a href="#cb33-21" tabindex="-1"></a>        <span class="dt">"ppt"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb33-22"><a href="#cb33-22" tabindex="-1"></a>          <span class="dt">"axisNames"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"t"</span><span class="ot">,</span> <span class="st">"y"</span><span class="ot">,</span> <span class="st">"x"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb33-23"><a href="#cb33-23" tabindex="-1"></a>          <span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">116.0</span><span class="ot">,</span> <span class="fl">120.0</span><span class="ot">]</span></span>
+<span id="cb33-24"><a href="#cb33-24" tabindex="-1"></a>        <span class="fu">}</span></span>
+<span id="cb33-25"><a href="#cb33-25" tabindex="-1"></a>      <span class="fu">}</span></span>
+<span id="cb33-26"><a href="#cb33-26" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb33-27"><a href="#cb33-27" tabindex="-1"></a>  <span class="ot">]</span></span>
+<span id="cb33-28"><a href="#cb33-28" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <p>Station collections may also return <code>CoverageCollection</code>,
 but each coverage is often a <code>PointSeries</code> rather than a
 <code>Grid</code>.</p>
@@ -685,26 +747,26 @@ Accept: application/prs.coverage+json, application/json</code></pre>
 <p>Full URL:</p>
 <pre class="text"><code>https://api.wwdh.internetofwater.app/collections/usgs-prism/position?f=json&amp;coords=POINT(-112.4%2036.9)&amp;datetime=2023-01-01/2023-02-28&amp;parameter-name=ppt</code></pre>
 <p>Equivalent <code>curl</code>:</p>
-<div class="sourceCode" id="cb32"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb32-1"><a href="#cb32-1" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sS</span> <span class="dt">\</span></span>
-<span id="cb32-2"><a href="#cb32-2" tabindex="-1"></a>  <span class="st">'https://api.wwdh.internetofwater.app/collections/usgs-prism/position?f=json&amp;coords=POINT(-112.4%2036.9)&amp;datetime=2023-01-01/2023-02-28&amp;parameter-name=ppt'</span></span></code></pre></div>
+<div class="sourceCode" id="cb36"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb36-1"><a href="#cb36-1" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sS</span> <span class="dt">\</span></span>
+<span id="cb36-2"><a href="#cb36-2" tabindex="-1"></a>  <span class="st">'https://api.wwdh.internetofwater.app/collections/usgs-prism/position?f=json&amp;coords=POINT(-112.4%2036.9)&amp;datetime=2023-01-01/2023-02-28&amp;parameter-name=ppt'</span></span></code></pre></div>
 <p>Expected response:</p>
-<div class="sourceCode" id="cb33"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb33-1"><a href="#cb33-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb33-2"><a href="#cb33-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"Coverage"</span><span class="fu">,</span></span>
-<span id="cb33-3"><a href="#cb33-3" tabindex="-1"></a>  <span class="dt">"domain"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb33-4"><a href="#cb33-4" tabindex="-1"></a>    <span class="dt">"domainType"</span><span class="fu">:</span> <span class="st">"PointSeries"</span><span class="fu">,</span></span>
-<span id="cb33-5"><a href="#cb33-5" tabindex="-1"></a>    <span class="dt">"axes"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb33-6"><a href="#cb33-6" tabindex="-1"></a>      <span class="dt">"x"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">-112.4</span><span class="ot">]</span><span class="fu">},</span></span>
-<span id="cb33-7"><a href="#cb33-7" tabindex="-1"></a>      <span class="dt">"y"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">36.9</span><span class="ot">]</span><span class="fu">},</span></span>
-<span id="cb33-8"><a href="#cb33-8" tabindex="-1"></a>      <span class="dt">"t"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"2023-01-01"</span><span class="ot">,</span> <span class="st">"2023-02-01"</span><span class="ot">]</span><span class="fu">}</span></span>
-<span id="cb33-9"><a href="#cb33-9" tabindex="-1"></a>    <span class="fu">}</span></span>
-<span id="cb33-10"><a href="#cb33-10" tabindex="-1"></a>  <span class="fu">},</span></span>
-<span id="cb33-11"><a href="#cb33-11" tabindex="-1"></a>  <span class="dt">"ranges"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb33-12"><a href="#cb33-12" tabindex="-1"></a>    <span class="dt">"ppt"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb33-13"><a href="#cb33-13" tabindex="-1"></a>      <span class="dt">"axisNames"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"t"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb33-14"><a href="#cb33-14" tabindex="-1"></a>      <span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">116.0</span><span class="ot">,</span> <span class="fl">42.0</span><span class="ot">]</span></span>
-<span id="cb33-15"><a href="#cb33-15" tabindex="-1"></a>    <span class="fu">}</span></span>
-<span id="cb33-16"><a href="#cb33-16" tabindex="-1"></a>  <span class="fu">}</span></span>
-<span id="cb33-17"><a href="#cb33-17" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb37"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb37-1"><a href="#cb37-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb37-2"><a href="#cb37-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"Coverage"</span><span class="fu">,</span></span>
+<span id="cb37-3"><a href="#cb37-3" tabindex="-1"></a>  <span class="dt">"domain"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb37-4"><a href="#cb37-4" tabindex="-1"></a>    <span class="dt">"domainType"</span><span class="fu">:</span> <span class="st">"PointSeries"</span><span class="fu">,</span></span>
+<span id="cb37-5"><a href="#cb37-5" tabindex="-1"></a>    <span class="dt">"axes"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb37-6"><a href="#cb37-6" tabindex="-1"></a>      <span class="dt">"x"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">-112.4</span><span class="ot">]</span><span class="fu">},</span></span>
+<span id="cb37-7"><a href="#cb37-7" tabindex="-1"></a>      <span class="dt">"y"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">36.9</span><span class="ot">]</span><span class="fu">},</span></span>
+<span id="cb37-8"><a href="#cb37-8" tabindex="-1"></a>      <span class="dt">"t"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"2023-01-01"</span><span class="ot">,</span> <span class="st">"2023-02-01"</span><span class="ot">]</span><span class="fu">}</span></span>
+<span id="cb37-9"><a href="#cb37-9" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb37-10"><a href="#cb37-10" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb37-11"><a href="#cb37-11" tabindex="-1"></a>  <span class="dt">"ranges"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb37-12"><a href="#cb37-12" tabindex="-1"></a>    <span class="dt">"ppt"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb37-13"><a href="#cb37-13" tabindex="-1"></a>      <span class="dt">"axisNames"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"t"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb37-14"><a href="#cb37-14" tabindex="-1"></a>      <span class="dt">"values"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">116.0</span><span class="ot">,</span> <span class="fl">42.0</span><span class="ot">]</span></span>
+<span id="cb37-15"><a href="#cb37-15" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb37-16"><a href="#cb37-16" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb37-17"><a href="#cb37-17" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="polygon-queries-area">11. Polygon queries: <code>/area</code><a class="anchor" aria-label="anchor" href="#polygon-queries-area"></a>
@@ -728,74 +790,250 @@ limits.</p>
 </h2>
 <p>Collections without EDR <code>data_queries</code> are often feature
 layers. Use <code>queryables</code> to inspect attributes and
-<code>items</code> to retrieve features.</p>
+<code>items</code> to retrieve features. EDR collections may also expose
+<code>/items</code>; in that case, treat <code>/items</code> as the
+feature catalog you use to discover stations, reservoirs, dams, and
+other locations before making a data query.</p>
 <p>Queryables example:</p>
-<div class="sourceCode" id="cb36"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb36-1"><a href="#cb36-1" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sS</span> <span class="dt">\</span></span>
-<span id="cb36-2"><a href="#cb36-2" tabindex="-1"></a>  <span class="st">'https://api.wwdh.internetofwater.app/collections/snotel-huc06-means/queryables?f=json'</span></span></code></pre></div>
+<div class="sourceCode" id="cb40"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb40-1"><a href="#cb40-1" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sS</span> <span class="dt">\</span></span>
+<span id="cb40-2"><a href="#cb40-2" tabindex="-1"></a>  <span class="st">'https://api.wwdh.internetofwater.app/collections/snotel-huc06-means/queryables?f=json'</span></span></code></pre></div>
 <p>Expected response shape:</p>
-<div class="sourceCode" id="cb37"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb37-1"><a href="#cb37-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb37-2"><a href="#cb37-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"object"</span><span class="fu">,</span></span>
-<span id="cb37-3"><a href="#cb37-3" tabindex="-1"></a>  <span class="dt">"properties"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb37-4"><a href="#cb37-4" tabindex="-1"></a>    <span class="dt">"geometry"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"$ref"</span><span class="fu">:</span> <span class="st">"https://geojson.org/schema/Geometry.json"</span><span class="fu">},</span></span>
-<span id="cb37-5"><a href="#cb37-5" tabindex="-1"></a>    <span class="dt">"name"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"type"</span><span class="fu">:</span> <span class="st">"string"</span><span class="fu">},</span></span>
-<span id="cb37-6"><a href="#cb37-6" tabindex="-1"></a>    <span class="dt">"geoconnex_url"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"type"</span><span class="fu">:</span> <span class="st">"string"</span><span class="fu">},</span></span>
-<span id="cb37-7"><a href="#cb37-7" tabindex="-1"></a>    <span class="dt">"id"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"type"</span><span class="fu">:</span> <span class="st">"string"</span><span class="fu">},</span></span>
-<span id="cb37-8"><a href="#cb37-8" tabindex="-1"></a>    <span class="dt">"basin_index"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"type"</span><span class="fu">:</span> <span class="st">"number"</span><span class="fu">}</span></span>
-<span id="cb37-9"><a href="#cb37-9" tabindex="-1"></a>  <span class="fu">}</span></span>
-<span id="cb37-10"><a href="#cb37-10" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb41"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb41-1"><a href="#cb41-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb41-2"><a href="#cb41-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"object"</span><span class="fu">,</span></span>
+<span id="cb41-3"><a href="#cb41-3" tabindex="-1"></a>  <span class="dt">"properties"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb41-4"><a href="#cb41-4" tabindex="-1"></a>    <span class="dt">"geometry"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"$ref"</span><span class="fu">:</span> <span class="st">"https://geojson.org/schema/Geometry.json"</span><span class="fu">},</span></span>
+<span id="cb41-5"><a href="#cb41-5" tabindex="-1"></a>    <span class="dt">"name"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"type"</span><span class="fu">:</span> <span class="st">"string"</span><span class="fu">},</span></span>
+<span id="cb41-6"><a href="#cb41-6" tabindex="-1"></a>    <span class="dt">"geoconnex_url"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"type"</span><span class="fu">:</span> <span class="st">"string"</span><span class="fu">},</span></span>
+<span id="cb41-7"><a href="#cb41-7" tabindex="-1"></a>    <span class="dt">"id"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"type"</span><span class="fu">:</span> <span class="st">"string"</span><span class="fu">},</span></span>
+<span id="cb41-8"><a href="#cb41-8" tabindex="-1"></a>    <span class="dt">"basin_index"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"type"</span><span class="fu">:</span> <span class="st">"number"</span><span class="fu">}</span></span>
+<span id="cb41-9"><a href="#cb41-9" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb41-10"><a href="#cb41-10" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <p>Items example:</p>
-<div class="sourceCode" id="cb38"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb38-1"><a href="#cb38-1" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sS</span> <span class="dt">\</span></span>
-<span id="cb38-2"><a href="#cb38-2" tabindex="-1"></a>  <span class="st">'https://api.wwdh.internetofwater.app/collections/snotel-huc06-means/items?f=json&amp;limit=3'</span></span></code></pre></div>
+<div class="sourceCode" id="cb42"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb42-1"><a href="#cb42-1" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sS</span> <span class="dt">\</span></span>
+<span id="cb42-2"><a href="#cb42-2" tabindex="-1"></a>  <span class="st">'https://api.wwdh.internetofwater.app/collections/snotel-huc06-means/items?f=json&amp;limit=3'</span></span></code></pre></div>
 <p>Expected response shape:</p>
-<div class="sourceCode" id="cb39"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb39-1"><a href="#cb39-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb39-2"><a href="#cb39-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"FeatureCollection"</span><span class="fu">,</span></span>
-<span id="cb39-3"><a href="#cb39-3" tabindex="-1"></a>  <span class="dt">"features"</span><span class="fu">:</span> <span class="ot">[</span></span>
-<span id="cb39-4"><a href="#cb39-4" tabindex="-1"></a>    <span class="fu">{</span></span>
-<span id="cb39-5"><a href="#cb39-5" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"Feature"</span><span class="fu">,</span></span>
-<span id="cb39-6"><a href="#cb39-6" tabindex="-1"></a>      <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"090400"</span><span class="fu">,</span></span>
-<span id="cb39-7"><a href="#cb39-7" tabindex="-1"></a>      <span class="dt">"geometry"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"type"</span><span class="fu">:</span> <span class="st">"MultiPolygon"</span><span class="fu">},</span></span>
-<span id="cb39-8"><a href="#cb39-8" tabindex="-1"></a>      <span class="dt">"properties"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb39-9"><a href="#cb39-9" tabindex="-1"></a>        <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"Upper South Saskatchewan River"</span><span class="fu">,</span></span>
-<span id="cb39-10"><a href="#cb39-10" tabindex="-1"></a>        <span class="dt">"basin_index"</span><span class="fu">:</span> <span class="fl">75.4</span><span class="fu">,</span></span>
-<span id="cb39-11"><a href="#cb39-11" tabindex="-1"></a>        <span class="dt">"current_snow_water_equivalent_relative_to_thirty_year_avg"</span><span class="fu">:</span> <span class="fl">75.4</span><span class="fu">,</span></span>
-<span id="cb39-12"><a href="#cb39-12" tabindex="-1"></a>        <span class="dt">"latest_full_day_of_data"</span><span class="fu">:</span> <span class="st">"06-03"</span></span>
-<span id="cb39-13"><a href="#cb39-13" tabindex="-1"></a>      <span class="fu">}</span></span>
-<span id="cb39-14"><a href="#cb39-14" tabindex="-1"></a>    <span class="fu">}</span></span>
-<span id="cb39-15"><a href="#cb39-15" tabindex="-1"></a>  <span class="ot">]</span></span>
-<span id="cb39-16"><a href="#cb39-16" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb43"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb43-1"><a href="#cb43-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb43-2"><a href="#cb43-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"FeatureCollection"</span><span class="fu">,</span></span>
+<span id="cb43-3"><a href="#cb43-3" tabindex="-1"></a>  <span class="dt">"features"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb43-4"><a href="#cb43-4" tabindex="-1"></a>    <span class="fu">{</span></span>
+<span id="cb43-5"><a href="#cb43-5" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"Feature"</span><span class="fu">,</span></span>
+<span id="cb43-6"><a href="#cb43-6" tabindex="-1"></a>      <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"090400"</span><span class="fu">,</span></span>
+<span id="cb43-7"><a href="#cb43-7" tabindex="-1"></a>      <span class="dt">"geometry"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"type"</span><span class="fu">:</span> <span class="st">"MultiPolygon"</span><span class="fu">},</span></span>
+<span id="cb43-8"><a href="#cb43-8" tabindex="-1"></a>      <span class="dt">"properties"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb43-9"><a href="#cb43-9" tabindex="-1"></a>        <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"Upper South Saskatchewan River"</span><span class="fu">,</span></span>
+<span id="cb43-10"><a href="#cb43-10" tabindex="-1"></a>        <span class="dt">"basin_index"</span><span class="fu">:</span> <span class="fl">75.4</span><span class="fu">,</span></span>
+<span id="cb43-11"><a href="#cb43-11" tabindex="-1"></a>        <span class="dt">"current_snow_water_equivalent_relative_to_thirty_year_avg"</span><span class="fu">:</span> <span class="fl">75.4</span><span class="fu">,</span></span>
+<span id="cb43-12"><a href="#cb43-12" tabindex="-1"></a>        <span class="dt">"latest_full_day_of_data"</span><span class="fu">:</span> <span class="st">"06-03"</span></span>
+<span id="cb43-13"><a href="#cb43-13" tabindex="-1"></a>      <span class="fu">}</span></span>
+<span id="cb43-14"><a href="#cb43-14" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb43-15"><a href="#cb43-15" tabindex="-1"></a>  <span class="ot">]</span></span>
+<span id="cb43-16"><a href="#cb43-16" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <p>Feature/catalog layers are not time-series sampling endpoints. Treat
 them as GIS feature downloads with attributes.</p>
+<div class="section level3">
+<h3 id="filtering-items-with-queryables">Filtering <code>/items</code> with queryables<a class="anchor" aria-label="anchor" href="#filtering-items-with-queryables"></a>
+</h3>
+<p>The property names advertised by <code>/queryables</code> can usually
+be sent as ordinary query parameters on <code>/items</code>. Combine
+them with <code>bbox</code> and <code>limit</code> to find a manageable
+set of features.</p>
+<p>RISE example: find lake/reservoir features in a Lower Colorado /
+Arizona bbox.</p>
+<div class="sourceCode" id="cb44"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb44-1"><a href="#cb44-1" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sS</span> <span class="dt">\</span></span>
+<span id="cb44-2"><a href="#cb44-2" tabindex="-1"></a>  <span class="st">'https://api.wwdh.internetofwater.app/collections/rise-edr/items?f=json&amp;bbox=-115,33,-111,35&amp;locationTypeName=Lake%2FReservoir&amp;limit=20'</span></span></code></pre></div>
+<p>Verified response summary on June 4, 2026:</p>
+<div class="sourceCode" id="cb45"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb45-1"><a href="#cb45-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb45-2"><a href="#cb45-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"FeatureCollection"</span><span class="fu">,</span></span>
+<span id="cb45-3"><a href="#cb45-3" tabindex="-1"></a>  <span class="dt">"count"</span><span class="fu">:</span> <span class="dv">7</span><span class="fu">,</span></span>
+<span id="cb45-4"><a href="#cb45-4" tabindex="-1"></a>  <span class="dt">"sample"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb45-5"><a href="#cb45-5" tabindex="-1"></a>    <span class="fu">{</span></span>
+<span id="cb45-6"><a href="#cb45-6" tabindex="-1"></a>      <span class="dt">"id"</span><span class="fu">:</span> <span class="dv">3515</span><span class="fu">,</span></span>
+<span id="cb45-7"><a href="#cb45-7" tabindex="-1"></a>      <span class="dt">"locationName"</span><span class="fu">:</span> <span class="st">"Lake Havasu Parker Dam and Powerplant"</span><span class="fu">,</span></span>
+<span id="cb45-8"><a href="#cb45-8" tabindex="-1"></a>      <span class="dt">"locationTypeName"</span><span class="fu">:</span> <span class="st">"Lake/Reservoir"</span><span class="fu">,</span></span>
+<span id="cb45-9"><a href="#cb45-9" tabindex="-1"></a>      <span class="dt">"coords"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">-114.1385</span><span class="ot">,</span> <span class="fl">34.2964</span><span class="ot">]</span></span>
+<span id="cb45-10"><a href="#cb45-10" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb45-11"><a href="#cb45-11" tabindex="-1"></a>  <span class="ot">]</span></span>
+<span id="cb45-12"><a href="#cb45-12" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>USACE example: find South Pacific Division features in the same
+bbox.</p>
+<div class="sourceCode" id="cb46"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb46-1"><a href="#cb46-1" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sS</span> <span class="dt">\</span></span>
+<span id="cb46-2"><a href="#cb46-2" tabindex="-1"></a>  <span class="st">'https://api.wwdh.internetofwater.app/collections/usace-edr/items?f=json&amp;bbox=-115,33,-111,35&amp;provider=SPL&amp;limit=5'</span></span></code></pre></div>
+<p>Verified response summary on June 4, 2026:</p>
+<div class="sourceCode" id="cb47"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb47-1"><a href="#cb47-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb47-2"><a href="#cb47-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"FeatureCollection"</span><span class="fu">,</span></span>
+<span id="cb47-3"><a href="#cb47-3" tabindex="-1"></a>  <span class="dt">"count"</span><span class="fu">:</span> <span class="dv">4</span><span class="fu">,</span></span>
+<span id="cb47-4"><a href="#cb47-4" tabindex="-1"></a>  <span class="dt">"sample"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb47-5"><a href="#cb47-5" tabindex="-1"></a>    <span class="fu">{</span></span>
+<span id="cb47-6"><a href="#cb47-6" tabindex="-1"></a>      <span class="dt">"id"</span><span class="fu">:</span> <span class="dv">157145</span><span class="fu">,</span></span>
+<span id="cb47-7"><a href="#cb47-7" tabindex="-1"></a>      <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"Alamo Dam"</span><span class="fu">,</span></span>
+<span id="cb47-8"><a href="#cb47-8" tabindex="-1"></a>      <span class="dt">"code"</span><span class="fu">:</span> <span class="st">"Alamo"</span><span class="fu">,</span></span>
+<span id="cb47-9"><a href="#cb47-9" tabindex="-1"></a>      <span class="dt">"state"</span><span class="fu">:</span> <span class="st">"AZ"</span><span class="fu">,</span></span>
+<span id="cb47-10"><a href="#cb47-10" tabindex="-1"></a>      <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"SPL"</span><span class="fu">,</span></span>
+<span id="cb47-11"><a href="#cb47-11" tabindex="-1"></a>      <span class="dt">"coords"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">-113.6017</span><span class="ot">,</span> <span class="fl">34.23167</span><span class="ot">]</span></span>
+<span id="cb47-12"><a href="#cb47-12" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb47-13"><a href="#cb47-13" tabindex="-1"></a>  <span class="ot">]</span></span>
+<span id="cb47-14"><a href="#cb47-14" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>Provider behavior can vary. In the RISE example above,
+<code>limit=5</code> with the same bbox and property filter returned no
+lake/reservoir features, while <code>limit=20</code> returned seven.
+When using a queryable property filter for discovery, start with a large
+enough <code>limit</code>, inspect the returned features, and then
+narrow the request.</p>
+</div>
 </div>
 <div class="section level2">
-<h2 id="response-types-in-practice">13. Response types in practice<a class="anchor" aria-label="anchor" href="#response-types-in-practice"></a>
+<h2 id="cross-provider-storage-workflow">13. Cross-provider storage workflow<a class="anchor" aria-label="anchor" href="#cross-provider-storage-workflow"></a>
+</h2>
+<p>This workflow shows a complete verified pattern:</p>
+<ol style="list-style-type: decimal">
+<li>Find equivalent storage parameters.</li>
+<li>Find a bbox that has both USBR RISE and USACE features.</li>
+<li>Ask each provider for all available 2024 storage observations.</li>
+</ol>
+<p>The shared bbox used here is a small area containing one matching
+RISE feature and one matching USACE feature:</p>
+<pre class="text"><code>-114.3,34.1,-113.5,34.4</code></pre>
+<p>It contains USBR RISE lake/reservoir features such as Lake Havasu
+Parker Dam and Powerplant (<code>3515</code>) and USACE features such as
+Alamo Dam (<code>157145</code>).</p>
+<div class="section level3">
+<h3 id="step-1-choose-equivalent-parameters">Step 1: choose equivalent parameters<a class="anchor" aria-label="anchor" href="#step-1-choose-equivalent-parameters"></a>
+</h3>
+<p>From <code>parameterGroups</code>,
+<code>Lake/Reservoir Storage</code> includes:</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Collection</th>
+<th>Parameter to request</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>rise-edr</code></td>
+<td><code>3</code></td>
+<td>Daily lake/reservoir storage, acre-ft</td>
+</tr>
+<tr class="even">
+<td><code>usace-edr</code></td>
+<td><code>Flood Storage</code></td>
+<td>Flood storage, acre-ft</td>
+</tr>
+<tr class="odd">
+<td><code>usace-edr</code></td>
+<td><code>Conservation Storage</code></td>
+<td>Conservation storage, acre-ft; not every location has data</td>
+</tr>
+</tbody>
+</table>
+<p>For the verified USACE 2024 example below, <code>Flood Storage</code>
+has data in the selected bbox. <code>Conservation Storage</code>
+returned HTTP 204 No Content for the tested Hoover and Alamo examples on
+June 4, 2026.</p>
+</div>
+<div class="section level3">
+<h3 id="step-2-request-usbr-rise-storage-in-the-bbox-for-2024">Step 2: request USBR RISE storage in the bbox for 2024<a class="anchor" aria-label="anchor" href="#step-2-request-usbr-rise-storage-in-the-bbox-for-2024"></a>
+</h3>
+<p>Ask for all matching RISE storage series in the bbox with
+<code>cube</code>:</p>
+<div class="sourceCode" id="cb49"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb49-1"><a href="#cb49-1" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sS</span> <span class="dt">\</span></span>
+<span id="cb49-2"><a href="#cb49-2" tabindex="-1"></a>  <span class="st">'https://api.wwdh.internetofwater.app/collections/rise-edr/cube?f=json&amp;bbox=-114.3,34.1,-113.5,34.4&amp;datetime=2024-01-01/2024-12-31&amp;parameter-name=3'</span></span></code></pre></div>
+<p>Verified response summary:</p>
+<div class="sourceCode" id="cb50"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb50-1"><a href="#cb50-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb50-2"><a href="#cb50-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"CoverageCollection"</span><span class="fu">,</span></span>
+<span id="cb50-3"><a href="#cb50-3" tabindex="-1"></a>  <span class="dt">"parameterKeys"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"3"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb50-4"><a href="#cb50-4" tabindex="-1"></a>  <span class="dt">"coverageCount"</span><span class="fu">:</span> <span class="dv">1</span><span class="fu">,</span></span>
+<span id="cb50-5"><a href="#cb50-5" tabindex="-1"></a>  <span class="dt">"sample"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb50-6"><a href="#cb50-6" tabindex="-1"></a>    <span class="fu">{</span></span>
+<span id="cb50-7"><a href="#cb50-7" tabindex="-1"></a>      <span class="dt">"x"</span><span class="fu">:</span> <span class="fl">-114.1385</span><span class="fu">,</span></span>
+<span id="cb50-8"><a href="#cb50-8" tabindex="-1"></a>      <span class="dt">"y"</span><span class="fu">:</span> <span class="fl">34.2964</span><span class="fu">,</span></span>
+<span id="cb50-9"><a href="#cb50-9" tabindex="-1"></a>      <span class="dt">"t_count"</span><span class="fu">:</span> <span class="dv">365</span><span class="fu">,</span></span>
+<span id="cb50-10"><a href="#cb50-10" tabindex="-1"></a>      <span class="dt">"t_first"</span><span class="fu">:</span> <span class="st">"2024-01-01T07:00:00+00:00"</span><span class="fu">,</span></span>
+<span id="cb50-11"><a href="#cb50-11" tabindex="-1"></a>      <span class="dt">"t_last"</span><span class="fu">:</span> <span class="st">"2024-12-30T07:00:00+00:00"</span><span class="fu">,</span></span>
+<span id="cb50-12"><a href="#cb50-12" tabindex="-1"></a>      <span class="dt">"value_count"</span><span class="fu">:</span> <span class="dv">365</span><span class="fu">,</span></span>
+<span id="cb50-13"><a href="#cb50-13" tabindex="-1"></a>      <span class="dt">"first_values"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">578564.0</span><span class="ot">,</span> <span class="fl">579452.0</span><span class="ot">,</span> <span class="fl">579225.0</span><span class="ot">]</span></span>
+<span id="cb50-14"><a href="#cb50-14" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb50-15"><a href="#cb50-15" tabindex="-1"></a>  <span class="ot">]</span></span>
+<span id="cb50-16"><a href="#cb50-16" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>This narrow bbox returned one matching RISE storage series. If a
+broad bbox fails or is too slow, discover candidate locations with
+<code>/items</code> first and use <code>/locations/{locId}</code> for
+one location at a time.</p>
+</div>
+<div class="section level3">
+<h3 id="step-3-request-usace-storage-in-the-bbox-for-2024">Step 3: request USACE storage in the bbox for 2024<a class="anchor" aria-label="anchor" href="#step-3-request-usace-storage-in-the-bbox-for-2024"></a>
+</h3>
+<p>Ask USACE for all matching <code>Flood Storage</code> series in the
+same bbox:</p>
+<div class="sourceCode" id="cb51"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb51-1"><a href="#cb51-1" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sS</span> <span class="dt">\</span></span>
+<span id="cb51-2"><a href="#cb51-2" tabindex="-1"></a>  <span class="st">'https://api.wwdh.internetofwater.app/collections/usace-edr/cube?f=json&amp;bbox=-114.3,34.1,-113.5,34.4&amp;datetime=2024-01-01/2024-12-31&amp;parameter-name=Flood%20Storage'</span></span></code></pre></div>
+<p>Verified response summary:</p>
+<div class="sourceCode" id="cb52"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb52-1"><a href="#cb52-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb52-2"><a href="#cb52-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"CoverageCollection"</span><span class="fu">,</span></span>
+<span id="cb52-3"><a href="#cb52-3" tabindex="-1"></a>  <span class="dt">"parameterKeys"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"Flood Storage"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb52-4"><a href="#cb52-4" tabindex="-1"></a>  <span class="dt">"coverageCount"</span><span class="fu">:</span> <span class="dv">1</span><span class="fu">,</span></span>
+<span id="cb52-5"><a href="#cb52-5" tabindex="-1"></a>  <span class="dt">"sample"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb52-6"><a href="#cb52-6" tabindex="-1"></a>    <span class="fu">{</span></span>
+<span id="cb52-7"><a href="#cb52-7" tabindex="-1"></a>      <span class="dt">"x"</span><span class="fu">:</span> <span class="fl">-113.6017</span><span class="fu">,</span></span>
+<span id="cb52-8"><a href="#cb52-8" tabindex="-1"></a>      <span class="dt">"y"</span><span class="fu">:</span> <span class="fl">34.23167</span><span class="fu">,</span></span>
+<span id="cb52-9"><a href="#cb52-9" tabindex="-1"></a>      <span class="dt">"t_count"</span><span class="fu">:</span> <span class="dv">8300</span><span class="fu">,</span></span>
+<span id="cb52-10"><a href="#cb52-10" tabindex="-1"></a>      <span class="dt">"t_first"</span><span class="fu">:</span> <span class="st">"2024-01-01T00:00:00+00:00"</span><span class="fu">,</span></span>
+<span id="cb52-11"><a href="#cb52-11" tabindex="-1"></a>      <span class="dt">"t_last"</span><span class="fu">:</span> <span class="st">"2024-12-31T00:00:00+00:00"</span><span class="fu">,</span></span>
+<span id="cb52-12"><a href="#cb52-12" tabindex="-1"></a>      <span class="dt">"value_count"</span><span class="fu">:</span> <span class="dv">8300</span><span class="fu">,</span></span>
+<span id="cb52-13"><a href="#cb52-13" tabindex="-1"></a>      <span class="dt">"first_values"</span><span class="fu">:</span> <span class="ot">[</span><span class="fl">136286.17</span><span class="ot">,</span> <span class="fl">136286.17</span><span class="ot">,</span> <span class="fl">136286.17</span><span class="ot">]</span></span>
+<span id="cb52-14"><a href="#cb52-14" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb52-15"><a href="#cb52-15" tabindex="-1"></a>  <span class="ot">]</span></span>
+<span id="cb52-16"><a href="#cb52-16" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>USACE observations in this response are not daily; they are the
+available observations returned by Access2Water for the 2024
+interval.</p>
+<p>The practical pattern is:</p>
+<pre class="text"><code>/collections?f=json
+  -&gt; parameterGroups for concept mapping
+/collections/{id}/queryables?f=json
+  -&gt; feature property names
+/collections/{id}/items?f=json&amp;bbox=...&amp;{queryable}=...
+  -&gt; candidate location ids
+/collections/{id}/locations/{locId}?f=json&amp;datetime=2024-01-01/2024-12-31&amp;parameter-name=...
+  -&gt; full 2024 series for one location
+/collections/{id}/cube?f=json&amp;bbox=...&amp;datetime=2024-01-01/2024-12-31&amp;parameter-name=...
+  -&gt; all matching series in a bbox, when the provider can satisfy it</code></pre>
+</div>
+</div>
+<div class="section level2">
+<h2 id="response-types-in-practice">14. Response types in practice<a class="anchor" aria-label="anchor" href="#response-types-in-practice"></a>
 </h2>
 <p>You will usually see one of these JSON shapes.</p>
 <p>GeoJSON feature collection:</p>
-<div class="sourceCode" id="cb40"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb40-1"><a href="#cb40-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb40-2"><a href="#cb40-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"FeatureCollection"</span><span class="fu">,</span></span>
-<span id="cb40-3"><a href="#cb40-3" tabindex="-1"></a>  <span class="dt">"features"</span><span class="fu">:</span> <span class="ot">[]</span></span>
-<span id="cb40-4"><a href="#cb40-4" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb54"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb54-1"><a href="#cb54-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb54-2"><a href="#cb54-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"FeatureCollection"</span><span class="fu">,</span></span>
+<span id="cb54-3"><a href="#cb54-3" tabindex="-1"></a>  <span class="dt">"features"</span><span class="fu">:</span> <span class="ot">[]</span></span>
+<span id="cb54-4"><a href="#cb54-4" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <p>GeoJSON single feature:</p>
-<div class="sourceCode" id="cb41"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb41-1"><a href="#cb41-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb41-2"><a href="#cb41-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"Feature"</span><span class="fu">,</span></span>
-<span id="cb41-3"><a href="#cb41-3" tabindex="-1"></a>  <span class="dt">"geometry"</span><span class="fu">:</span> <span class="fu">{},</span></span>
-<span id="cb41-4"><a href="#cb41-4" tabindex="-1"></a>  <span class="dt">"properties"</span><span class="fu">:</span> <span class="fu">{}</span></span>
-<span id="cb41-5"><a href="#cb41-5" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb55"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb55-1"><a href="#cb55-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb55-2"><a href="#cb55-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"Feature"</span><span class="fu">,</span></span>
+<span id="cb55-3"><a href="#cb55-3" tabindex="-1"></a>  <span class="dt">"geometry"</span><span class="fu">:</span> <span class="fu">{},</span></span>
+<span id="cb55-4"><a href="#cb55-4" tabindex="-1"></a>  <span class="dt">"properties"</span><span class="fu">:</span> <span class="fu">{}</span></span>
+<span id="cb55-5"><a href="#cb55-5" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <p>CoverageJSON single coverage:</p>
-<div class="sourceCode" id="cb42"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb42-1"><a href="#cb42-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb42-2"><a href="#cb42-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"Coverage"</span><span class="fu">,</span></span>
-<span id="cb42-3"><a href="#cb42-3" tabindex="-1"></a>  <span class="dt">"domain"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb42-4"><a href="#cb42-4" tabindex="-1"></a>    <span class="dt">"domainType"</span><span class="fu">:</span> <span class="st">"PointSeries"</span><span class="fu">,</span></span>
-<span id="cb42-5"><a href="#cb42-5" tabindex="-1"></a>    <span class="dt">"axes"</span><span class="fu">:</span> <span class="fu">{}</span></span>
-<span id="cb42-6"><a href="#cb42-6" tabindex="-1"></a>  <span class="fu">},</span></span>
-<span id="cb42-7"><a href="#cb42-7" tabindex="-1"></a>  <span class="dt">"ranges"</span><span class="fu">:</span> <span class="fu">{}</span></span>
-<span id="cb42-8"><a href="#cb42-8" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb56"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb56-1"><a href="#cb56-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb56-2"><a href="#cb56-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"Coverage"</span><span class="fu">,</span></span>
+<span id="cb56-3"><a href="#cb56-3" tabindex="-1"></a>  <span class="dt">"domain"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb56-4"><a href="#cb56-4" tabindex="-1"></a>    <span class="dt">"domainType"</span><span class="fu">:</span> <span class="st">"PointSeries"</span><span class="fu">,</span></span>
+<span id="cb56-5"><a href="#cb56-5" tabindex="-1"></a>    <span class="dt">"axes"</span><span class="fu">:</span> <span class="fu">{}</span></span>
+<span id="cb56-6"><a href="#cb56-6" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb56-7"><a href="#cb56-7" tabindex="-1"></a>  <span class="dt">"ranges"</span><span class="fu">:</span> <span class="fu">{}</span></span>
+<span id="cb56-8"><a href="#cb56-8" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <p>CoverageJSON collection:</p>
-<div class="sourceCode" id="cb43"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb43-1"><a href="#cb43-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb43-2"><a href="#cb43-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"CoverageCollection"</span><span class="fu">,</span></span>
-<span id="cb43-3"><a href="#cb43-3" tabindex="-1"></a>  <span class="dt">"parameters"</span><span class="fu">:</span> <span class="fu">{},</span></span>
-<span id="cb43-4"><a href="#cb43-4" tabindex="-1"></a>  <span class="dt">"coverages"</span><span class="fu">:</span> <span class="ot">[]</span></span>
-<span id="cb43-5"><a href="#cb43-5" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb57"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb57-1"><a href="#cb57-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb57-2"><a href="#cb57-2" tabindex="-1"></a>  <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"CoverageCollection"</span><span class="fu">,</span></span>
+<span id="cb57-3"><a href="#cb57-3" tabindex="-1"></a>  <span class="dt">"parameters"</span><span class="fu">:</span> <span class="fu">{},</span></span>
+<span id="cb57-4"><a href="#cb57-4" tabindex="-1"></a>  <span class="dt">"coverages"</span><span class="fu">:</span> <span class="ot">[]</span></span>
+<span id="cb57-5"><a href="#cb57-5" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <p>A simple tabular interpretation of CoverageJSON is:</p>
 <pre class="text"><code>coverage id + parameter id + datetime + x + y + z + value</code></pre>
 <p>The hard part is axis ordering.
@@ -803,7 +1041,7 @@ them as GIS feature downloads with attributes.</p>
 dimensions for the flat <code>values</code> array.</p>
 </div>
 <div class="section level2">
-<h2 id="a-language-agnostic-workflow">14. A language-agnostic workflow<a class="anchor" aria-label="anchor" href="#a-language-agnostic-workflow"></a>
+<h2 id="a-language-agnostic-workflow">15. A language-agnostic workflow<a class="anchor" aria-label="anchor" href="#a-language-agnostic-workflow"></a>
 </h2>
 <p>Use this sequence in any tool:</p>
 <ol style="list-style-type: decimal">
@@ -816,16 +1054,16 @@ keys.</li>
 <code>/collections/{id}/locations?f=json&amp;bbox=...</code>.</li>
 <li>If <code>data_queries.cube</code> exists, retrieve data with
 <code>/collections/{id}/cube?f=json&amp;bbox=...&amp;datetime=...&amp;parameter-name=...</code>.</li>
-<li>If no EDR <code>data_queries</code> exist, use
+<li>If you need to discover feature ids or filter a feature catalog, use
 <code>/collections/{id}/queryables?f=json</code> and
-<code>/collections/{id}/items?f=json</code>.</li>
+<code>/collections/{id}/items?f=json&amp;{queryable}=...</code>.</li>
 <li>Parse GeoJSON as features or CoverageJSON as axis/range arrays.</li>
 <li>Expand the spatial or temporal scope only after the small request
 works.</li>
 </ol>
 </div>
 <div class="section level2">
-<h2 id="troubleshooting-raw-requests">15. Troubleshooting raw requests<a class="anchor" aria-label="anchor" href="#troubleshooting-raw-requests"></a>
+<h2 id="troubleshooting-raw-requests">16. Troubleshooting raw requests<a class="anchor" aria-label="anchor" href="#troubleshooting-raw-requests"></a>
 </h2>
 <table class="table">
 <colgroup>
@@ -854,15 +1092,31 @@ works.</li>
 <td>Encode spaces as <code>%20</code>; close polygon rings</td>
 </tr>
 <tr class="odd">
+<td>204 with an empty body</td>
+<td>The request is valid, but no data matched the location, time, or
+parameter</td>
+<td>Try another parameter from <code>parameterGroups</code>, another
+location, or a shorter date range</td>
+</tr>
+<tr class="even">
 <td>500 on a broad request</td>
 <td>Upstream provider or wrapper could not satisfy the query</td>
 <td>Reduce bbox, time range, and parameter count</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Empty <code>features</code>
 </td>
 <td>No matching features, or filter combination is too narrow</td>
 <td>Try HTML page, known active bbox, or fewer filters</td>
+</tr>
+<tr class="even">
+<td>
+<code>NoApplicableCode</code> query error on
+<code>/items</code>
+</td>
+<td>Provider could not apply that feature-property filter</td>
+<td>Try a different queryable, use only <code>bbox</code> and
+<code>limit</code>, or inspect the HTML view</td>
 </tr>
 <tr class="odd">
 <td>No <code>parameter_names</code>
