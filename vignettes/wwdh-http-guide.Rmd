@@ -99,6 +99,12 @@ The response has a top-level `collections` array. Each collection has
 an `id`, `title`, `extent`, `links`, and sometimes a `data_queries`
 object.
 
+The same document may also have a top-level `parameterGroups` array.
+Use `parameterGroups` when you want to translate a water-data concept
+across collections. For example, the `Lake/Reservoir Storage` group
+currently maps USBR RISE parameter `3` to USACE storage parameters such
+as `Flood Storage` and `Conservation Storage`.
+
 As of June 4, 2026, examples include:
 
 | Collection id | What it is | Advertised data queries |
@@ -120,6 +126,7 @@ Look for:
 
 - `parameter_names`: data variables you can request with
   `parameter-name`.
+- `parameterGroups`: cross-collection concept groups, when present.
 - `data_queries`: supported EDR query types for that collection.
 - `links`: HTML pages, JSON pages, `/items`, `/queryables`, and source
   documentation links.
@@ -167,6 +174,7 @@ collection may return 404 or 500 for another.
 | `within-units` | `radius` | Radius units | `within-units=km` |
 | `corridor-width` | `corridor` | Width around line | `corridor-width=10` |
 | `width-units` | `corridor` | Corridor width units | `width-units=km` |
+| `{queryable}` | `items` | Feature property filter advertised by `/queryables` | `provider=SPL` |
 
 Coordinates are longitude, latitude. A bbox is always:
 
@@ -178,6 +186,21 @@ Multiple parameters are comma-separated:
 
 ``` text
 parameter-name=ppt,tmx
+```
+
+Some parameter ids contain spaces. Encode them in a hand-built URL:
+
+``` text
+parameter-name=Flood%20Storage
+```
+
+or let `curl` encode them:
+
+``` sh
+curl -sS -G 'https://api.wwdh.internetofwater.app/collections/usace-edr/locations/157145' \
+  --data-urlencode 'f=json' \
+  --data-urlencode 'datetime=2024-01-01/2024-12-31' \
+  --data-urlencode 'parameter-name=Flood Storage'
 ```
 
 Intervals use a slash:
@@ -250,16 +273,45 @@ Example `snotel-edr` parameter ids:
 
 Example reservoir/stage parameter ids:
 
-| Collection | Parameter id | Meaning |
-|---|---|---|
-| `rise-edr` | `3` | Daily lake/reservoir storage |
-| `rise-edr` | `1830` | Lake/reservoir release - total |
-| `usace-edr` | `Stage` | Stage |
-| `usace-edr` | `Outflow` | Outflow |
-| `resviz-edr` | `raw` | Daily lake/reservoir storage |
+| Collection | Parameter id | Meaning | Unit |
+|---|---|---|---|
+| `rise-edr` | `3` | Daily lake/reservoir storage | acre-ft |
+| `rise-edr` | `1830` | Lake/reservoir release - total | cfs |
+| `usace-edr` | `Flood Storage` | Flood storage | acre-ft |
+| `usace-edr` | `Conservation Storage` | Conservation storage | acre-ft |
+| `usace-edr` | `Outflow` | Outflow | cfs |
+| `resviz-edr` | `raw` | Daily lake/reservoir storage | provider-defined |
 
 Use the exact `parameter_names` keys in the URL. Labels are for humans;
 keys are for requests.
+
+For cross-collection work, use the top-level `parameterGroups` block
+from `/collections?f=json` to find conceptually equivalent parameters.
+For example:
+
+``` sh
+curl -sS 'https://api.wwdh.internetofwater.app/collections?f=json' |
+  jq '.parameterGroups[] | select(.name == "Lake/Reservoir Storage") | {name, members}'
+```
+
+Live response summary on June 4, 2026:
+
+``` json
+{
+  "name": "Lake/Reservoir Storage",
+  "members": {
+    "rise-edr": ["1470", "56", "51", "47", "3"],
+    "usace-edr": [
+      "Flood Storage",
+      "Conservation Storage",
+      "Percent Flood Pool",
+      "Percent Conservation Pool"
+    ],
+    "resviz-edr": ["avg", "p10", "p90", "raw"],
+    "teacup-edr": ["avg", "p10", "p90", "raw"]
+  }
+}
+```
 
 ## 7. Finding stations or locations
 
@@ -502,6 +554,9 @@ limits.
 
 Collections without EDR `data_queries` are often feature layers. Use
 `queryables` to inspect attributes and `items` to retrieve features.
+EDR collections may also expose `/items`; in that case, treat `/items`
+as the feature catalog you use to discover stations, reservoirs, dams,
+and other locations before making a data query.
 
 Queryables example:
 
@@ -556,7 +611,185 @@ Expected response shape:
 Feature/catalog layers are not time-series sampling endpoints. Treat
 them as GIS feature downloads with attributes.
 
-## 13. Response types in practice
+### Filtering `/items` with queryables
+
+The property names advertised by `/queryables` can usually be sent as
+ordinary query parameters on `/items`. Combine them with `bbox` and
+`limit` to find a manageable set of features.
+
+RISE example: find lake/reservoir features in a Lower Colorado / Arizona
+bbox.
+
+``` sh
+curl -sS \
+  'https://api.wwdh.internetofwater.app/collections/rise-edr/items?f=json&bbox=-115,33,-111,35&locationTypeName=Lake%2FReservoir&limit=20'
+```
+
+Verified response summary on June 4, 2026:
+
+``` json
+{
+  "type": "FeatureCollection",
+  "count": 7,
+  "sample": [
+    {
+      "id": 3515,
+      "locationName": "Lake Havasu Parker Dam and Powerplant",
+      "locationTypeName": "Lake/Reservoir",
+      "coords": [-114.1385, 34.2964]
+    }
+  ]
+}
+```
+
+USACE example: find South Pacific Division features in the same bbox.
+
+``` sh
+curl -sS \
+  'https://api.wwdh.internetofwater.app/collections/usace-edr/items?f=json&bbox=-115,33,-111,35&provider=SPL&limit=5'
+```
+
+Verified response summary on June 4, 2026:
+
+``` json
+{
+  "type": "FeatureCollection",
+  "count": 4,
+  "sample": [
+    {
+      "id": 157145,
+      "name": "Alamo Dam",
+      "code": "Alamo",
+      "state": "AZ",
+      "provider": "SPL",
+      "coords": [-113.6017, 34.23167]
+    }
+  ]
+}
+```
+
+Provider behavior can vary. In the RISE example above, `limit=5` with
+the same bbox and property filter returned no lake/reservoir features,
+while `limit=20` returned seven. When using a queryable property filter
+for discovery, start with a large enough `limit`, inspect the returned
+features, and then narrow the request.
+
+## 13. Cross-provider storage workflow
+
+This workflow shows a complete verified pattern:
+
+1. Find equivalent storage parameters.
+2. Find a bbox that has both USBR RISE and USACE features.
+3. Ask each provider for all available 2024 storage observations.
+
+The shared bbox used here is a small area containing one matching RISE
+feature and one matching USACE feature:
+
+``` text
+-114.3,34.1,-113.5,34.4
+```
+
+It contains USBR RISE lake/reservoir features such as Lake Havasu
+Parker Dam and Powerplant (`3515`) and USACE features such as Alamo Dam
+(`157145`).
+
+### Step 1: choose equivalent parameters
+
+From `parameterGroups`, `Lake/Reservoir Storage` includes:
+
+| Collection | Parameter to request | Notes |
+|---|---|---|
+| `rise-edr` | `3` | Daily lake/reservoir storage, acre-ft |
+| `usace-edr` | `Flood Storage` | Flood storage, acre-ft |
+| `usace-edr` | `Conservation Storage` | Conservation storage, acre-ft; not every location has data |
+
+For the verified USACE 2024 example below, `Flood Storage` has data in
+the selected bbox. `Conservation Storage` returned HTTP 204 No Content
+for the tested Hoover and Alamo examples on June 4, 2026.
+
+### Step 2: request USBR RISE storage in the bbox for 2024
+
+Ask for all matching RISE storage series in the bbox with `cube`:
+
+``` sh
+curl -sS \
+  'https://api.wwdh.internetofwater.app/collections/rise-edr/cube?f=json&bbox=-114.3,34.1,-113.5,34.4&datetime=2024-01-01/2024-12-31&parameter-name=3'
+```
+
+Verified response summary:
+
+``` json
+{
+  "type": "CoverageCollection",
+  "parameterKeys": ["3"],
+  "coverageCount": 1,
+  "sample": [
+    {
+      "x": -114.1385,
+      "y": 34.2964,
+      "t_count": 365,
+      "t_first": "2024-01-01T07:00:00+00:00",
+      "t_last": "2024-12-30T07:00:00+00:00",
+      "value_count": 365,
+      "first_values": [578564.0, 579452.0, 579225.0]
+    }
+  ]
+}
+```
+
+This narrow bbox returned one matching RISE storage series. If a broad
+bbox fails or is too slow, discover candidate locations with `/items`
+first and use `/locations/{locId}` for one location at a time.
+
+### Step 3: request USACE storage in the bbox for 2024
+
+Ask USACE for all matching `Flood Storage` series in the same bbox:
+
+``` sh
+curl -sS \
+  'https://api.wwdh.internetofwater.app/collections/usace-edr/cube?f=json&bbox=-114.3,34.1,-113.5,34.4&datetime=2024-01-01/2024-12-31&parameter-name=Flood%20Storage'
+```
+
+Verified response summary:
+
+``` json
+{
+  "type": "CoverageCollection",
+  "parameterKeys": ["Flood Storage"],
+  "coverageCount": 1,
+  "sample": [
+    {
+      "x": -113.6017,
+      "y": 34.23167,
+      "t_count": 8300,
+      "t_first": "2024-01-01T00:00:00+00:00",
+      "t_last": "2024-12-31T00:00:00+00:00",
+      "value_count": 8300,
+      "first_values": [136286.17, 136286.17, 136286.17]
+    }
+  ]
+}
+```
+
+USACE observations in this response are not daily; they are the
+available observations returned by Access2Water for the 2024 interval.
+
+The practical pattern is:
+
+``` text
+/collections?f=json
+  -> parameterGroups for concept mapping
+/collections/{id}/queryables?f=json
+  -> feature property names
+/collections/{id}/items?f=json&bbox=...&{queryable}=...
+  -> candidate location ids
+/collections/{id}/locations/{locId}?f=json&datetime=2024-01-01/2024-12-31&parameter-name=...
+  -> full 2024 series for one location
+/collections/{id}/cube?f=json&bbox=...&datetime=2024-01-01/2024-12-31&parameter-name=...
+  -> all matching series in a bbox, when the provider can satisfy it
+```
+
+## 14. Response types in practice
 
 You will usually see one of these JSON shapes.
 
@@ -611,7 +844,7 @@ coverage id + parameter id + datetime + x + y + z + value
 The hard part is axis ordering. `ranges.{parameter}.axisNames` tells
 you the order of dimensions for the flat `values` array.
 
-## 14. A language-agnostic workflow
+## 15. A language-agnostic workflow
 
 Use this sequence in any tool:
 
@@ -623,21 +856,23 @@ Use this sequence in any tool:
    `/collections/{id}/locations?f=json&bbox=...`.
 6. If `data_queries.cube` exists, retrieve data with
    `/collections/{id}/cube?f=json&bbox=...&datetime=...&parameter-name=...`.
-7. If no EDR `data_queries` exist, use
+7. If you need to discover feature ids or filter a feature catalog, use
    `/collections/{id}/queryables?f=json` and
-   `/collections/{id}/items?f=json`.
+   `/collections/{id}/items?f=json&{queryable}=...`.
 8. Parse GeoJSON as features or CoverageJSON as axis/range arrays.
 9. Expand the spatial or temporal scope only after the small request
    works.
 
-## 15. Troubleshooting raw requests
+## 16. Troubleshooting raw requests
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | 404 on `/cube`, `/area`, or `/position` | Collection does not advertise that route | Re-check `/collections/{id}?f=json` |
 | 400 on a WKT request | `coords` is not URL-encoded or WKT is invalid | Encode spaces as `%20`; close polygon rings |
+| 204 with an empty body | The request is valid, but no data matched the location, time, or parameter | Try another parameter from `parameterGroups`, another location, or a shorter date range |
 | 500 on a broad request | Upstream provider or wrapper could not satisfy the query | Reduce bbox, time range, and parameter count |
 | Empty `features` | No matching features, or filter combination is too narrow | Try HTML page, known active bbox, or fewer filters |
+| `NoApplicableCode` query error on `/items` | Provider could not apply that feature-property filter | Try a different queryable, use only `bbox` and `limit`, or inspect the HTML view |
 | No `parameter_names` | It may be a feature layer | Use `/queryables` and `/items` |
 | Unexpected content type | Server returns GeoJSON/CoverageJSON under JSON | Inspect the body `type` field |
 | Shell error before request is sent | URL was not quoted | Wrap URL in single quotes |
