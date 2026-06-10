@@ -103,6 +103,11 @@ parameters, and links to the four query types RISE supports. For the
 complete technical reference of every route and parameter, see the
 [Swagger/OpenAPI page](https://api.wwdh.internetofwater.app/openapi).
 
+Here is the live collection page, embedded from the service (this and
+the other embedded views below require an internet connection; [open in
+its own
+tab](https://api.wwdh.internetofwater.app/collections/rise-edr)):
+
 ## 3. Discover what RISE offers
 
 The machine-readable version of the collection page is the anchor for
@@ -193,6 +198,9 @@ around the lower Colorado River near Lake Mead and Lake Havasu:
 https://api.wwdh.internetofwater.app/collections/rise-edr/locations?bbox=-115,33,-113,37
 ```
 
+The live map ([open in its own
+tab](https://api.wwdh.internetofwater.app/collections/rise-edr/locations)):
+
 Switch the same URL to `f=json` to get the locations as a GeoJSON
 `FeatureCollection` — each feature has an `id` (the RISE location id you
 will use in section 6), a point geometry, and properties such as
@@ -211,7 +219,28 @@ https://api.wwdh.internetofwater.app/collections/rise-edr/items?f=html&bbox=-115
 That request — checked live on June 10, 2026 — returns seven
 lake/reservoir locations in a Lower Colorado bounding box, including
 `3515` (Lake Havasu Parker Dam and Powerplant) and several Apache Lake
-sites. Three things are happening in that URL:
+sites. The live view ([open in its own
+tab](https://api.wwdh.internetofwater.app/collections/rise-edr/items?f=html&bbox=-115,33,-111,35&locationTypeName=Lake%2FReservoir&limit=20)):
+
+  
+
+# USBR Reclamation Information Sharing Environment (RISE)
+
+Limit: 1825 (default) 100 1,000 2,000
+
+Warning: Higher limits not recommended!
+
+| name | \_id | locationParentId | locationName | locationDescription | locationStatusId | elevation | createDate | updateDate | horizontalDatum | timezone | verticalDatum | locationTags | relatedLocationIds | projectNames | locationTypeName | timezoneName | timezoneOffset | locationRegionNames | locationUnifiedRegionNames | Asset Name (in tessel) | Total Capacity | Total Capacity Elevation | Active Capacity | Inactive Capacity Elevation | Live Capacity | Dead Capacity | Dead Capacity Elevation | Surcharge Capacity | Maximum Water Surface Elevation | Vertical Datum | Vertical Datum Description | Total Capacity Surface Area |
+|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|
+| [Lake Havasu Parker Dam and Powerplant](https://api.wwdh.internetofwater.app/collections/rise-edr/items/3515 "Lake Havasu Parker Dam and Powerplant") | 3515 | None | Lake Havasu Parker Dam and Powerplant | None | 1 | 450.0 | 2020-07-09T11:51:39+00:00 | 2021-06-28T14:20:13+00:00 | {'\_id': 'WGS84', 'definition':... | MT | {'\_id': 'USGS 1912',... | \[{'id': 4, 'tag': 'Lower... | None | \['Parker-Davis Project'\] | Lake/Reservoir | Mountain Standard Time | -7.0 | \['Lower Colorado'\] | \['Lower Colorado Basin'\] | Lake Havasu | 651000.0 | 450.0 | 180000.0 | 440.0 | 624200.0 | 26800.0 | 400.0 | 0.0 | 450.0 | Other | Elevations are referenced to... | 20390.0 |
+| [Apache Lake At Burnt Horse Corral](https://api.wwdh.internetofwater.app/collections/rise-edr/items/3545 "Apache Lake At Burnt Horse Corral") | 3545 | None | Apache Lake At Burnt Horse Corral | None | 1 | 1915.81 | 2020-08-10T09:52:20+00:00 | 2020-08-10T09:52:20+00:00 | {'\_id': 'WGS84', 'definition':... | MT | None | \[{'id': 4, 'tag': 'Lower... | None | \[\] | Lake/Reservoir | Mountain Standard Time | -7.0 | \['Lower Colorado'\] | \['Lower Colorado Basin'\] |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| [Apache Lake At Davis Wash](https://api.wwdh.internetofwater.app/collections/rise-edr/items/3546 "Apache Lake At Davis Wash") | 3546 | None | Apache Lake At Davis Wash | None | 1 | 1915.81 | 2020-08-10T09:52:20+00:00 | 2020-08-10T09:52:20+00:00 | {'\_id': 'WGS84', 'definition':... | MT | None | \[{'id': 4, 'tag': 'Lower... | None | \[\] | Lake/Reservoir | Mountain Standard Time | -7.0 | \['Lower Colorado'\] | \['Lower Colorado Basin'\] |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| [Apache Lake At Horse Mesa Dam](https://api.wwdh.internetofwater.app/collections/rise-edr/items/3547 "Apache Lake At Horse Mesa Dam") | 3547 | None | Apache Lake At Horse Mesa Dam | None | 1 | 1915.75 | 2020-08-10T09:52:20+00:00 | 2020-08-10T09:52:20+00:00 | {'\_id': 'WGS84', 'definition':... | MT | None | \[{'id': 4, 'tag': 'Lower... | None | \[\] | Lake/Reservoir | Mountain Standard Time | -7.0 | \['Lower Colorado'\] | \['Lower Colorado Basin'\] | Apache Lake | 245048.0 | 1914.0 | None | None | 245048.0 | 0.0 | 1659.0 | 0.0 | 1912.0 | None | None | 2656.0 |
+| [Apache Lake At Marina](https://api.wwdh.internetofwater.app/collections/rise-edr/items/3548 "Apache Lake At Marina") | 3548 | None | Apache Lake At Marina | None | 1 | 1920.98 | 2020-08-10T09:52:20+00:00 | 2020-08-10T09:52:20+00:00 | {'\_id': 'WGS84', 'definition':... | MT | None | \[{'id': 4, 'tag': 'Lower... | None | \[\] | Lake/Reservoir | Mountain Standard Time | -7.0 | \['Lower Colorado'\] | \['Lower Colorado Basin'\] |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| [Apache Lake At Three Mile Island](https://api.wwdh.internetofwater.app/collections/rise-edr/items/3549 "Apache Lake At Three Mile Island") | 3549 | None | Apache Lake At Three Mile Island | None | 1 | 1916.63 | 2020-08-10T09:52:20+00:00 | 2020-08-10T09:52:20+00:00 | {'\_id': 'WGS84', 'definition':... | MT | None | \[{'id': 4, 'tag': 'Lower... | None | \[\] | Lake/Reservoir | Mountain Standard Time | -7.0 | \['Lower Colorado'\] | \['Lower Colorado Basin'\] |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| [Canyon Lake At Beach Below...](https://api.wwdh.internetofwater.app/collections/rise-edr/items/3550 "Canyon Lake At Beach Below Horse Mesa Dam") | 3550 | None | Canyon Lake At Beach Below... | None | 1 | 1672.92 | 2020-08-10T09:52:20+00:00 | 2020-08-10T09:52:20+00:00 | {'\_id': 'WGS84', 'definition':... | MT | None | \[{'id': 4, 'tag': 'Lower... | None | \[\] | Lake/Reservoir | Mountain Standard Time | -7.0 | \['Lower Colorado'\] | \['Lower Colorado Basin'\] | Canyon Lake | 57852.0 | 1660.5 | None | None | None | None | None | None | None | None | None | 950.0 |
+
+Three things are happening in that URL:
 
 - `bbox=-115,33,-111,35` limits the spatial window.
 - `locationTypeName=Lake%2FReservoir` filters on a feature property. The
