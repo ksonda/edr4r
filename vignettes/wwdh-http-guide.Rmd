@@ -112,6 +112,15 @@ parameters, and links to the four query types RISE supports. For the
 complete technical reference of every route and parameter, see the
 [Swagger/OpenAPI page](https://api.wwdh.internetofwater.app/openapi).
 
+Here is the live collection page, embedded from the service (this and
+the other embedded views below require an internet connection;
+[open in its own tab](https://api.wwdh.internetofwater.app/collections/rise-edr)):
+
+<iframe src="https://api.wwdh.internetofwater.app/collections/rise-edr"
+  width="100%" height="480" loading="lazy"
+  style="border:1px solid #ccc; border-radius:4px;"
+  title="RISE collection page on the Western Water Datahub"></iframe>
+
 ## 3. Discover what RISE offers
 
 The machine-readable version of the collection page is the anchor for
@@ -203,6 +212,14 @@ around the lower Colorado River near Lake Mead and Lake Havasu:
 https://api.wwdh.internetofwater.app/collections/rise-edr/locations?bbox=-115,33,-113,37
 ```
 
+The live map
+([open in its own tab](https://api.wwdh.internetofwater.app/collections/rise-edr/locations)):
+
+<iframe src="https://api.wwdh.internetofwater.app/collections/rise-edr/locations"
+  width="100%" height="500" loading="lazy"
+  style="border:1px solid #ccc; border-radius:4px;"
+  title="RISE locations map"></iframe>
+
 Switch the same URL to `f=json` to get the locations as a GeoJSON
 `FeatureCollection` — each feature has an `id` (the RISE location id
 you will use in section 6), a point geometry, and properties such as
@@ -222,7 +239,15 @@ https://api.wwdh.internetofwater.app/collections/rise-edr/items?f=html&bbox=-115
 That request — checked live on June 10, 2026 — returns seven
 lake/reservoir locations in a Lower Colorado bounding box, including
 `3515` (Lake Havasu Parker Dam and Powerplant) and several Apache Lake
-sites. Three things are happening in that URL:
+sites. The live view
+([open in its own tab](https://api.wwdh.internetofwater.app/collections/rise-edr/items?f=html&bbox=-115,33,-111,35&locationTypeName=Lake%2FReservoir&limit=20)):
+
+<iframe src="https://api.wwdh.internetofwater.app/collections/rise-edr/items?f=html&amp;bbox=-115,33,-111,35&amp;locationTypeName=Lake%2FReservoir&amp;limit=20"
+  width="100%" height="500" loading="lazy"
+  style="border:1px solid #ccc; border-radius:4px;"
+  title="Filtered RISE items table: lake/reservoir locations in a Lower Colorado bbox"></iframe>
+
+Three things are happening in that URL:
 
 - `bbox=-115,33,-111,35` limits the spatial window.
 - `locationTypeName=Lake%2FReservoir` filters on a feature property.
@@ -257,6 +282,11 @@ e.g. Lake Mead is location `3514`:
 ``` text
 https://api.wwdh.internetofwater.app/collections/rise-edr/items/3514
 ```
+
+<iframe src="https://api.wwdh.internetofwater.app/collections/rise-edr/items/3514"
+  width="100%" height="450" loading="lazy"
+  style="border:1px solid #ccc; border-radius:4px;"
+  title="Lake Mead Hoover Dam and Powerplant feature page"></iframe>
 
 ## 6. Get data for one location
 
