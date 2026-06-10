@@ -1,396 +1,293 @@
 ---
-title: "Western Water Datahub EDR with raw HTTP"
+title: "Tutorial: USBR RISE data through the Western Water Datahub EDR API"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Western Water Datahub EDR with raw HTTP}
+  %\VignetteIndexEntry{Tutorial: USBR RISE data through the Western Water Datahub EDR API}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-This guide shows how to use the
-[Western Water Datahub](https://api.wwdh.internetofwater.app) EDR API
-with plain HTTP requests. It does not assume R, Python, JavaScript, or
-any other client library. If you can open a URL in a browser, use
-`curl`, or send an HTTP GET request from another tool, you can use
-these patterns.
+This is an end-to-end tutorial on finding, retrieving, downloading, and
+reusing Bureau of Reclamation RISE data through the
+[Western Water Datahub](https://api.wwdh.internetofwater.app) (WWDH)
+EDR interface.
 
-Use the [Swagger/OpenAPI page](https://api.wwdh.internetofwater.app/openapi)
-as the endpoint reference. Use this page when you want to understand
-which URL to call, which query parameters matter, and what kind of JSON
-to expect back.
+It is written for USBR staff who are comfortable with computers but are
+not web developers. You do not need to install anything or write any
+code. Every step works by opening a URL in a normal web browser. Where
+a command-line alternative is useful, a `curl` version is shown too,
+but it is always optional.
 
-The examples below were checked against live WWDH metadata on June 4,
-2026. Re-run the discovery requests before important work because
-collections and upstream source behavior can change.
+Key example URLs in this tutorial were checked against the live service
+on June 10, 2026. The Datahub evolves, so if an example ever surprises
+you, start again from the discovery steps in sections 3 and 4 — those
+are the durable part.
 
-## 1. Base URL and response formats
+## 1. The ideas you need (and none you don't)
 
-The base URL is:
+**RISE** ([data.usbr.gov](https://data.usbr.gov/)) is Reclamation's
+public data catalog: reservoir storage, elevations, releases, canal
+flows, weather observations, and more, organized by *location* and
+*parameter*.
+
+**EDR** (OGC API - Environmental Data Retrieval) is an open standard
+for asking environmental data questions with plain URLs: "what do you
+have?", "what stations are in this box?", "give me parameter X at
+location Y between these dates."
+
+**WWDH** is a server that republishes RISE (and several other federal
+water datasets) through that standard. The collection you will use is
+called `rise-edr`.
+
+Why go through WWDH instead of RISE directly? Two reasons:
+
+1. The URL patterns are a standard. Once you can query `rise-edr`, you
+   can query SNOTEL snowpack, USACE reservoir, and PRISM climate
+   collections on the same server with the *same* URL grammar
+   (section 10).
+2. Every response is available in machine-friendly formats (JSON, CSV)
+   *and* a human-readable HTML page, so you can browse first and
+   automate later.
+
+### Anatomy of a request URL
+
+Every request in this tutorial is just a URL with this shape:
 
 ``` text
-https://api.wwdh.internetofwater.app
+https://api.wwdh.internetofwater.app / collections/rise-edr/locations/3514 ? f=json & parameter-name=3
+└──────────────── base ─────────────┘ └───────────── path ──────────────┘   └───────── query ────────┘
 ```
 
-Most examples use `f=json` because WWDH is a pygeoapi service and
-serves collection metadata, GeoJSON, and CoverageJSON through JSON
-responses.
+- The **base** is always `https://api.wwdh.internetofwater.app`.
+- The **path** says what kind of thing you want (a list of locations,
+  data at one location, a data cube over an area, ...).
+- The **query** (everything after `?`, with pieces separated by `&`)
+  refines the request: format, dates, parameters, bounding box.
 
-``` text
-GET https://api.wwdh.internetofwater.app/collections?f=json
-```
+### The format switch: `f=`
 
-You can often request a browser-readable HTML page with `f=html`:
+Almost every URL accepts an `f` parameter that picks the response
+format. This is the single most useful thing to remember:
 
-``` text
-GET https://api.wwdh.internetofwater.app/collections?f=html
-```
+| `f=` | What you get | When to use it |
+|---|---|---|
+| `html` | A readable web page, often with a map or table | Browsing, orienting yourself, sharing a link with a colleague |
+| `json` | Structured data (GeoJSON or CoverageJSON) | Downloads, scripts, GIS, Excel Power Query |
+| `csv` | A spreadsheet-ready table (location/feature lists) | Direct download into Excel |
 
-For command-line use, quote URLs that contain `?`, `&`, parentheses, or
-spaces:
+If you leave `f=` off, your browser usually gets the HTML page and
+tools like `curl` usually get JSON. Being explicit avoids surprises.
+
+The HTML pages are genuinely useful — the locations page renders a
+map, and the items page renders a sortable table — but they are a
+*window* onto the data, not the data itself. When you want to keep or
+analyze the numbers, switch the same URL to `f=json` or `f=csv`.
+
+### If you use curl
+
+Always wrap the URL in single quotes, because `?` and `&` mean
+something to the shell:
 
 ``` sh
-curl -sS 'https://api.wwdh.internetofwater.app/collections?f=json'
+curl -sS 'https://api.wwdh.internetofwater.app/collections/rise-edr?f=json'
 ```
 
-Useful `f` values:
+Add `-o filename` to save the response to a file. That is all the curl
+you need for this tutorial.
 
-| `f` value | Use | Common response |
-|---|---|---|
-| `json` | Programmatic access | JSON, GeoJSON, or CoverageJSON |
-| `html` | Browser inspection | HTML page generated by pygeoapi |
-| `csv` | Some feature/location endpoints | CSV table |
-| `jsonld` | Linked-data representation when advertised | JSON-LD |
+## 2. Five-minute orientation in the browser
 
-For EDR data queries, prefer `f=json`. The body will usually identify
-itself as either GeoJSON (`"type": "FeatureCollection"`) or
-CoverageJSON (`"type": "Coverage"` or `"type": "CoverageCollection"`).
+Open these three pages in order, just to look around:
 
-## 2. Discovery first
+1. The landing page:
+   <https://api.wwdh.internetofwater.app>
+2. The list of all collections on the server:
+   <https://api.wwdh.internetofwater.app/collections>
+3. The RISE collection page:
+   <https://api.wwdh.internetofwater.app/collections/rise-edr>
 
-Start by asking what the service provides.
+The RISE collection page shows the description ("a proxy of the RISE
+API into the OGC API EDR format"), the spatial extent, the list of
+parameters, and links to the four query types RISE supports. For the
+complete technical reference of every route and parameter, see the
+[Swagger/OpenAPI page](https://api.wwdh.internetofwater.app/openapi).
 
-``` http
-GET /?f=json HTTP/1.1
-Host: api.wwdh.internetofwater.app
-Accept: application/json
-```
+## 3. Discover what RISE offers
 
-Equivalent full URL:
+The machine-readable version of the collection page is the anchor for
+everything else:
 
 ``` text
-https://api.wwdh.internetofwater.app/?f=json
+https://api.wwdh.internetofwater.app/collections/rise-edr?f=json
 ```
 
-Then list collections:
+Two blocks in that document matter most.
 
-``` http
-GET /collections?f=json HTTP/1.1
-Host: api.wwdh.internetofwater.app
-Accept: application/json
-```
+**`data_queries`** lists the query types this collection supports. As
+of June 10, 2026, `rise-edr` advertises four:
 
-Equivalent `curl`:
+| Query type | URL path | Question it answers |
+|---|---|---|
+| `locations` | `/collections/rise-edr/locations` | Where are the monitoring locations? What data does one location have? |
+| `items` | `/collections/rise-edr/items` | Feature catalog: searchable, filterable list of RISE locations with their attributes |
+| `cube` | `/collections/rise-edr/cube` | Give me data for everything inside this bounding box |
+| `area` | `/collections/rise-edr/area` | Give me data for everything inside this polygon |
+
+Do not assume other EDR routes (like `/position` or `/radius`) work
+for RISE — a route that is not advertised in `data_queries` will
+return an error. Other collections on the server advertise different
+sets.
+
+**`parameter_names`** lists every data variable you can request, keyed
+by RISE's numeric parameter ids. Each entry carries a human-readable
+name, description, and unit.
+
+## 4. Find the parameter ids you need
+
+RISE parameters are identified by *numbers*, not names. The URL takes
+the number; the name and unit are there so humans can pick the right
+number. A few examples from the live metadata:
+
+| Parameter id | Name | Unit |
+|---|---|---|
+| `3` | Lake/Reservoir Storage (daily) | af |
+| `1830` | Lake/Reservoir Release - Total | cfs |
+| `1834` | Lake/Reservoir Elevation | ft |
+| `1811` | Precipitation | in |
+| `1777` | Water Temperature | °F |
+
+There are hundreds more. Two ways to find the one you need:
+
+**In the browser:** open
+<https://api.wwdh.internetofwater.app/collections/rise-edr> and use
+your browser's find-in-page (Ctrl+F / Cmd+F) on the parameter list.
+
+**With curl and jq:** pull just the id/name/unit triples:
 
 ``` sh
-curl -sS 'https://api.wwdh.internetofwater.app/collections?f=json'
+curl -sS 'https://api.wwdh.internetofwater.app/collections/rise-edr?f=json' |
+  jq '.parameter_names | to_entries[] | {id: .key, name: .value.name, unit: .value.unit.symbol.value}'
 ```
 
-The response has a top-level `collections` array. Each collection has
-an `id`, `title`, `extent`, `links`, and sometimes a `data_queries`
-object.
+Note that the same concept (for example "Lake/Reservoir Storage") may
+appear under several ids that differ by timestep or computation
+method. Read the description text before committing to an id, and
+remember: **labels are for humans; ids go in URLs.**
 
-The same document may also have a top-level `parameterGroups` array.
-Use `parameterGroups` when you want to translate a water-data concept
-across collections. For example, the `Lake/Reservoir Storage` group
-currently maps USBR RISE parameter `3` to USACE storage parameters such
-as `Flood Storage` and `Conservation Storage`.
+## 5. Find locations
 
-As of June 4, 2026, examples include:
+You will usually start from a place, not a parameter: "what does RISE
+monitor near here?" There are two complementary tools.
 
-| Collection id | What it is | Advertised data queries |
-|---|---|---|
-| `rise-edr` | USBR RISE reservoir telemetry | `locations`, `cube`, `area`, `items` |
-| `snotel-edr` | USDA SNOTEL station data | `locations`, `cube`, `area`, `items` |
-| `awdb-forecasts-edr` | USDA AWDB forecasts | `locations`, `cube`, `area`, `items` |
-| `usace-edr` | USACE Access2Water API | `locations`, `cube`, `area`, `items` |
-| `usgs-prism` | PRISM monthly climate grids | `position`, `cube` |
-| `snotel-huc06-means` | HUC6 SWE summary features | Feature `/items`; no EDR data queries advertised |
+### 5a. The locations map
 
-Inspect one collection before asking for data:
+Open the locations page in a browser and you get a map of RISE
+locations:
 
-``` sh
-curl -sS 'https://api.wwdh.internetofwater.app/collections/snotel-edr?f=json'
+``` text
+https://api.wwdh.internetofwater.app/collections/rise-edr/locations
 ```
 
-Look for:
-
-- `parameter_names`: data variables you can request with
-  `parameter-name`.
-- `parameterGroups`: cross-collection concept groups, when present.
-- `data_queries`: supported EDR query types for that collection.
-- `links`: HTML pages, JSON pages, `/items`, `/queryables`, and source
-  documentation links.
-- `extent`: the rough spatial and temporal coverage.
-
-## 3. Endpoint map
-
-These are the routes you will use most often.
-
-| Route | Purpose | Typical response |
-|---|---|---|
-| `/` | Landing page | JSON or HTML links |
-| `/conformance` | OGC conformance classes | JSON |
-| `/collections` | List collections | JSON collection list |
-| `/collections/{collectionId}` | Collection metadata | JSON collection document |
-| `/collections/{collectionId}/queryables` | Filterable feature properties | JSON Schema |
-| `/collections/{collectionId}/items` | Feature collection | GeoJSON, HTML, CSV |
-| `/collections/{collectionId}/items/{itemId}` | One feature | GeoJSON feature |
-| `/collections/{collectionId}/locations` | Station/location index | GeoJSON, HTML, CSV |
-| `/collections/{collectionId}/locations/{locId}` | Data for one known location | CoverageJSON |
-| `/collections/{collectionId}/position` | Data at one point | CoverageJSON |
-| `/collections/{collectionId}/cube` | Data inside a bounding box | CoverageJSON |
-| `/collections/{collectionId}/area` | Data inside a polygon | CoverageJSON |
-| `/collections/{collectionId}/radius` | Data within radius of a point | CoverageJSON when implemented |
-| `/collections/{collectionId}/trajectory` | Data along a line | CoverageJSON when implemented |
-| `/collections/{collectionId}/corridor` | Data along a line with width | CoverageJSON when implemented |
-
-Do not assume every collection supports every route. The collection
-document tells you what is advertised. A route that is valid for one
-collection may return 404 or 500 for another.
-
-## 4. Common query parameters
-
-| Parameter | Used by | Meaning | Example |
-|---|---|---|---|
-| `f` | Almost all routes | Response format | `f=json` |
-| `bbox` | `locations`, `items`, `cube` | Bounding box as `minx,miny,maxx,maxy` | `bbox=-107,37,-105,40` |
-| `datetime` | EDR data queries, some feature queries | ISO-8601 instant or interval | `datetime=2024-02-01/2024-04-30` |
-| `parameter-name` | EDR data queries | Comma-separated data variable ids | `parameter-name=WTEQ` |
-| `coords` | `position`, `area`, `trajectory`, `corridor`, `radius` | WKT geometry | `coords=POINT(-112.4%2036.9)` |
-| `limit` | `locations`, `items`, some providers | Feature count limit | `limit=10` |
-| `crs` | Some EDR routes | Output coordinate reference system | Provider-specific URI |
-| `z` | 3D/profile-capable data | Vertical coordinate | `z=0` |
-| `within` | `radius` | Radius distance | `within=25` |
-| `within-units` | `radius` | Radius units | `within-units=km` |
-| `corridor-width` | `corridor` | Width around line | `corridor-width=10` |
-| `width-units` | `corridor` | Corridor width units | `width-units=km` |
-| `{queryable}` | `items` | Feature property filter advertised by `/queryables` | `provider=SPL` |
-
-Coordinates are longitude, latitude. A bbox is always:
+Constrain it with a bounding box. A `bbox` is four comma-separated
+numbers — **longitude and latitude, in this order**:
 
 ``` text
 min_lon,min_lat,max_lon,max_lat
 ```
 
-Multiple parameters are comma-separated:
+(Remember that longitudes in the western U.S. are negative, and the
+*minimum* longitude is the *westernmost* edge.) For example, the area
+around the lower Colorado River near Lake Mead and Lake Havasu:
 
 ``` text
-parameter-name=ppt,tmx
+https://api.wwdh.internetofwater.app/collections/rise-edr/locations?bbox=-115,33,-113,37
 ```
 
-Some parameter ids contain spaces. Encode them in a hand-built URL:
+Switch the same URL to `f=json` to get the locations as a GeoJSON
+`FeatureCollection` — each feature has an `id` (the RISE location id
+you will use in section 6), a point geometry, and properties such as
+`locationName`, `locationTypeName`, `elevation`, `timezone`, and
+`projectNames`.
+
+### 5b. The items catalog: filter, browse, download
+
+The `/items` route serves the same locations as a *searchable feature
+catalog*. In a browser it renders as a table with one row per
+location:
 
 ``` text
-parameter-name=Flood%20Storage
+https://api.wwdh.internetofwater.app/collections/rise-edr/items?f=html&bbox=-115,33,-111,35&locationTypeName=Lake%2FReservoir&limit=20
 ```
 
-or let `curl` encode them:
+That request — checked live on June 10, 2026 — returns seven
+lake/reservoir locations in a Lower Colorado bounding box, including
+`3515` (Lake Havasu Parker Dam and Powerplant) and several Apache Lake
+sites. Three things are happening in that URL:
 
-``` sh
-curl -sS -G 'https://api.wwdh.internetofwater.app/collections/usace-edr/locations/157145' \
-  --data-urlencode 'f=json' \
-  --data-urlencode 'datetime=2024-01-01/2024-12-31' \
-  --data-urlencode 'parameter-name=Flood Storage'
-```
+- `bbox=-115,33,-111,35` limits the spatial window.
+- `locationTypeName=Lake%2FReservoir` filters on a feature property.
+  The `%2F` is a URL-encoded `/` (the value is literally
+  `Lake/Reservoir`; a raw slash would confuse the URL).
+- `limit=20` caps the number of rows. Start generous: some filters
+  are applied *after* the limit, so a small limit can hide matches
+  that a larger one finds.
 
-Intervals use a slash:
+Which property names can you filter on? Ask the queryables route:
 
 ``` text
-datetime=2024-01-01/2024-03-31
+https://api.wwdh.internetofwater.app/collections/rise-edr/queryables?f=json
 ```
 
-Open intervals may be supported by some providers:
+Any property listed there (such as `locationTypeName` or
+`projectNames`) can be used as a query parameter on `/items`.
+
+**Download the catalog as a spreadsheet:** change `f=html` to `f=csv`
+and the same filtered table downloads as a CSV file that opens
+directly in Excel — including useful engineering attributes like Total
+Capacity, Active Capacity, and vertical datum notes where RISE has
+them:
 
 ``` text
-datetime=2024-01-01/..
+https://api.wwdh.internetofwater.app/collections/rise-edr/items?f=csv&bbox=-115,33,-111,35&locationTypeName=Lake%2FReservoir&limit=20
 ```
 
-## 5. URL encoding rules
-
-HTTP URLs cannot contain every character literally. Encode reserved
-characters in query values.
-
-For WKT point coordinates, encode the space between lon and lat as
-`%20`:
+**Inspect one location:** every row links to a single-feature page,
+e.g. Lake Mead is location `3514`:
 
 ``` text
-coords=POINT(-112.4%2036.9)
+https://api.wwdh.internetofwater.app/collections/rise-edr/items/3514
 ```
 
-A polygon must be URL-encoded if it contains spaces or parentheses.
-This readable WKT:
+## 6. Get data for one location
 
-``` text
-POLYGON((-106 39,-105.8 39,-105.8 39.2,-106 39.2,-106 39))
-```
-
-becomes a query value like:
-
-``` text
-coords=POLYGON((-106%2039,-105.8%2039,-105.8%2039.2,-106%2039.2,-106%2039))
-```
-
-Most HTTP clients can encode query parameters for you. If you build
-URLs by hand, be especially careful with spaces, `#`, `&`, `+`, and
-literal slashes inside path ids.
-
-## 6. Finding parameters
-
-Collection metadata is where EDR data variables live.
-
-``` sh
-curl -sS 'https://api.wwdh.internetofwater.app/collections/usgs-prism?f=json'
-```
-
-In the response, inspect `parameter_names`.
-
-Example `usgs-prism` parameter ids:
-
-| Parameter id | Meaning | Unit |
-|---|---|---|
-| `ppt` | Mean monthly precipitation | mm/month |
-| `tmn` | Minimum monthly temperature | deg C |
-| `tmx` | Maximum monthly temperature | deg C |
-
-Example `snotel-edr` parameter ids:
-
-| Parameter id | Meaning | Unit |
-|---|---|---|
-| `WTEQ` | Snow water equivalent | in |
-| `SNWD` | Snow depth | in |
-| `PREC` | Precipitation accumulation | in |
-| `TAVG` | Average air temperature | deg F |
-
-Example reservoir/stage parameter ids:
-
-| Collection | Parameter id | Meaning | Unit |
-|---|---|---|---|
-| `rise-edr` | `3` | Daily lake/reservoir storage | acre-ft |
-| `rise-edr` | `1830` | Lake/reservoir release - total | cfs |
-| `usace-edr` | `Flood Storage` | Flood storage | acre-ft |
-| `usace-edr` | `Conservation Storage` | Conservation storage | acre-ft |
-| `usace-edr` | `Outflow` | Outflow | cfs |
-| `resviz-edr` | `raw` | Daily lake/reservoir storage | provider-defined |
-
-Use the exact `parameter_names` keys in the URL. Labels are for humans;
-keys are for requests.
-
-For cross-collection work, use the top-level `parameterGroups` block
-from `/collections?f=json` to find conceptually equivalent parameters.
-For example:
-
-``` sh
-curl -sS 'https://api.wwdh.internetofwater.app/collections?f=json' |
-  jq '.parameterGroups[] | select(.name == "Lake/Reservoir Storage") | {name, members}'
-```
-
-Live response summary on June 4, 2026:
-
-``` json
-{
-  "name": "Lake/Reservoir Storage",
-  "members": {
-    "rise-edr": ["1470", "56", "51", "47", "3"],
-    "usace-edr": [
-      "Flood Storage",
-      "Conservation Storage",
-      "Percent Flood Pool",
-      "Percent Conservation Pool"
-    ],
-    "resviz-edr": ["avg", "p10", "p90", "raw"],
-    "teacup-edr": ["avg", "p10", "p90", "raw"]
-  }
-}
-```
-
-## 7. Finding stations or locations
-
-Station-style collections advertise `locations`. Use a bbox first.
-
-``` http
-GET /collections/snotel-edr/locations?f=json&bbox=-107,37,-105,40 HTTP/1.1
-Host: api.wwdh.internetofwater.app
-Accept: application/geo+json, application/json
-```
-
-Full URL:
-
-``` text
-https://api.wwdh.internetofwater.app/collections/snotel-edr/locations?f=json&bbox=-107,37,-105,40
-```
-
-Equivalent `curl`:
-
-``` sh
-curl -sS \
-  'https://api.wwdh.internetofwater.app/collections/snotel-edr/locations?f=json&bbox=-107,37,-105,40'
-```
-
-Expected response shape:
-
-``` json
-{
-  "type": "FeatureCollection",
-  "features": [
-    {
-      "type": "Feature",
-      "id": "303",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [-105.0, 37.3]
-      },
-      "properties": {
-        "stationTriplet": "303:CO:SNTL",
-        "name": "Apishapa",
-        "stateCode": "CO",
-        "networkCode": "SNTL"
-      }
-    }
-  ]
-}
-```
-
-The exact fields vary by provider. For RISE reservoirs you may see
-properties such as `_id`, `locationName`, `timezone`, `elevation`, and
-`projectNames`. For SNOTEL you may see `stationTriplet`, `stationId`,
-`stateCode`, `networkCode`, `name`, and `huc`.
-
-## 8. One known station: `/locations/{locId}`
-
-When you already know a provider's location id, request data through
-the location endpoint. This example asks RISE for Lake Mead daily
-storage for January 2023.
-
-``` http
-GET /collections/rise-edr/locations/3514?f=json&datetime=2023-01-01/2023-01-31&parameter-name=3 HTTP/1.1
-Host: api.wwdh.internetofwater.app
-Accept: application/prs.coverage+json, application/json
-```
-
-Full URL:
+Once you know a location id and a parameter id, the data request is
+one URL: `/locations/{locationId}` plus a date range and parameter.
+Lake Mead (`3514`), daily storage (`3`), January 2023:
 
 ``` text
 https://api.wwdh.internetofwater.app/collections/rise-edr/locations/3514?f=json&datetime=2023-01-01/2023-01-31&parameter-name=3
 ```
 
-Equivalent `curl`:
+Or as curl, saving to a file:
 
 ``` sh
-curl -sS \
+curl -sS -o lake-mead-jan2023.json \
   'https://api.wwdh.internetofwater.app/collections/rise-edr/locations/3514?f=json&datetime=2023-01-01/2023-01-31&parameter-name=3'
 ```
 
-Expected response shape:
+The two query parameters:
+
+- `datetime=` takes an ISO date, or a range with a slash:
+  `2023-01-01/2023-01-31`. Some providers accept an open end:
+  `2023-01-01/..`. Without `datetime`, you may get the full period of
+  record — fine for some series, enormous for others. Start narrow.
+- `parameter-name=` takes one or more parameter ids,
+  comma-separated: `parameter-name=3,1834`.
+
+### Reading the response (CoverageJSON)
+
+Data queries return **CoverageJSON**, a compact format that keeps the
+time axis and the values in parallel arrays:
 
 ``` json
 {
@@ -400,483 +297,203 @@ Expected response shape:
     "axes": {
       "x": {"values": [-114.7]},
       "y": {"values": [36.0]},
-      "t": {"values": ["2023-01-01T07:00:00Z"]}
+      "t": {"values": ["2023-01-01T07:00:00Z", "2023-01-02T07:00:00Z"]}
     }
   },
   "ranges": {
     "3": {
       "type": "NdArray",
       "axisNames": ["t"],
-      "values": [25000000]
+      "values": [8730345, 8732112]
     }
   }
 }
 ```
 
-CoverageJSON is compact and array-oriented. To make a table, pair the
-axis values in `domain.axes` with the values in each `ranges`
-parameter.
+To turn this into a table, pair them up positionally: the first time
+in `domain.axes.t.values` goes with the first number in
+`ranges.{parameter}.values`, the second with the second, and so on.
+`axisNames` tells you which axis(es) the values run along — for a
+single station it is just `["t"]`.
 
-## 9. Many stations or grid cells: `/cube`
+| t | value of parameter 3 (af) |
+|---|---|
+| 2023-01-01T07:00:00Z | 8730345 |
+| 2023-01-02T07:00:00Z | 8732112 |
 
-Use `cube` for bbox-based bulk retrieval when the collection advertises
-it. This is usually the best route for multiple stations or a small
-grid.
+A note on CSV here: the server advertises `f=csv` on data queries, but
+in testing the EDR data routes returned empty CSV bodies. For time
+series, treat `f=json` as the dependable format and convert it
+yourself (section 9), or use the `/items` CSV for catalog tables.
 
-SNOTEL SWE example:
+## 7. Get data for many locations at once: `/cube`
 
-``` http
-GET /collections/snotel-edr/cube?f=json&bbox=-106.2,39.6,-105.8,40.0&datetime=2024-02-01/2024-04-30&parameter-name=WTEQ HTTP/1.1
-Host: api.wwdh.internetofwater.app
-Accept: application/prs.coverage+json, application/json
-```
-
-Full URL:
-
-``` text
-https://api.wwdh.internetofwater.app/collections/snotel-edr/cube?f=json&bbox=-106.2,39.6,-105.8,40.0&datetime=2024-02-01/2024-04-30&parameter-name=WTEQ
-```
-
-PRISM grid example with two parameters:
-
-``` sh
-curl -sS \
-  'https://api.wwdh.internetofwater.app/collections/usgs-prism/cube?f=json&bbox=-112.6,36.7,-112.2,37.1&datetime=2023-01-01/2023-02-28&parameter-name=ppt,tmx'
-```
-
-Expected CoverageJSON shape:
-
-``` json
-{
-  "type": "CoverageCollection",
-  "parameters": {
-    "ppt": {
-      "type": "Parameter",
-      "description": {"en": "Mean monthly precipitation"}
-    }
-  },
-  "coverages": [
-    {
-      "type": "Coverage",
-      "domain": {
-        "domainType": "Grid",
-        "axes": {
-          "x": {"values": [-112.56, -112.52]},
-          "y": {"values": [37.06, 37.02]},
-          "t": {"values": ["2023-01-01"]}
-        }
-      },
-      "ranges": {
-        "ppt": {
-          "axisNames": ["t", "y", "x"],
-          "values": [116.0, 120.0]
-        }
-      }
-    }
-  ]
-}
-```
-
-Station collections may also return `CoverageCollection`, but each
-coverage is often a `PointSeries` rather than a `Grid`.
-
-## 10. One point from a grid: `/position`
-
-PRISM advertises `position`, which is useful when you want the time
-series at one longitude/latitude rather than a full grid.
-
-``` http
-GET /collections/usgs-prism/position?f=json&coords=POINT(-112.4%2036.9)&datetime=2023-01-01/2023-02-28&parameter-name=ppt HTTP/1.1
-Host: api.wwdh.internetofwater.app
-Accept: application/prs.coverage+json, application/json
-```
-
-Full URL:
+When you want every matching series inside a bounding box, use the
+`cube` route instead of looping over locations. All RISE storage
+(`3`) series in a small box around Lake Havasu, for calendar 2024:
 
 ``` text
-https://api.wwdh.internetofwater.app/collections/usgs-prism/position?f=json&coords=POINT(-112.4%2036.9)&datetime=2023-01-01/2023-02-28&parameter-name=ppt
+https://api.wwdh.internetofwater.app/collections/rise-edr/cube?f=json&bbox=-114.3,34.1,-113.5,34.4&datetime=2024-01-01/2024-12-31&parameter-name=3
 ```
 
-Equivalent `curl`:
+This returns a `CoverageCollection`: a `coverages` array in which each
+entry is one location's series, with its own `domain` (the x/y
+coordinates and time axis) and `ranges` (the values). The example
+above returns one coverage — Lake Havasu, 365 daily storage values.
 
-``` sh
-curl -sS \
-  'https://api.wwdh.internetofwater.app/collections/usgs-prism/position?f=json&coords=POINT(-112.4%2036.9)&datetime=2023-01-01/2023-02-28&parameter-name=ppt'
-```
+Practical guidance for `cube`:
 
-Expected response:
+- Keep the bbox tight and the date range short on the first try, then
+  widen one thing at a time. Each cube request fans out to the
+  upstream RISE API, so big requests are slow and can time out.
+- If a broad cube fails, fall back to the discovery pattern: find
+  candidate ids with `/items` (section 5b), then request each one via
+  `/locations/{id}` (section 6).
 
-``` json
-{
-  "type": "Coverage",
-  "domain": {
-    "domainType": "PointSeries",
-    "axes": {
-      "x": {"values": [-112.4]},
-      "y": {"values": [36.9]},
-      "t": {"values": ["2023-01-01", "2023-02-01"]}
-    }
-  },
-  "ranges": {
-    "ppt": {
-      "axisNames": ["t"],
-      "values": [116.0, 42.0]
-    }
-  }
-}
-```
+## 8. Get data inside a polygon: `/area`
 
-## 11. Polygon queries: `/area`
-
-When a collection advertises `area`, send a WKT polygon in `coords`.
-Use this for a watershed, district, or management boundary after you
-have simplified it enough for a URL.
-
-Readable polygon:
+If your area of interest is a watershed or management boundary rather
+than a box, the `area` route accepts a polygon in WKT (well-known
+text) via `coords=`. A readable WKT polygon:
 
 ``` text
-POLYGON((-106 39,-105.8 39,-105.8 39.2,-106 39.2,-106 39))
+POLYGON((-115 35,-113 35,-113 37,-115 37,-115 35))
 ```
 
-Raw request shape:
-
-``` http
-GET /collections/snotel-edr/area?f=json&coords=POLYGON((-106%2039,-105.8%2039,-105.8%2039.2,-106%2039.2,-106%2039))&datetime=2024-02-01/2024-04-30&parameter-name=WTEQ HTTP/1.1
-Host: api.wwdh.internetofwater.app
-Accept: application/prs.coverage+json, application/json
-```
-
-For complex polygons, prefer an HTTP client that builds and encodes
-query parameters for you. Long URLs can hit browser, proxy, or server
-limits.
-
-## 12. Feature layers: `/queryables` and `/items`
-
-Collections without EDR `data_queries` are often feature layers. Use
-`queryables` to inspect attributes and `items` to retrieve features.
-EDR collections may also expose `/items`; in that case, treat `/items`
-as the feature catalog you use to discover stations, reservoirs, dams,
-and other locations before making a data query.
-
-Queryables example:
-
-``` sh
-curl -sS \
-  'https://api.wwdh.internetofwater.app/collections/snotel-huc06-means/queryables?f=json'
-```
-
-Expected response shape:
-
-``` json
-{
-  "type": "object",
-  "properties": {
-    "geometry": {"$ref": "https://geojson.org/schema/Geometry.json"},
-    "name": {"type": "string"},
-    "geoconnex_url": {"type": "string"},
-    "id": {"type": "string"},
-    "basin_index": {"type": "number"}
-  }
-}
-```
-
-Items example:
-
-``` sh
-curl -sS \
-  'https://api.wwdh.internetofwater.app/collections/snotel-huc06-means/items?f=json&limit=3'
-```
-
-Expected response shape:
-
-``` json
-{
-  "type": "FeatureCollection",
-  "features": [
-    {
-      "type": "Feature",
-      "id": "090400",
-      "geometry": {"type": "MultiPolygon"},
-      "properties": {
-        "name": "Upper South Saskatchewan River",
-        "basin_index": 75.4,
-        "current_snow_water_equivalent_relative_to_thirty_year_avg": 75.4,
-        "latest_full_day_of_data": "06-03"
-      }
-    }
-  ]
-}
-```
-
-Feature/catalog layers are not time-series sampling endpoints. Treat
-them as GIS feature downloads with attributes.
-
-### Filtering `/items` with queryables
-
-The property names advertised by `/queryables` can usually be sent as
-ordinary query parameters on `/items`. Combine them with `bbox` and
-`limit` to find a manageable set of features.
-
-RISE example: find lake/reservoir features in a Lower Colorado / Arizona
-bbox.
-
-``` sh
-curl -sS \
-  'https://api.wwdh.internetofwater.app/collections/rise-edr/items?f=json&bbox=-115,33,-111,35&locationTypeName=Lake%2FReservoir&limit=20'
-```
-
-Verified response summary on June 4, 2026:
-
-``` json
-{
-  "type": "FeatureCollection",
-  "count": 7,
-  "sample": [
-    {
-      "id": 3515,
-      "locationName": "Lake Havasu Parker Dam and Powerplant",
-      "locationTypeName": "Lake/Reservoir",
-      "coords": [-114.1385, 34.2964]
-    }
-  ]
-}
-```
-
-USACE example: find South Pacific Division features in the same bbox.
-
-``` sh
-curl -sS \
-  'https://api.wwdh.internetofwater.app/collections/usace-edr/items?f=json&bbox=-115,33,-111,35&provider=SPL&limit=5'
-```
-
-Verified response summary on June 4, 2026:
-
-``` json
-{
-  "type": "FeatureCollection",
-  "count": 4,
-  "sample": [
-    {
-      "id": 157145,
-      "name": "Alamo Dam",
-      "code": "Alamo",
-      "state": "AZ",
-      "provider": "SPL",
-      "coords": [-113.6017, 34.23167]
-    }
-  ]
-}
-```
-
-Provider behavior can vary. In the RISE example above, `limit=5` with
-the same bbox and property filter returned no lake/reservoir features,
-while `limit=20` returned seven. When using a queryable property filter
-for discovery, start with a large enough `limit`, inspect the returned
-features, and then narrow the request.
-
-## 13. Cross-provider storage workflow
-
-This workflow shows a complete verified pattern:
-
-1. Find equivalent storage parameters.
-2. Find a bbox that has both USBR RISE and USACE features.
-3. Ask each provider for all available 2024 storage observations.
-
-The shared bbox used here is a small area containing one matching RISE
-feature and one matching USACE feature:
+URLs cannot contain spaces, so each space becomes `%20`:
 
 ``` text
--114.3,34.1,-113.5,34.4
+https://api.wwdh.internetofwater.app/collections/rise-edr/area?f=json&coords=POLYGON((-115%2035,-113%2035,-113%2037,-115%2037,-115%2035))&datetime=2024-01-01/2024-01-31&parameter-name=3
 ```
 
-It contains USBR RISE lake/reservoir features such as Lake Havasu
-Parker Dam and Powerplant (`3515`) and USACE features such as Alamo Dam
-(`157145`).
+Two rules save most of the grief here: the polygon ring must close
+(first coordinate repeated last), and every space must be encoded. For
+complex boundaries, simplify the polygon first or use a tool that
+encodes URLs for you — very long URLs can exceed browser and server
+limits. If a box is close enough, prefer `cube`; it is simpler and
+faster.
 
-### Step 1: choose equivalent parameters
+## 9. Downloading and using the data
 
-From `parameterGroups`, `Lake/Reservoir Storage` includes:
+You now know how to build the URLs. Getting the results into your
+tools:
 
-| Collection | Parameter to request | Notes |
+**Browser:** open the `f=json` URL and use Save Page As (Ctrl+S /
+Cmd+S), or right-click a link and Save Link As. The `/items?f=csv`
+URLs download directly as spreadsheet files.
+
+**curl:** `curl -sS -o output.json '<URL>'`.
+
+**Excel:** open `/items` CSV files directly. For JSON time series,
+Data → Get Data → From Web in Excel's Power Query accepts the
+`f=json` URL and can unpivot `domain.axes.t.values` against
+`ranges.{id}.values`, though this takes some Power Query comfort —
+many people find it easier to ask a script-writing colleague (or an AI
+assistant) for a five-line converter from CoverageJSON to CSV.
+
+**GIS:** QGIS and ArcGIS read GeoJSON natively. In QGIS, Layer → Add
+Layer → Add Vector Layer, choose Protocol: HTTP, and paste a
+`/locations?f=json` or `/items?f=json` URL to map RISE locations
+directly — no download step needed.
+
+**R:** this package (`edr4r`) wraps all of these routes;
+`edr_locations()`, `edr_cube()`, and `covjson_to_tibble()` reproduce
+this tutorial in a few lines. See the companion vignette,
+*Western Water Datahub collection field guide*.
+
+**Python:** `requests` plus the `covjson-pydantic` or plain
+`json` module; the axis/range pairing logic in section 6 is a
+five-line loop.
+
+## 10. Interoperating beyond RISE
+
+Everything above transfers. The same server hosts sibling collections
+that answer to identical URL grammar — only the collection id, the
+parameter ids, and the advertised query types change:
+
+| Collection id | Source | Example use |
 |---|---|---|
-| `rise-edr` | `3` | Daily lake/reservoir storage, acre-ft |
-| `usace-edr` | `Flood Storage` | Flood storage, acre-ft |
-| `usace-edr` | `Conservation Storage` | Conservation storage, acre-ft; not every location has data |
+| `snotel-edr` | USDA NRCS SNOTEL | Snow water equivalent above your reservoir |
+| `awdb-forecasts-edr` | USDA AWDB | Seasonal water supply forecasts |
+| `usace-edr` | USACE Access2Water | Corps reservoir storage and outflow |
+| `usgs-prism` | PRISM | Monthly precipitation and temperature grids |
 
-For the verified USACE 2024 example below, `Flood Storage` has data in
-the selected bbox. `Conservation Storage` returned HTTP 204 No Content
-for the tested Hoover and Alamo examples on June 4, 2026.
+Check each collection's `data_queries` before assuming a route exists
+(for example, `usgs-prism` supports `position` and `cube`, not
+`locations`).
 
-### Step 2: request USBR RISE storage in the bbox for 2024
+### Translating concepts across agencies: `parameterGroups`
 
-Ask for all matching RISE storage series in the bbox with `cube`:
-
-``` sh
-curl -sS \
-  'https://api.wwdh.internetofwater.app/collections/rise-edr/cube?f=json&bbox=-114.3,34.1,-113.5,34.4&datetime=2024-01-01/2024-12-31&parameter-name=3'
-```
-
-Verified response summary:
-
-``` json
-{
-  "type": "CoverageCollection",
-  "parameterKeys": ["3"],
-  "coverageCount": 1,
-  "sample": [
-    {
-      "x": -114.1385,
-      "y": 34.2964,
-      "t_count": 365,
-      "t_first": "2024-01-01T07:00:00+00:00",
-      "t_last": "2024-12-30T07:00:00+00:00",
-      "value_count": 365,
-      "first_values": [578564.0, 579452.0, 579225.0]
-    }
-  ]
-}
-```
-
-This narrow bbox returned one matching RISE storage series. If a broad
-bbox fails or is too slow, discover candidate locations with `/items`
-first and use `/locations/{locId}` for one location at a time.
-
-### Step 3: request USACE storage in the bbox for 2024
-
-Ask USACE for all matching `Flood Storage` series in the same bbox:
-
-``` sh
-curl -sS \
-  'https://api.wwdh.internetofwater.app/collections/usace-edr/cube?f=json&bbox=-114.3,34.1,-113.5,34.4&datetime=2024-01-01/2024-12-31&parameter-name=Flood%20Storage'
-```
-
-Verified response summary:
-
-``` json
-{
-  "type": "CoverageCollection",
-  "parameterKeys": ["Flood Storage"],
-  "coverageCount": 1,
-  "sample": [
-    {
-      "x": -113.6017,
-      "y": 34.23167,
-      "t_count": 8300,
-      "t_first": "2024-01-01T00:00:00+00:00",
-      "t_last": "2024-12-31T00:00:00+00:00",
-      "value_count": 8300,
-      "first_values": [136286.17, 136286.17, 136286.17]
-    }
-  ]
-}
-```
-
-USACE observations in this response are not daily; they are the
-available observations returned by Access2Water for the 2024 interval.
-
-The practical pattern is:
+Parameter ids differ across agencies: RISE storage is `3`, USACE
+storage is `Flood Storage` or `Conservation Storage`. WWDH publishes a
+crosswalk in the top-level collections document:
 
 ``` text
-/collections?f=json
-  -> parameterGroups for concept mapping
-/collections/{id}/queryables?f=json
-  -> feature property names
-/collections/{id}/items?f=json&bbox=...&{queryable}=...
-  -> candidate location ids
-/collections/{id}/locations/{locId}?f=json&datetime=2024-01-01/2024-12-31&parameter-name=...
-  -> full 2024 series for one location
-/collections/{id}/cube?f=json&bbox=...&datetime=2024-01-01/2024-12-31&parameter-name=...
-  -> all matching series in a bbox, when the provider can satisfy it
+https://api.wwdh.internetofwater.app/collections?f=json
 ```
 
-## 14. Response types in practice
-
-You will usually see one of these JSON shapes.
-
-GeoJSON feature collection:
+Its `parameterGroups` array maps a shared concept to each collection's
+ids. As checked on June 4, 2026, the `Lake/Reservoir Storage` group
+included:
 
 ``` json
 {
-  "type": "FeatureCollection",
-  "features": []
+  "name": "Lake/Reservoir Storage",
+  "members": {
+    "rise-edr": ["1470", "56", "51", "47", "3"],
+    "usace-edr": ["Flood Storage", "Conservation Storage",
+                  "Percent Flood Pool", "Percent Conservation Pool"]
+  }
 }
 ```
 
-GeoJSON single feature:
-
-``` json
-{
-  "type": "Feature",
-  "geometry": {},
-  "properties": {}
-}
-```
-
-CoverageJSON single coverage:
-
-``` json
-{
-  "type": "Coverage",
-  "domain": {
-    "domainType": "PointSeries",
-    "axes": {}
-  },
-  "ranges": {}
-}
-```
-
-CoverageJSON collection:
-
-``` json
-{
-  "type": "CoverageCollection",
-  "parameters": {},
-  "coverages": []
-}
-```
-
-A simple tabular interpretation of CoverageJSON is:
+So a cross-agency comparison of 2024 storage near Parker Dam is two
+parallel cube requests over the same bbox:
 
 ``` text
-coverage id + parameter id + datetime + x + y + z + value
+https://api.wwdh.internetofwater.app/collections/rise-edr/cube?f=json&bbox=-114.3,34.1,-113.5,34.4&datetime=2024-01-01/2024-12-31&parameter-name=3
+
+https://api.wwdh.internetofwater.app/collections/usace-edr/cube?f=json&bbox=-114.3,34.1,-113.5,34.4&datetime=2024-01-01/2024-12-31&parameter-name=Flood%20Storage
 ```
 
-The hard part is axis ordering. `ranges.{parameter}.axisNames` tells
-you the order of dimensions for the flat `values` array.
+(The `%20` encodes the space in `Flood Storage` — USACE uses worded
+ids.) When verified, the first returned Lake Havasu's 365 daily RISE
+storage values and the second returned Alamo Dam's Corps storage
+record for the same year. Expect timestep differences across agencies:
+RISE returned daily values; the USACE series was irregular. Aligning
+them is an analysis step, not an API option.
 
-## 15. A language-agnostic workflow
+## 11. The whole workflow on one page
 
-Use this sequence in any tool:
+``` text
+1. ORIENT      /collections/rise-edr                  (browser, f=html)
+2. PARAMETERS  /collections/rise-edr?f=json           -> parameter_names: pick exact ids
+3. LOCATIONS   /collections/rise-edr/items?f=html&bbox=...&{queryable}=...&limit=...
+               -> browse table; switch to f=csv to download; note location ids
+4. ONE SERIES  /collections/rise-edr/locations/{id}?f=json&datetime=...&parameter-name=...
+5. MANY SERIES /collections/rise-edr/cube?f=json&bbox=...&datetime=...&parameter-name=...
+6. CROSSWALK   /collections?f=json -> parameterGroups, then repeat 3-5 on the sibling collection
+```
 
-1. `GET /collections?f=json`
-2. Pick `collection.id`.
-3. `GET /collections/{id}?f=json`
-4. If `parameter_names` exists, choose exact parameter keys.
-5. If `data_queries.locations` exists, inspect
-   `/collections/{id}/locations?f=json&bbox=...`.
-6. If `data_queries.cube` exists, retrieve data with
-   `/collections/{id}/cube?f=json&bbox=...&datetime=...&parameter-name=...`.
-7. If you need to discover feature ids or filter a feature catalog, use
-   `/collections/{id}/queryables?f=json` and
-   `/collections/{id}/items?f=json&{queryable}=...`.
-8. Parse GeoJSON as features or CoverageJSON as axis/range arrays.
-9. Expand the spatial or temporal scope only after the small request
-   works.
+Start small — one location, one parameter, one month. Widen one
+dimension at a time once the small request works.
 
-## 16. Troubleshooting raw requests
+## 12. Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| 404 on `/cube`, `/area`, or `/position` | Collection does not advertise that route | Re-check `/collections/{id}?f=json` |
-| 400 on a WKT request | `coords` is not URL-encoded or WKT is invalid | Encode spaces as `%20`; close polygon rings |
-| 204 with an empty body | The request is valid, but no data matched the location, time, or parameter | Try another parameter from `parameterGroups`, another location, or a shorter date range |
-| 500 on a broad request | Upstream provider or wrapper could not satisfy the query | Reduce bbox, time range, and parameter count |
-| Empty `features` | No matching features, or filter combination is too narrow | Try HTML page, known active bbox, or fewer filters |
-| `NoApplicableCode` query error on `/items` | Provider could not apply that feature-property filter | Try a different queryable, use only `bbox` and `limit`, or inspect the HTML view |
-| No `parameter_names` | It may be a feature layer | Use `/queryables` and `/items` |
-| Unexpected content type | Server returns GeoJSON/CoverageJSON under JSON | Inspect the body `type` field |
-| Shell error before request is sent | URL was not quoted | Wrap URL in single quotes |
+| 404 on a query route | Route not advertised for this collection | Re-check `data_queries` in `/collections/rise-edr?f=json` |
+| 400 on `/area` | WKT not URL-encoded or ring not closed | Encode spaces as `%20`; repeat the first coordinate at the end |
+| 204 / empty body | Valid request, but nothing matched | Try a different parameter id, location, or a shorter date range |
+| Empty CSV from a data query | CSV not populated for EDR data routes | Use `f=json` for time series; `f=csv` works on `/items` |
+| 500 or very slow on `/cube` | Upstream RISE could not satisfy a broad query | Shrink bbox, shorten dates, request one parameter |
+| Empty `features` on `/items` | Filter too narrow, or `limit` too small | Raise `limit`, drop filters one at a time, check the `f=html` view |
+| Wrong or empty data for a parameter | Parameter id not collected at that location | Open the location in the items table; try a sibling id from section 4 |
+| Shell error before any response | URL not quoted in the terminal | Wrap the whole URL in single quotes |
+| Numbers but no meaning | Units unknown | Look up the id under `parameter_names` — units are in the metadata |
 
-Keep requests small while exploring. A good first request has one bbox,
-one parameter, and a short date range. Once it succeeds, widen only one
-dimension at a time.
+If you get stuck on what a route accepts, the
+[OpenAPI page](https://api.wwdh.internetofwater.app/openapi) documents
+every route and query parameter interactively, and every JSON document
+on the server contains a `links` section pointing to its related
+pages — when in doubt, follow the links.
