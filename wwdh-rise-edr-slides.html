@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>USBR RISE data through the Western Water Datahub EDR API</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css">
+<style>
+  .reveal { font-size: 30px; }
+  .reveal h1 { font-size: 1.6em; }
+  .reveal h2 { font-size: 1.2em; color: #1b3a5c; }
+  .reveal h3 { font-size: 0.95em; color: #1b3a5c; }
+  .reveal pre { width: 100%; font-size: 0.55em; box-shadow: none; }
+  .reveal pre code { padding: 12px; border-radius: 6px; max-height: 480px; }
+  .reveal table { font-size: 0.62em; }
+  .reveal table td, .reveal table th { padding: 0.2em 0.5em; }
+  .reveal .small { font-size: 0.7em; }
+  .reveal .tiny { font-size: 0.55em; color: #555; }
+  .reveal iframe { border: 1px solid #ccc; border-radius: 4px; background: #fff; }
+  .reveal section img { box-shadow: none; }
+  .reveal a { color: #1a6da8; }
+  .reveal .urlbox { font-family: monospace; font-size: 0.55em; background: #f4f4f4;
+    border: 1px solid #ddd; border-radius: 6px; padding: 10px 14px; text-align: left;
+    word-break: break-all; }
+  .reveal ol.trylist { font-size: 0.58em; }
+  .reveal ol.trylist li { margin-bottom: 0.45em; }
+  .reveal .path { display: block; font-family: monospace; font-size: 0.85em;
+    color: #777; word-break: break-all; line-height: 1.25; }
+  .twocol { display: flex; gap: 1em; align-items: flex-start; }
+  .twocol > div { flex: 1; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<section>
+  <h1>USBR RISE data,<br>the standard way</h1>
+  <h3>An end-to-end tour of the Western Water Datahub EDR API</h3>
+  <p class="small">Discover &rarr; access &rarr; download &rarr; interoperate<br>
+  No code required &mdash; just URLs in a browser</p>
+  <p class="tiny">Examples verified against the live service, June 10, 2026</p>
+</section>
+
+<section>
+  <h2>Three names, one idea</h2>
+  <ul>
+    <li><strong>RISE</strong> &mdash; Reclamation's public data catalog
+      (<a href="https://data.usbr.gov/">data.usbr.gov</a>): storage, elevations,
+      releases, canal flows, weather&hellip; by <em>location</em> and <em>parameter</em></li>
+    <li class="fragment"><strong>EDR</strong> &mdash; OGC API "Environmental Data Retrieval":
+      an open standard for asking data questions with plain URLs</li>
+    <li class="fragment"><strong>WWDH</strong> &mdash; the Western Water Datahub republishes
+      RISE through that standard, as the collection <code>rise-edr</code></li>
+  </ul>
+  <p class="fragment small"><strong>Why bother?</strong> Learn one URL grammar and it also
+  works for SNOTEL snowpack, USACE reservoirs, and PRISM climate on the same server.</p>
+</section>
+
+<section>
+  <h2>Anatomy of a request</h2>
+  <pre><code class="language-text" data-trim>
+https://api.wwdh.internetofwater.app / collections/rise-edr/locations/3514 ? f=json &amp; parameter-name=3
+└──────────────── base ─────────────┘ └───────────── path ──────────────┘   └───────── query ────────┘
+  </code></pre>
+  <ul class="small">
+    <li><strong>base</strong> &mdash; always <code>https://api.wwdh.internetofwater.app</code></li>
+    <li><strong>path</strong> &mdash; what kind of thing you want</li>
+    <li><strong>query</strong> &mdash; after <code>?</code>, joined by <code>&amp;</code>:
+      format, dates, parameters, bounding box</li>
+  </ul>
+</section>
+
+<section>
+  <h2>The one switch to remember: <code>f=</code></h2>
+  <table>
+    <tr><th><code>f=</code></th><th>What you get</th><th>Use it for</th></tr>
+    <tr><td><code>html</code></td><td>Readable page, often a map or table</td>
+        <td>Browsing, orienting, sharing a link</td></tr>
+    <tr><td><code>json</code></td><td>GeoJSON / CoverageJSON</td>
+        <td>Downloads, scripts, GIS, Power Query</td></tr>
+    <tr><td><code>csv</code></td><td>Spreadsheet table (feature lists)</td>
+        <td>Straight into Excel</td></tr>
+  </table>
+  <p class="small fragment">HTML pages are a <em>window</em> onto the data.
+  Same URL, different <code>f=</code> &mdash; browse first, automate later.</p>
+  <p class="small fragment">Using curl? Just remember single quotes:<br>
+  <span class="urlbox">curl -sS 'https://api.wwdh.internetofwater.app/collections/rise-edr?f=json'</span></p>
+</section>
+
+<section>
+  <h2>Orientation: the collection page</h2>
+  <div class="urlbox">https://api.wwdh.internetofwater.app/collections/rise-edr</div>
+  <iframe data-src="https://api.wwdh.internetofwater.app/collections/rise-edr"
+    width="100%" height="460" data-preload></iframe>
+</section>
+
+<section>
+  <h2>What can you ask RISE? <code>data_queries</code></h2>
+  <table>
+    <tr><th>Query</th><th>Path</th><th>Question it answers</th></tr>
+    <tr><td><code>locations</code></td><td><code>/locations</code></td>
+        <td>Where are the monitoring locations? Data for one of them?</td></tr>
+    <tr><td><code>items</code></td><td><code>/items</code></td>
+        <td>Searchable, filterable catalog of RISE locations</td></tr>
+    <tr><td><code>cube</code></td><td><code>/cube</code></td>
+        <td>Data for everything inside a bounding box</td></tr>
+    <tr><td><code>area</code></td><td><code>/area</code></td>
+        <td>Data for everything inside a polygon</td></tr>
+  </table>
+  <p class="small fragment">A route not advertised in <code>data_queries</code> will
+  error &mdash; e.g. RISE has no <code>/position</code>. Check the collection document first.</p>
+</section>
+
+<section>
+  <h2>Parameters: numbers, not names</h2>
+  <table>
+    <tr><th>id</th><th>Name</th><th>Unit</th></tr>
+    <tr><td><code>3</code></td><td>Lake/Reservoir Storage (daily)</td><td>af</td></tr>
+    <tr><td><code>1830</code></td><td>Lake/Reservoir Release - Total</td><td>cfs</td></tr>
+    <tr><td><code>1834</code></td><td>Lake/Reservoir Elevation</td><td>ft</td></tr>
+    <tr><td><code>1811</code></td><td>Precipitation</td><td>in</td></tr>
+    <tr><td><code>1777</code></td><td>Water Temperature</td><td>&deg;F</td></tr>
+  </table>
+  <ul class="small">
+    <li class="fragment">Hundreds more under <code>parameter_names</code> in the collection
+      document &mdash; Ctrl+F the collection page, or <code>jq</code> the JSON</li>
+    <li class="fragment">Same concept may exist under several ids (different timestep or
+      computation) &mdash; read the description</li>
+    <li class="fragment"><strong>Labels are for humans; ids go in URLs</strong></li>
+  </ul>
+</section>
+
+<section>
+  <h2>Find locations: the map</h2>
+  <div class="urlbox">/collections/rise-edr/locations &nbsp;
+    (constrain with &amp;bbox=min_lon,min_lat,max_lon,max_lat)</div>
+  <iframe data-src="https://api.wwdh.internetofwater.app/collections/rise-edr/locations"
+    width="100%" height="430" data-preload></iframe>
+  <p class="tiny">Lon/lat order; western-US longitudes are negative.
+  Switch to <code>f=json</code> for GeoJSON with location ids.</p>
+</section>
+
+<section>
+  <h2>Find locations: the items catalog</h2>
+  <div class="urlbox">/collections/rise-edr/items?f=html&amp;bbox=-115,33,-111,35&amp;locationTypeName=Lake%2FReservoir&amp;limit=20</div>
+  <iframe data-src="https://api.wwdh.internetofwater.app/collections/rise-edr/items?f=html&bbox=-115,33,-111,35&locationTypeName=Lake%2FReservoir&limit=20"
+    width="100%" height="400" data-preload></iframe>
+  <p class="tiny">7 lake/reservoir locations in a Lower Colorado bbox, incl. Lake Havasu (3515).</p>
+</section>
+
+<section>
+  <h2>Items: the three filter tools</h2>
+  <ul>
+    <li><code>bbox=</code> &mdash; spatial window</li>
+    <li class="fragment"><code>locationTypeName=Lake%2FReservoir</code> &mdash; any property
+      from <code>/queryables</code> works as a filter
+      (<code>%2F</code> is an encoded <code>/</code>)</li>
+    <li class="fragment"><code>limit=</code> &mdash; row cap. Start generous: some filters
+      apply <em>after</em> the limit</li>
+  </ul>
+  <p class="fragment small"><strong>Spreadsheet download:</strong> change
+  <code>f=html</code> &rarr; <code>f=csv</code> &mdash; same filtered table, opens in Excel,
+  with capacities and datum notes where RISE has them.</p>
+  <p class="fragment small"><strong>One location's detail page:</strong>
+  <code>/items/3514</code> &rarr; Lake Mead Hoover Dam and Powerplant.</p>
+</section>
+
+<section>
+  <h2>Get data: one location, one URL</h2>
+  <p class="small">Lake Mead (<code>3514</code>), daily storage (<code>3</code>), January 2023:</p>
+  <div class="urlbox">https://api.wwdh.internetofwater.app/collections/rise-edr/locations/3514?f=json&amp;datetime=2023-01-01/2023-01-31&amp;parameter-name=3</div>
+  <ul class="small">
+    <li class="fragment"><code>datetime=</code> &mdash; instant or range
+      (<code>2023-01-01/2023-01-31</code>); omit it and you may get the whole period of
+      record. Start narrow.</li>
+    <li class="fragment"><code>parameter-name=</code> &mdash; one or more ids,
+      comma-separated: <code>3,1834</code></li>
+    <li class="fragment">curl: <code>curl -sS -o mead.json '&lt;URL&gt;'</code></li>
+  </ul>
+</section>
+
+<section>
+  <h2>Reading CoverageJSON</h2>
+  <div class="twocol">
+    <div>
+<pre><code class="language-json" data-trim>
+{ "type": "Coverage",
+  "domain": {
+    "domainType": "PointSeries",
+    "axes": {
+      "x": {"values": [-114.7]},
+      "y": {"values": [36.0]},
+      "t": {"values": ["2023-01-01...",
+                       "2023-01-02..."]}
+    }
+  },
+  "ranges": {
+    "3": { "axisNames": ["t"],
+           "values": [8730345,
+                      8732112] } } }
+</code></pre>
+    </div>
+    <div class="small">
+      <p>Pair them up <strong>positionally</strong>:<br>
+      1st time &harr; 1st value, 2nd &harr; 2nd&hellip;</p>
+      <table>
+        <tr><th>t</th><th>param 3 (af)</th></tr>
+        <tr><td>2023-01-01</td><td>8,730,345</td></tr>
+        <tr><td>2023-01-02</td><td>8,732,112</td></tr>
+      </table>
+      <p class="fragment tiny">CSV is advertised on data queries but tested empty &mdash;
+      treat <code>f=json</code> as the dependable format for time series.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Many locations at once: <code>/cube</code></h2>
+  <p class="small">All RISE storage series in a box around Lake Havasu, calendar 2024:</p>
+  <div class="urlbox">/collections/rise-edr/cube?f=json&amp;bbox=-114.3,34.1,-113.5,34.4&amp;datetime=2024-01-01/2024-12-31&amp;parameter-name=3</div>
+  <ul class="small">
+    <li class="fragment">Returns a <code>CoverageCollection</code>: one coverage per location</li>
+    <li class="fragment">Each cube fans out to the upstream RISE API &mdash; keep bbox tight
+      and dates short, then widen <em>one thing at a time</em></li>
+    <li class="fragment">Broad cube failing? Fall back: ids from <code>/items</code>,
+      then <code>/locations/{id}</code> one at a time</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Polygons: <code>/area</code></h2>
+  <p class="small">WKT polygon in <code>coords=</code>; every space becomes <code>%20</code>:</p>
+  <pre><code class="language-text" data-trim>
+POLYGON((-115 35,-113 35,-113 37,-115 37,-115 35))
+  </code></pre>
+  <div class="urlbox">/collections/rise-edr/area?f=json&amp;coords=POLYGON((-115%2035,-113%2035,-113%2037,-115%2037,-115%2035))&amp;datetime=2024-01-01/2024-01-31&amp;parameter-name=3</div>
+  <ul class="small">
+    <li class="fragment">Ring must close (repeat the first coordinate)</li>
+    <li class="fragment">Very long URLs hit limits &mdash; simplify the boundary,
+      or if a box is close enough, prefer <code>cube</code></li>
+  </ul>
+</section>
+
+<section>
+  <h2>Getting it into your tools</h2>
+  <table>
+    <tr><th>Tool</th><th>How</th></tr>
+    <tr><td>Browser</td><td>Open <code>f=json</code> URL &rarr; Save Page As;
+      <code>/items?f=csv</code> downloads directly</td></tr>
+    <tr><td>curl</td><td><code>curl -sS -o out.json '&lt;URL&gt;'</code></td></tr>
+    <tr><td>Excel</td><td>CSV opens directly; Power Query (From Web) for JSON</td></tr>
+    <tr><td>GIS</td><td>QGIS/ArcGIS read GeoJSON URLs natively &mdash; paste
+      <code>/items?f=json</code> as a vector layer</td></tr>
+    <tr><td>R</td><td><code>edr4r</code>: <code>edr_locations()</code>,
+      <code>edr_cube()</code>, <code>covjson_to_tibble()</code></td></tr>
+    <tr><td>Python</td><td><code>requests</code> + the positional pairing loop</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Beyond RISE: same grammar, sibling data</h2>
+  <table>
+    <tr><th>Collection</th><th>Source</th><th>Example use</th></tr>
+    <tr><td><code>snotel-edr</code></td><td>USDA NRCS SNOTEL</td>
+        <td>SWE above your reservoir</td></tr>
+    <tr><td><code>awdb-forecasts-edr</code></td><td>USDA AWDB</td>
+        <td>Water supply forecasts</td></tr>
+    <tr><td><code>usace-edr</code></td><td>USACE Access2Water</td>
+        <td>Corps storage &amp; outflow</td></tr>
+    <tr><td><code>usgs-prism</code></td><td>PRISM</td>
+        <td>Monthly precip/temp grids</td></tr>
+  </table>
+  <p class="small fragment">Only the collection id, parameter ids, and advertised
+  query types change. Always check <code>data_queries</code> first.</p>
+</section>
+
+<section>
+  <h2>Cross-agency crosswalk: <code>parameterGroups</code></h2>
+  <p class="small"><code>/collections?f=json</code> maps shared concepts to each
+  collection's ids:</p>
+  <pre><code class="language-json" data-trim>
+{ "name": "Lake/Reservoir Storage",
+  "members": {
+    "rise-edr":  ["1470", "56", "51", "47", "3"],
+    "usace-edr": ["Flood Storage", "Conservation Storage", ...] } }
+  </code></pre>
+  <p class="small fragment">2024 storage near Parker Dam = two parallel cubes,
+  same bbox:<br>
+  <code>rise-edr</code> &rarr; <code>parameter-name=3</code> &nbsp;|&nbsp;
+  <code>usace-edr</code> &rarr; <code>parameter-name=Flood%20Storage</code></p>
+  <p class="tiny fragment">Expect timestep differences (RISE daily, USACE irregular) —
+  aligning them is an analysis step, not an API option.</p>
+</section>
+
+<section>
+  <h2>The whole workflow</h2>
+  <pre><code class="language-text" data-trim>
+1. ORIENT      /collections/rise-edr                       (browser)
+2. PARAMETERS  /collections/rise-edr?f=json                -> pick exact ids
+3. LOCATIONS   /items?f=html&amp;bbox=...&amp;{queryable}=...      -> note ids; f=csv to download
+4. ONE SERIES  /locations/{id}?f=json&amp;datetime=...&amp;parameter-name=...
+5. MANY SERIES /cube?f=json&amp;bbox=...&amp;datetime=...&amp;parameter-name=...
+6. CROSSWALK   /collections?f=json -> parameterGroups -> repeat on sibling
+  </code></pre>
+  <p class="small">Start small &mdash; one location, one parameter, one month.<br>
+  Widen one dimension at a time.</p>
+</section>
+
+<section>
+  <h2>When it doesn't work</h2>
+  <table>
+    <tr><th>Symptom</th><th>Fix</th></tr>
+    <tr><td>404 on a query route</td><td>Route not advertised — re-check <code>data_queries</code></td></tr>
+    <tr><td>400 on <code>/area</code></td><td>Encode spaces <code>%20</code>; close the ring</td></tr>
+    <tr><td>204 / empty body</td><td>Valid but no match — different parameter, location, or dates</td></tr>
+    <tr><td>Empty CSV from data query</td><td>Use <code>f=json</code>; CSV works on <code>/items</code></td></tr>
+    <tr><td>500 / slow <code>/cube</code></td><td>Shrink bbox, shorten dates, one parameter</td></tr>
+    <tr><td>Empty <code>features</code></td><td>Raise <code>limit</code>, drop filters one at a time</td></tr>
+    <tr><td>Shell error before request</td><td>Single-quote the URL</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Try it yourself, part 1: discover &amp; locate</h2>
+  <p class="tiny">Each link opens in a new tab. What you should see is in italics.
+  Base for all paths: <code>https://api.wwdh.internetofwater.app</code></p>
+  <ol class="trylist">
+    <li><a target="_blank" href="https://api.wwdh.internetofwater.app">Landing page</a>
+      &mdash; <em>the Datahub home</em>
+      <span class="path">https://api.wwdh.internetofwater.app</span></li>
+    <li><a target="_blank" href="https://api.wwdh.internetofwater.app/collections">All collections</a>
+      &mdash; <em>RISE among its siblings</em>
+      <span class="path">/collections</span></li>
+    <li><a target="_blank" href="https://api.wwdh.internetofwater.app/collections/rise-edr">RISE collection page</a>
+      &mdash; <em>description, extent map, parameter list</em>
+      <span class="path">/collections/rise-edr</span></li>
+    <li><a target="_blank" href="https://api.wwdh.internetofwater.app/collections/rise-edr?f=json">Same, as JSON</a>
+      &mdash; <em>find <code>data_queries</code> and <code>parameter_names</code></em>
+      <span class="path">/collections/rise-edr?f=json</span></li>
+    <li><a target="_blank" href="https://api.wwdh.internetofwater.app/collections/rise-edr/locations">Locations map</a>
+      &mdash; <em>clustered markers across the West</em>
+      <span class="path">/collections/rise-edr/locations</span></li>
+    <li><a target="_blank" href="https://api.wwdh.internetofwater.app/collections/rise-edr/items?f=html&amp;bbox=-115,33,-111,35&amp;locationTypeName=Lake%2FReservoir&amp;limit=20">Filtered items table</a>
+      &mdash; <em>7 lakes/reservoirs in a Lower Colorado bbox</em>
+      <span class="path">/collections/rise-edr/items?f=html&amp;bbox=-115,33,-111,35&amp;locationTypeName=Lake%2FReservoir&amp;limit=20</span></li>
+    <li><a target="_blank" href="https://api.wwdh.internetofwater.app/collections/rise-edr/items?f=csv&amp;bbox=-115,33,-111,35&amp;locationTypeName=Lake%2FReservoir&amp;limit=20">Same table as CSV</a>
+      &mdash; <em>downloads; opens in Excel</em>
+      <span class="path">/collections/rise-edr/items?f=csv&amp;bbox=-115,33,-111,35&amp;locationTypeName=Lake%2FReservoir&amp;limit=20</span></li>
+    <li><a target="_blank" href="https://api.wwdh.internetofwater.app/collections/rise-edr/queryables?f=json">Queryables</a>
+      &mdash; <em>every property you can filter items on</em>
+      <span class="path">/collections/rise-edr/queryables?f=json</span></li>
+    <li><a target="_blank" href="https://api.wwdh.internetofwater.app/collections/rise-edr/items/3514">Lake Mead detail page</a>
+      &mdash; <em>one feature: map pin + full attributes</em>
+      <span class="path">/collections/rise-edr/items/3514</span></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Try it yourself, part 2: get data &amp; interoperate</h2>
+  <ol class="trylist" start="10">
+    <li><a target="_blank" href="https://api.wwdh.internetofwater.app/collections/rise-edr/locations/3514?f=json&amp;datetime=2023-01-01/2023-01-31&amp;parameter-name=3">Lake Mead storage, Jan 2023</a>
+      &mdash; <em>CoverageJSON: 31 daily values under <code>ranges["3"]</code></em>
+      <span class="path">/collections/rise-edr/locations/3514?f=json&amp;datetime=2023-01-01/2023-01-31&amp;parameter-name=3</span></li>
+    <li><a target="_blank" href="https://api.wwdh.internetofwater.app/collections/rise-edr/locations/3514?f=json&amp;datetime=2023-01-01/2023-01-31">Everything Lake Mead reports</a>
+      &mdash; <em>omit <code>parameter-name</code>: all available parameters at once</em>
+      <span class="path">/collections/rise-edr/locations/3514?f=json&amp;datetime=2023-01-01/2023-01-31</span></li>
+    <li><a target="_blank" href="https://api.wwdh.internetofwater.app/collections/rise-edr/cube?f=json&amp;bbox=-114.3,34.1,-113.5,34.4&amp;datetime=2024-01-01/2024-12-31&amp;parameter-name=3">Cube: storage near Lake Havasu, 2024</a>
+      &mdash; <em>CoverageCollection, one coverage per location</em>
+      <span class="path">/collections/rise-edr/cube?f=json&amp;bbox=-114.3,34.1,-113.5,34.4&amp;datetime=2024-01-01/2024-12-31&amp;parameter-name=3</span></li>
+    <li><a target="_blank" href="https://api.wwdh.internetofwater.app/collections/rise-edr/area?f=json&amp;coords=POLYGON((-115%2035,-113%2035,-113%2037,-115%2037,-115%2035))&amp;datetime=2024-01-01/2024-01-31&amp;parameter-name=3">Area: storage inside a WKT polygon</a>
+      &mdash; <em>same shape, polygon instead of bbox</em>
+      <span class="path">/collections/rise-edr/area?f=json&amp;coords=POLYGON((-115%2035,-113%2035,-113%2037,-115%2037,-115%2035))&amp;datetime=2024-01-01/2024-01-31&amp;parameter-name=3</span></li>
+    <li><a target="_blank" href="https://api.wwdh.internetofwater.app/collections?f=json">parameterGroups crosswalk</a>
+      &mdash; <em>search the JSON for "Lake/Reservoir Storage"</em>
+      <span class="path">/collections?f=json</span></li>
+    <li><a target="_blank" href="https://api.wwdh.internetofwater.app/collections/usace-edr/cube?f=json&amp;bbox=-114.3,34.1,-113.5,34.4&amp;datetime=2024-01-01/2024-12-31&amp;parameter-name=Flood%20Storage">USACE counterpart: same bbox, same year</a>
+      &mdash; <em>Alamo Dam flood storage from the Corps</em>
+      <span class="path">/collections/usace-edr/cube?f=json&amp;bbox=-114.3,34.1,-113.5,34.4&amp;datetime=2024-01-01/2024-12-31&amp;parameter-name=Flood%20Storage</span></li>
+    <li><a target="_blank" href="https://api.wwdh.internetofwater.app/collections/snotel-edr">Bonus: SNOTEL collection</a>
+      &mdash; <em>same grammar, snowpack data</em>
+      <span class="path">/collections/snotel-edr</span></li>
+  </ol>
+  <p class="tiny">Big JSON responses look raw in Chrome/Edge &mdash; that's normal.
+  Firefox pretty-prints JSON automatically.</p>
+</section>
+
+<section>
+  <h1>Links</h1>
+  <ul class="small">
+    <li>Service: <a href="https://api.wwdh.internetofwater.app">api.wwdh.internetofwater.app</a></li>
+    <li>RISE collection: <a href="https://api.wwdh.internetofwater.app/collections/rise-edr">/collections/rise-edr</a></li>
+    <li>Full route reference: <a href="https://api.wwdh.internetofwater.app/openapi">/openapi</a> (Swagger)</li>
+    <li>RISE source: <a href="https://data.usbr.gov/">data.usbr.gov</a></li>
+    <li>Companion written tutorial:
+      <a href="articles/wwdh-http-guide.html">USBR RISE data through the Western Water Datahub EDR API</a></li>
+  </ul>
+  <p class="tiny">Every JSON document on the server has a <code>links</code> section —
+  when in doubt, follow the links.</p>
+</section>
+
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    width: 1100,
+    height: 760,
+    margin: 0.06,
+    preloadIframes: false,
+    plugins: [ RevealHighlight ]
+  });
+</script>
+</body>
+</html>
