@@ -3,6 +3,15 @@ url: https://ksonda.github.io/edr4r/
 template:
   bootstrap: 5
 
+navbar:
+  structure:
+    left: [intro, reference, articles, presentation, news]
+    right: [search, github, lightswitch]
+  components:
+    presentation:
+      text: Presentation
+      href: wwdh-rise-edr-slides.html
+
 reference:
   - title: Client
     desc: Construct and configure an EDR client.
