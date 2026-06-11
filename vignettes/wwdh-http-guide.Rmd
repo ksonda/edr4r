@@ -242,7 +242,7 @@ lake/reservoir locations in a Lower Colorado bounding box, including
 sites. The live view
 ([open in its own tab](https://api.wwdh.internetofwater.app/collections/rise-edr/items?f=html&bbox=-115,33,-111,35&locationTypeName=Lake%2FReservoir&limit=20)):
 
-<iframe src="https://api.wwdh.internetofwater.app/collections/rise-edr/items?f=html&amp;bbox=-115,33,-111,35&amp;locationTypeName=Lake%2FReservoir&amp;limit=20"
+<iframe src="https://api.wwdh.internetofwater.app/collections/rise-edr/items?f=html&bbox=-115,33,-111,35&locationTypeName=Lake%2FReservoir&limit=20"
   width="100%" height="500" loading="lazy"
   style="border:1px solid #ccc; border-radius:4px;"
   title="Filtered RISE items table: lake/reservoir locations in a Lower Colorado bbox"></iframe>
