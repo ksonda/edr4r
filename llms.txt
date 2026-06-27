@@ -28,9 +28,17 @@ do data analysis with:
 
 ## Installation
 
+Install the released version from CRAN:
+
 ``` r
 
-# from GitHub (recommended)
+install.packages("edr4r")
+```
+
+Or the development version from GitHub:
+
+``` r
+
 # install.packages("pak")
 pak::pak("ksonda/edr4r")
 
@@ -411,7 +419,3 @@ Plot time series, map stations with popups, save to standalone HTML.
   edr4r](https://ksonda.github.io/edr4r/articles/getting-started.md):
 - [USGS streamgages: discover and map a
   basin](https://ksonda.github.io/edr4r/articles/usgs-streamgages.md):
-- [Western Water Datahub collection field
-  guide](https://ksonda.github.io/edr4r/articles/wwdh-collections.md):
-- [Tutorial: USBR RISE data through the Western Water Datahub EDR
-  API](https://ksonda.github.io/edr4r/articles/wwdh-http-guide.md):

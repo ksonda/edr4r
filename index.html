@@ -37,11 +37,8 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="articles/getting-started.html">Getting started with edr4r</a></li>
     <li><a class="dropdown-item" href="articles/usgs-streamgages.html">USGS streamgages: discover and map a basin</a></li>
-    <li><a class="dropdown-item" href="articles/wwdh-collections.html">Western Water Datahub collection field guide</a></li>
-    <li><a class="dropdown-item" href="articles/wwdh-http-guide.html">Tutorial: USBR RISE data through the Western Water Datahub EDR API</a></li>
   </ul>
 </li>
-<li class="nav-item"><a class="nav-link" href="wwdh-rise-edr-slides.html">Presentation</a></li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul>
 <ul class="navbar-nav">
@@ -79,25 +76,28 @@
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
+<p>Install the released version from CRAN:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># from GitHub (recommended)</span></span>
-<span><span class="co"># install.packages("pak")</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"edr4r"</span><span class="op">)</span></span></code></pre></div>
+<p>Or the development version from GitHub:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># install.packages("pak")</span></span>
 <span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"ksonda/edr4r"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># or</span></span>
 <span><span class="co"># install.packages("remotes")</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"ksonda/edr4r"</span><span class="op">)</span></span></code></pre></div>
 <p>For local development:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/ksonda/edr4r.git</span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="bu">cd</span> edr4r</span>
-<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="ex">R</span> <span class="at">-e</span> <span class="st">'devtools::install()'</span></span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/ksonda/edr4r.git</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="bu">cd</span> edr4r</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="ex">R</span> <span class="at">-e</span> <span class="st">'devtools::install()'</span></span></code></pre></div>
 <p>Requires R &gt;= 4.1. The <code>sf</code> package is optional but recommended (used to turn location lists and GeoJSON into spatial objects).</p>
 </div>
 <div class="section level2">
 <h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
 </h2>
 <p>Start by pointing a client at a server. The base URL is the only thing it really needs:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/ksonda/edr4r" class="external-link">edr4r</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_client.html">edr_client</a></span><span class="op">(</span><span class="st">"https://api.waterdata.usgs.gov/ogcapi/beta"</span><span class="op">)</span></span>
@@ -116,7 +116,7 @@
 <h3 id="find-stations">Find stations<a class="anchor" aria-label="anchor" href="#find-stations"></a>
 </h3>
 <p><code><a href="reference/edr_locations.html">edr_locations()</a></code> with no filters returns the full station list as GeoJSON. If you have <a href="https://r-spatial.github.io/sf/" class="external-link"><code>sf</code></a> installed, it gets promoted to an <code>sf</code> object automatically:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">locs</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_locations.html">edr_locations</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"monitoring-locations"</span><span class="op">)</span></span>
 <span><span class="va">locs</span>                            <span class="co"># sf POINTs with station attributes</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_geometry</a></span><span class="op">(</span><span class="va">locs</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
@@ -125,7 +125,7 @@
 <h3 id="pull-a-time-series-for-one-station">Pull a time series for one station<a class="anchor" aria-label="anchor" href="#pull-a-time-series-for-one-station"></a>
 </h3>
 <p>Once you know a station ID, ask for its values. The server returns CoverageJSON; <code><a href="reference/covjson_to_tibble.html">covjson_to_tibble()</a></code> flattens it into one row per (coverage × parameter × timestamp):</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_location.html">edr_location</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>, <span class="st">"daily-values"</span>,</span>
 <span>  location_id    <span class="op">=</span> <span class="st">"08313000"</span>,</span>
@@ -145,7 +145,7 @@
 <h3 id="spatial-filters--bbox-and-polygon">Spatial filters — bbox and polygon<a class="anchor" aria-label="anchor" href="#spatial-filters--bbox-and-polygon"></a>
 </h3>
 <p>To grab everything inside a rectangle, use <code><a href="reference/edr_cube.html">edr_cube()</a></code>:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cube</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_cube.html">edr_cube</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>, <span class="st">"daily-values"</span>,</span>
 <span>  bbox           <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">120</span>, <span class="fl">39</span>, <span class="op">-</span><span class="fl">118</span>, <span class="fl">41</span><span class="op">)</span>,</span>
@@ -154,7 +154,7 @@
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">cube</span><span class="op">)</span></span></code></pre></div>
 <p>For an arbitrary polygon, <code><a href="reference/edr_area.html">edr_area()</a></code> takes WKT, an <code>sf</code> polygon, or a matrix of <code>(lon, lat)</code> rows (it’ll close the ring for you):</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ring</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">109</span>, <span class="fl">47</span>, <span class="op">-</span><span class="fl">104</span>, <span class="fl">47</span>, <span class="op">-</span><span class="fl">104</span>, <span class="fl">49</span>, <span class="op">-</span><span class="fl">109</span>, <span class="fl">49</span><span class="op">)</span>,</span>
 <span>  ncol <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span></span>
@@ -167,11 +167,11 @@
 <h3 id="plot-a-time-series">Plot a time series<a class="anchor" aria-label="anchor" href="#plot-a-time-series"></a>
 </h3>
 <p><code><a href="reference/edr_plot.html">edr_plot()</a></code> is a small <code>ggplot2</code> wrapper over the tidy tibble:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_plot.html">edr_plot</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span>            <span class="co"># accepts an edr_response directly</span></span></code></pre></div>
 <p>Facets by parameter (so different units don’t share a y-axis) and colours by station. Add layers or themes like any other ggplot.</p>
 <p>It also auto-detects common non-station shapes:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_plot.html">edr_plot</a></span><span class="op">(</span><span class="va">cube</span><span class="op">)</span>            <span class="co"># x/y grid -&gt; tile map</span></span>
 <span><span class="fu"><a href="reference/edr_plot.html">edr_plot</a></span><span class="op">(</span><span class="va">profile</span><span class="op">)</span>         <span class="co"># varying z -&gt; vertical profile</span></span>
 <span></span>
@@ -183,14 +183,14 @@
 <h3 id="map-stations-with-per-station-popups">Map stations with per-station popups<a class="anchor" aria-label="anchor" href="#map-stations-with-per-station-popups"></a>
 </h3>
 <p><code><a href="reference/edr_map.html">edr_map()</a></code> puts the stations on a leaflet basemap. Pass <code>data =</code> as a named list keyed by station id (the shape [edr_explore()] produces) and each marker gets a popup with an inline plot and a “Download CSV” link for that station’s data — embedded as a <code>data:</code> URI so the saved HTML is selfcontained:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stations</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_locations.html">edr_locations</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"monitoring-locations"</span>,</span>
 <span>                          bbox <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">116</span>, <span class="fl">35.5</span>, <span class="op">-</span><span class="fl">114</span>, <span class="fl">36.5</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">data_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"3514"</span> <span class="op">=</span> <span class="fu"><a href="reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_map.html">edr_map</a></span><span class="op">(</span><span class="va">stations</span>, data <span class="op">=</span> <span class="va">data_list</span>, popup <span class="op">=</span> <span class="st">"plot+csv"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/edr_save_html.html">edr_save_html</a></span><span class="op">(</span><span class="va">m</span>, <span class="st">"stations.html"</span><span class="op">)</span></span></code></pre></div>
 <p>For a quick exploratory pass over a whole collection, <code><a href="reference/edr_explore.html">edr_explore()</a></code> does the fetch + plot + map in one call:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_explore.html">edr_explore</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>, <span class="st">"daily-values"</span>,</span>
 <span>  bbox           <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">116</span>, <span class="fl">35.5</span>, <span class="op">-</span><span class="fl">114</span>, <span class="fl">36.5</span><span class="op">)</span>,</span>
@@ -200,14 +200,14 @@
 <span>  file           <span class="op">=</span> <span class="st">"snapshot.html"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Gridded coverages and vertical profiles can be mapped too. <code><a href="reference/edr_map.html">edr_map()</a></code> detects tidy CoverageJSON grids/profiles and puts slice selectors inside the leaflet widget when there are multiple parameters or datetimes; grids also get a <code>z</code> selector when multiple vertical levels are present:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">cube</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/edr_map.html">edr_map</a></span><span class="op">(</span><span class="va">grid</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">profile</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">profile_resp</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/edr_map.html">edr_map</a></span><span class="op">(</span><span class="va">profile</span><span class="op">)</span></span></code></pre></div>
 <p><code><a href="reference/edr_explore.html">edr_explore()</a></code> uses the same behavior for bulk coverage queries. Use <code>output = "plot"</code> when you want a ggplot instead of the interactive map:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_explore.html">edr_explore</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"gridded-collection"</span>,</span>
 <span>            bbox <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">120</span>, <span class="fl">39</span>, <span class="op">-</span><span class="fl">118</span>, <span class="fl">41</span><span class="op">)</span>,</span>
 <span>            method <span class="op">=</span> <span class="st">"cube"</span><span class="op">)</span></span>
@@ -224,15 +224,15 @@
 <h3 id="weird-ids-csv-and-an-escape-hatch">Weird IDs, CSV, and an escape hatch<a class="anchor" aria-label="anchor" href="#weird-ids-csv-and-an-escape-hatch"></a>
 </h3>
 <p>Some monitoring networks use compound station IDs — colon-separated triplets are a common pattern. The client URL-encodes reserved characters for you:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_location.html">edr_location</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"station-network"</span>, <span class="st">"1185:CO:SNTL"</span>,</span>
 <span>             datetime <span class="op">=</span> <span class="st">"2024-01-01/.."</span><span class="op">)</span></span></code></pre></div>
 <p>If the server advertises CSV, you can ask for it instead of CovJSON:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_location.html">edr_location</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"daily-values"</span>, <span class="st">"08313000"</span>,</span>
 <span>             datetime <span class="op">=</span> <span class="st">"2010-01-01/.."</span>, format <span class="op">=</span> <span class="st">"csv"</span><span class="op">)</span></span></code></pre></div>
 <p>And if you need to hit an endpoint the package doesn’t wrap (instances, custom queryables, anything weird), <code><a href="reference/edr_request.html">edr_request()</a></code> is the raw escape hatch:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_request.html">edr_request</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"collections/daily-values/instances"</span>, format <span class="op">=</span> <span class="st">"json"</span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
@@ -351,6 +351,7 @@
   </main><aside class="col-md-3"><div class="links">
 <h2 data-toc-skip>Links</h2>
 <ul class="list-unstyled">
+<li><a href="https://cloud.r-project.org/package=edr4r" class="external-link">View on CRAN</a></li>
 <li><a href="https://github.com/ksonda/edr4r/" class="external-link">Browse source code</a></li>
 <li><a href="https://github.com/ksonda/edr4r/issues" class="external-link">Report a bug</a></li>
 </ul>
@@ -382,6 +383,7 @@
 <div class="dev-status">
 <h2 data-toc-skip>Dev status</h2>
 <ul class="list-unstyled">
+<li><a href="https://CRAN.R-project.org/package=edr4r" class="external-link"><img src="https://www.r-pkg.org/badges/version/edr4r" alt="CRAN status"></a></li>
 <li><a href="https://github.com/ksonda/edr4r/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/ksonda/edr4r/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a></li>
 <li><a href="https://app.codecov.io/gh/ksonda/edr4r" class="external-link"><img src="https://codecov.io/gh/ksonda/edr4r/graph/badge.svg" alt="Codecov test coverage"></a></li>
 <li><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental" class="external-link"><img src="https://img.shields.io/badge/lifecycle-experimental-orange.svg" alt="Lifecycle: experimental"></a></li>

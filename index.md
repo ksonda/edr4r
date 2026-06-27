@@ -28,9 +28,17 @@ do data analysis with:
 
 ## Installation
 
+Install the released version from CRAN:
+
 ``` r
 
-# from GitHub (recommended)
+install.packages("edr4r")
+```
+
+Or the development version from GitHub:
+
+``` r
+
 # install.packages("pak")
 pak::pak("ksonda/edr4r")
 

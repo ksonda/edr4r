@@ -19,7 +19,7 @@
   with in-map selectors for gridded coverage slices (`parameter`,
   `datetime`, `z`) and profile selectors for `parameter` / `datetime`.
 - Materialize CoverageJSON regular-grid axes declared with `start`,
-  `stop`, and `num`, as used by the WWDH `usgs-prism` collection.
+  `stop`, and `num`.
 - Warn when per-station
   [`edr_explore()`](https://ksonda.github.io/edr4r/reference/edr_explore.md)
   fallback fetches fail.
@@ -29,6 +29,8 @@
   bounded spatial matching.
 
 ## edr4r 0.1.0
+
+CRAN release: 2026-06-18
 
 - Initial release.
 - Discovery:
