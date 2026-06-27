@@ -50,9 +50,6 @@ jobs:
           )
         shell: Rscript {0}
 
-      - name: Add standalone reveal presentation
-        run: cp wwdh-rise-edr-slides.html docs/wwdh-rise-edr-slides.html
-
       - name: Deploy dev docs to GitHub pages 🚀
         if: github.event_name != 'pull_request' && github.ref_name == 'dev'
         uses: JamesIves/github-pages-deploy-action@v4.5.0
