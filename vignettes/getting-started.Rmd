@@ -20,10 +20,29 @@ Two example endpoints you can point it at right now:
 - [USGS waterdata OGC API](https://api.waterdata.usgs.gov/ogcapi/beta/)
 - [Western Water Datahub](https://api.wwdh.internetofwater.app)
 
-This vignette runs end-to-end against the Western Water Datahub's
-`rise-edr` collection -- a [pygeoapi](https://pygeoapi.io) wrap of
-USBR's reservoir telemetry. The USGS example lives in its own article,
+This vignette uses the Western Water Datahub's `rise-edr` collection as
+one real endpoint for demonstrating the core `edr4r` workflow. WWDH
+dataset notes, raw HTTP walkthroughs, and presentation material live in
+the standalone [WWDH EDR docs](https://ksonda.github.io/wwdh-edr-docs/).
+The USGS example lives in its own article,
 `vignette("usgs-streamgages")`.
+
+## Installation
+
+Install the released version from CRAN:
+
+
+``` r
+install.packages("edr4r")
+```
+
+or the development version from GitHub with
+[pak](https://pak.r-lib.org/):
+
+
+``` r
+pak::pak("ksonda/edr4r")
+```
 
 ## 1. Create a client
 
@@ -231,80 +250,7 @@ directory):
 
 
 ``` r
-edr_save_html(m, "wwdh-southwest.html")
-```
-
-## 7. Map a gridded PRISM coverage
-
-Station maps are only one side of EDR. The Western Water Datahub also
-publishes gridded PRISM climate data as the `usgs-prism` collection.
-That collection advertises `cube`, so you can request a small bounding
-box and map the returned grid directly.
-
-This example pulls two monthly PRISM variables over a small northern
-Arizona window. `edr_map()` detects the grid and puts the parameter and
-time selectors inside the leaflet map, so the slice choice lives with
-the interactive map rather than in a separate plotting call.
-
-
-``` r
-prism <- edr_cube(
-  client, "usgs-prism",
-  bbox           = c(-112.6, 36.7, -112.2, 37.1),
-  datetime       = "2023-01-01/2023-02-28",
-  parameter_name = c("ppt", "tmx")
-)
-
-prism_grid <- covjson_to_tibble(prism)
-prism_grid[, c("parameter", "datetime", "x", "y", "value")]
-#> # A tibble: 324 × 5
-#>    parameter datetime                x     y value
-#>    <chr>     <dttm>              <dbl> <dbl> <dbl>
-#>  1 ppt       2023-01-01 00:00:00 -113.  37.1 116.
-#>  2 ppt       2023-01-01 00:00:00 -113.  37.1 120.
-#>  3 ppt       2023-01-01 00:00:00 -112.  37.1 131.
-#>  4 ppt       2023-01-01 00:00:00 -112.  37.1 126.
-#>  5 ppt       2023-01-01 00:00:00 -112.  37.1 115.
-#>  6 ppt       2023-01-01 00:00:00 -112.  37.1 115.
-#>  7 ppt       2023-01-01 00:00:00 -112.  37.1 116.
-#>  8 ppt       2023-01-01 00:00:00 -112.  37.1 111.
-#>  9 ppt       2023-01-01 00:00:00 -112.  37.1  93.6
-#> 10 ppt       2023-01-01 00:00:00 -113.  37.0 100.
-#> # ℹ 314 more rows
-```
-
-```{r include-full-prism-map, echo=FALSE, results='asis'}
-if (Sys.getenv("EDR4R_FULL_VIGNETTES") == "true") {
-  prism_map <- "getting-started-full/prism-map-iframe.html"
-  if (!file.exists(prism_map)) {
-    stop("Full PRISM map output is missing: ", prism_map)
-  }
-  cat(readLines(prism_map, warn = FALSE), sep = "\n")
-}
-```
-
-<div class="figure">
-<img src="getting-started-figs/prism-grid-1.png" alt="PRISM precipitation and maximum monthly temperature over the sample bounding box." width="100%" />
-<p class="caption">PRISM precipitation and maximum monthly temperature over the sample bounding box.</p>
-</div>
-
-Use the selectors in the top-right of the map to switch between
-precipitation (`ppt`) and maximum monthly temperature (`tmx`), and
-between January and February 2023. The map colors stay focused on the
-selected slice; click a grid cell to open the active value and a
-time-series chart for that pixel across the available dates.
-
-The same one-shot helper works for gridded collections too:
-
-
-``` r
-edr_explore(
-  client, "usgs-prism",
-  bbox           = c(-112.6, 36.7, -112.2, 37.1),
-  datetime       = "2023-01-01/2023-02-28",
-  parameter_name = c("ppt", "tmx"),
-  method         = "cube"
-)
+edr_save_html(m, "reservoir-southwest.html")
 ```
 
 ## A few things worth knowing
@@ -331,3 +277,6 @@ edr_explore(
 - `vignette("usgs-streamgages")` -- a walk-through against the USGS
   waterdata endpoint, which only advertises `locations` (so the
   per-station fallback kicks in).
+- [Standalone WWDH EDR docs](https://ksonda.github.io/wwdh-edr-docs/)
+  -- WWDH-specific dataset notes, raw HTTP examples, and presentation
+  material.

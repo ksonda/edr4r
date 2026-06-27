@@ -18,4 +18,3 @@
 ^.*\.Rcheck$
 ^.*\.tar\.gz$
 ^CRAN-SUBMISSION$
-^wwdh-rise-edr-slides\.html$

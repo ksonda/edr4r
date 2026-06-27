@@ -1,9 +1,9 @@
 # Pre-compute network-dependent vignettes.
 #
-# Vignettes hit live EDR endpoints (USGS waterdata, WWDH). To keep
-# `R CMD build` deterministic and offline, we ship pre-rendered `.Rmd`
-# files in `vignettes/` and keep the executable sources as `.Rmd.orig`
-# (excluded from the build via `.Rbuildignore`).
+# Some vignette sources hit live EDR endpoints. To keep `R CMD build`
+# deterministic and offline, active vignettes may be shipped as
+# pre-rendered `.Rmd` files, with optional executable sources stored as
+# `.Rmd.orig` files excluded from the build via `.Rbuildignore`.
 #
 # Run this script from the package root before each release, or after
 # any change to a `.Rmd.orig` that should refresh the baked outputs:

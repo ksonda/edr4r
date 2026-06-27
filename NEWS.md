@@ -12,7 +12,7 @@
   in-map selectors for gridded coverage slices (`parameter`, `datetime`, `z`)
   and profile selectors for `parameter` / `datetime`.
 * Materialize CoverageJSON regular-grid axes declared with `start`, `stop`,
-  and `num`, as used by the WWDH `usgs-prism` collection.
+  and `num`.
 * Warn when per-station `edr_explore()` fallback fetches fail.
 * Tighten collection-id, coordinate, and WKT validation.
 * Add `max_match_distance` to `edr_map()` for bounded spatial matching.

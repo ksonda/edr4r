@@ -1,6 +1,7 @@
 # edr4r
 
 <!-- badges: start -->
+[![CRAN status](https://www.r-pkg.org/badges/version/edr4r)](https://CRAN.R-project.org/package=edr4r)
 [![R-CMD-check](https://github.com/ksonda/edr4r/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ksonda/edr4r/actions/workflows/R-CMD-check.yaml)
 [![Codecov test coverage](https://codecov.io/gh/ksonda/edr4r/graph/badge.svg)](https://app.codecov.io/gh/ksonda/edr4r)
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
@@ -29,8 +30,15 @@ data analysis with:
 
 ## Installation
 
+Install the released version from CRAN:
+
 ```r
-# from GitHub (recommended)
+install.packages("edr4r")
+```
+
+Or the development version from GitHub:
+
+```r
 # install.packages("pak")
 pak::pak("ksonda/edr4r")
 

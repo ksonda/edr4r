@@ -5,12 +5,8 @@ template:
 
 navbar:
   structure:
-    left: [intro, reference, articles, presentation, news]
+    left: [intro, reference, articles, news]
     right: [search, github, lightswitch]
-  components:
-    presentation:
-      text: Presentation
-      href: wwdh-rise-edr-slides.html
 
 reference:
   - title: Client
@@ -58,5 +54,3 @@ articles:
     contents:
       - getting-started
       - usgs-streamgages
-      - wwdh-collections
-      - wwdh-http-guide
