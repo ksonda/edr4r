@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">edr4r</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -20,7 +20,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started.html">Getting started with edr4r</a></li>
     <li><a class="dropdown-item" href="../articles/compatibility.html">EDR compatibility and supported scope</a></li>
-    <li><a class="dropdown-item" href="../articles/usgs-streamgages.html">USGS streamgages: discover and map a basin</a></li>
+    <li><a class="dropdown-item" href="../articles/cross-endpoint-water-context.html">Cross-endpoint water context: Lake Mead</a></li>
+    <li><a class="dropdown-item" href="../articles/usgs-streamgages.html">USGS streamgages: bounded discovery and mapping</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -35,9 +36,18 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/ksonda/edr4r/blob/v0.2.0-rc.1/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/ksonda/edr4r/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.0" id="edr4r-030-development-version">edr4r 0.3.0 (development version)<a class="anchor" aria-label="anchor" href="#edr4r-030-development-version"></a></h2>
+<ul><li>Add opt-in, bounded GeoJSON pagination to <code><a href="../reference/edr_locations.html">edr_locations()</a></code> and <code><a href="../reference/edr_items.html">edr_items()</a></code>. The client follows server-advertised <code>rel = "next"</code> links, supports cursor- and offset-based servers, and refuses unsafe cross-origin continuations or silent partial results at configured caps.</li>
+<li>Add <code><a href="../reference/edr_location_batch.html">edr_location_batch()</a></code> for safe, finite, sequential multi-station pulls with stable request/data/error tables, explicit station provenance, and stop-or-collect failure handling.</li>
+<li>Reuse the batch execution engine inside per-location <code><a href="../reference/edr_explore.html">edr_explore()</a></code> while preserving its existing output and summary-warning contract.</li>
+<li>Accept finite, safely representable numeric strings in CoverageJSON ranges that declare a numeric <code>dataType</code>, as currently emitted by USGS waterdata, while rejecting text, overflow/underflow, and unsafe declared integers.</li>
+<li>Add a precomputed cross-endpoint Lake Mead vignette combining a Met Office population <code>Grid</code>, a USGS discharge <code>PointSeries</code>, and a WWDH <code>CoverageCollection</code>, with an executable source retained for deliberate live refreshes.</li>
+<li>Remove a precomputed base64 map from the USGS vignette, reducing that source file by about 1 MB while retaining the runnable interactive-map example.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.0" id="edr4r-020-development-version">edr4r 0.2.0 (development version)<a class="anchor" aria-label="anchor" href="#edr4r-020-development-version"></a></h2>
 <ul><li>Add structured service and collection capability discovery, support checks, endpoint diagnostics, and per-client TTL caching for discovery metadata.</li>

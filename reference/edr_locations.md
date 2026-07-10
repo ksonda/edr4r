@@ -17,7 +17,10 @@ edr_locations(
   limit = NULL,
   format = c("geojson", "json"),
   ...,
-  instance_id = NULL
+  instance_id = NULL,
+  paginate = FALSE,
+  max_pages = 100L,
+  max_features = 100000L
 )
 ```
 
@@ -52,7 +55,9 @@ edr_locations(
 
 - limit:
 
-  Maximum number of features to return.
+  Requested server page size. Servers may enforce their own maximum or
+  ignore this value; with `paginate = TRUE`, use `max_features` as the
+  client-side total feature cap.
 
 - format:
 
@@ -68,8 +73,25 @@ edr_locations(
   beneath `/collections/{collection_id}/instances/{instance_id}`. This
   keyword-only argument leaves existing positional calls unchanged.
 
+- paginate:
+
+  If `TRUE`, follow same-origin `rel = "next"` links and combine bounded
+  GeoJSON FeatureCollection pages. Defaults to `FALSE`.
+
+- max_pages:
+
+  Maximum number of pages to fetch when `paginate = TRUE`. Must be a
+  finite positive integer; defaults to 100.
+
+- max_features:
+
+  Maximum combined feature count when `paginate = TRUE`. Must be a
+  finite positive integer; defaults to 100,000.
+
 ## Value
 
 When the server returns GeoJSON, an `sf` object if the `sf` package is
 installed, otherwise an `edr_response` wrapping the raw GeoJSON. When
-the server returns CoverageJSON, an `edr_response`.
+the server returns CoverageJSON, an `edr_response`. Successfully
+paginated results carry an `edr_pagination` attribute with the completed
+page and feature counts.

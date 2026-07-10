@@ -45,8 +45,8 @@ pak::pak("ksonda/edr4r@v0.2.0-rc.1")
 
 This preview has not been submitted to CRAN and intentionally reports
 development version `0.1.1.9000` inside R. Use
-`pak::pak("ksonda/edr4r")` instead when you want the mutable development
-branch.
+`pak::pak("ksonda/edr4r")` instead when you want the mutable
+post-candidate development branch, which currently reports `0.2.0.9000`.
 
 ## 1. Create a client
 
@@ -59,7 +59,7 @@ client <- edr_client("https://api.wwdh.internetofwater.app")
 client
 #> <edr_client>
 #>   base_url:   <https://api.wwdh.internetofwater.app>
-#>   user_agent: edr4r/0.1.1.9000 (+https://github.com/ksonda/edr4r)
+#>   user_agent: edr4r/0.2.0.9000 (+https://github.com/ksonda/edr4r)
 #>   timeout:    60s
 #>   max_tries:  3
 #>   retry transport failures: TRUE
@@ -183,11 +183,13 @@ params[params$id == "3", c("id", "name", "unit_symbol", "unit_label")]
 
 ## 3. Find locations
 
-With no filters,
 [`edr_locations()`](https://ksonda.github.io/edr4r/reference/edr_locations.md)
-returns the station index as a GeoJSON `FeatureCollection`, promoted to
-an `sf` object when [`sf`](https://r-spatial.github.io/sf/) is
-installed:
+returns one station-index response as a GeoJSON `FeatureCollection`,
+promoted to an `sf` object when [`sf`](https://r-spatial.github.io/sf/)
+is installed. WWDH currently returns its full locations index in that
+response. On servers that advertise a `rel = "next"` link, set
+`paginate = TRUE` together with finite `max_pages` and `max_features`
+caps.
 
 ``` r
 
@@ -244,6 +246,35 @@ head(df)
 #> 6 1           3         Lake/Reservoir St… af    2023-01-06 07:00:00 -115.  36.0
 #> # ℹ 2 more variables: z <dbl>, value <dbl>
 ```
+
+### Retrieve several explicit stations
+
+For an endpoint without a spatial bulk verb, or when you have already
+chosen specific stations,
+[`edr_location_batch()`](https://ksonda.github.io/edr4r/reference/edr_location_batch.md)
+provides a finite sequential loop with visible provenance and failures:
+
+``` r
+
+selected_ids <- as.character(stations$`_id`[1:5])
+batch <- edr_location_batch(
+  client, "rise-edr",
+  location_id    = selected_ids,
+  datetime       = "2023-01-01/2023-06-30",
+  parameter_name = "3",
+  max_requests   = 5,
+  on_error       = "collect",
+  progress       = FALSE
+)
+
+batch$requests
+batch$data
+batch$errors
+```
+
+The request count and every location ID are validated before the first
+HTTP call. In this WWDH workflow, `cube` remains preferable when all
+stations in a spatial extent are wanted in one request.
 
 ## 5. Plot the time series
 
@@ -323,6 +354,9 @@ edr_save_html(m, "reservoir-southwest.html")
 
 ## See also
 
+- [`vignette("cross-endpoint-water-context")`](https://ksonda.github.io/edr4r/articles/cross-endpoint-water-context.md)
+  – combine a Met Office population grid, USGS river discharge, and WWDH
+  reservoir storage in one bounded Lake Mead study area.
 - [`vignette("compatibility")`](https://ksonda.github.io/edr4r/articles/compatibility.md)
   – the supported EDR/encoding subset, verified endpoint matrix, and
   known limitations.

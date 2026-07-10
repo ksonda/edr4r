@@ -44,6 +44,8 @@ Standard EDR query types (one helper per endpoint).
   : List locations in a collection
 - [`edr_location()`](https://ksonda.github.io/edr4r/reference/edr_location.md)
   : Get data for a single location
+- [`edr_location_batch()`](https://ksonda.github.io/edr4r/reference/edr_location_batch.md)
+  : Fetch data for multiple EDR locations
 - [`edr_items()`](https://ksonda.github.io/edr4r/reference/edr_items.md)
   [`edr_item()`](https://ksonda.github.io/edr4r/reference/edr_items.md)
   : Items (OGC API Features) helpers

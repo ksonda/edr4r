@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">edr4r</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,7 +35,8 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/getting-started.html">Getting started with edr4r</a></li>
     <li><a class="dropdown-item" href="../articles/compatibility.html">EDR compatibility and supported scope</a></li>
-    <li><a class="dropdown-item" href="../articles/usgs-streamgages.html">USGS streamgages: discover and map a basin</a></li>
+    <li><a class="dropdown-item" href="../articles/cross-endpoint-water-context.html">Cross-endpoint water context: Lake Mead</a></li>
+    <li><a class="dropdown-item" href="../articles/usgs-streamgages.html">USGS streamgages: bounded discovery and mapping</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -61,7 +62,7 @@
       <h1>Getting started with edr4r</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/v0.2.0-rc.1/vignettes/getting-started.Rmd" class="external-link"><code>vignettes/getting-started.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/main/vignettes/getting-started.Rmd" class="external-link"><code>vignettes/getting-started.Rmd</code></a></small>
       <div class="d-none name"><code>getting-started.Rmd</code></div>
     </div>
 
@@ -105,7 +106,8 @@ release candidate with <a href="https://pak.r-lib.org/" class="external-link">pa
 <p>This preview has not been submitted to CRAN and intentionally reports
 development version <code>0.1.1.9000</code> inside R. Use
 <code>pak::pak("ksonda/edr4r")</code> instead when you want the mutable
-development branch.</p>
+post-candidate development branch, which currently reports
+<code>0.2.0.9000</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="create-a-client">1. Create a client<a class="anchor" aria-label="anchor" href="#create-a-client"></a>
@@ -118,7 +120,7 @@ development branch.</p>
 <span><span class="va">client</span></span>
 <span><span class="co">#&gt; &lt;edr_client&gt;</span></span>
 <span><span class="co">#&gt;   base_url:   &lt;https://api.wwdh.internetofwater.app&gt;</span></span>
-<span><span class="co">#&gt;   user_agent: edr4r/0.1.1.9000 (+https://github.com/ksonda/edr4r)</span></span>
+<span><span class="co">#&gt;   user_agent: edr4r/0.2.0.9000 (+https://github.com/ksonda/edr4r)</span></span>
 <span><span class="co">#&gt;   timeout:    60s</span></span>
 <span><span class="co">#&gt;   max_tries:  3</span></span>
 <span><span class="co">#&gt;   retry transport failures: TRUE</span></span>
@@ -224,10 +226,13 @@ Features). For discovering parameter names,
 <div class="section level2">
 <h2 id="find-locations">3. Find locations<a class="anchor" aria-label="anchor" href="#find-locations"></a>
 </h2>
-<p>With no filters, <code><a href="../reference/edr_locations.html">edr_locations()</a></code> returns the station
-index as a GeoJSON <code>FeatureCollection</code>, promoted to an
-<code>sf</code> object when <a href="https://r-spatial.github.io/sf/" class="external-link"><code>sf</code></a> is
-installed:</p>
+<p><code><a href="../reference/edr_locations.html">edr_locations()</a></code> returns one station-index response as a
+GeoJSON <code>FeatureCollection</code>, promoted to an <code>sf</code>
+object when <a href="https://r-spatial.github.io/sf/" class="external-link"><code>sf</code></a> is installed.
+WWDH currently returns its full locations index in that response. On
+servers that advertise a <code>rel = "next"</code> link, set
+<code>paginate = TRUE</code> together with finite <code>max_pages</code>
+and <code>max_features</code> caps.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stations</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_locations.html">edr_locations</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"rise-edr"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">stations</span><span class="op">)</span></span>
@@ -277,13 +282,39 @@ CoverageJSON back. Flatten it with <code><a href="../reference/covjson_to_tibble
 <span><span class="co">#&gt; 5 1           3         Lake/Reservoir St… af    2023-01-05 07:00:00 -115.  36.0</span></span>
 <span><span class="co">#&gt; 6 1           3         Lake/Reservoir St… af    2023-01-06 07:00:00 -115.  36.0</span></span>
 <span><span class="co">#&gt; # ℹ 2 more variables: z &lt;dbl&gt;, value &lt;dbl&gt;</span></span></code></pre></div>
+<div class="section level3">
+<h3 id="retrieve-several-explicit-stations">Retrieve several explicit stations<a class="anchor" aria-label="anchor" href="#retrieve-several-explicit-stations"></a>
+</h3>
+<p>For an endpoint without a spatial bulk verb, or when you have already
+chosen specific stations, <code><a href="../reference/edr_location_batch.html">edr_location_batch()</a></code> provides a
+finite sequential loop with visible provenance and failures:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">selected_ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="va">stations</span><span class="op">$</span><span class="va">`_id`</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">batch</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_location_batch.html">edr_location_batch</a></span><span class="op">(</span></span>
+<span>  <span class="va">client</span>, <span class="st">"rise-edr"</span>,</span>
+<span>  location_id    <span class="op">=</span> <span class="va">selected_ids</span>,</span>
+<span>  datetime       <span class="op">=</span> <span class="st">"2023-01-01/2023-06-30"</span>,</span>
+<span>  parameter_name <span class="op">=</span> <span class="st">"3"</span>,</span>
+<span>  max_requests   <span class="op">=</span> <span class="fl">5</span>,</span>
+<span>  on_error       <span class="op">=</span> <span class="st">"collect"</span>,</span>
+<span>  progress       <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">batch</span><span class="op">$</span><span class="va">requests</span></span>
+<span><span class="va">batch</span><span class="op">$</span><span class="va">data</span></span>
+<span><span class="va">batch</span><span class="op">$</span><span class="va">errors</span></span></code></pre></div>
+<p>The request count and every location ID are validated before the
+first HTTP call. In this WWDH workflow, <code>cube</code> remains
+preferable when all stations in a spatial extent are wanted in one
+request.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="plot-the-time-series">5. Plot the time series<a class="anchor" aria-label="anchor" href="#plot-the-time-series"></a>
 </h2>
 <p><code><a href="../reference/edr_plot.html">edr_plot()</a></code> is a small <code>ggplot2</code> wrapper for
 the tidy tibble:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/edr_plot.html">edr_plot</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"Lake Mead — daily reservoir storage"</span><span class="op">)</span></span></code></pre></div>
 <div class="figure">
@@ -303,7 +334,7 @@ coloured by station. Add layers or themes like any other ggplot.</p>
 popups – much faster than fetching one station at a time.
 <code>rise-edr</code> advertises <code>cube</code>, so the default
 <code>method = "auto"</code> takes that path.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_explore.html">edr_explore</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>, <span class="st">"rise-edr"</span>,</span>
 <span>  bbox           <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">114</span>, <span class="fl">32</span>, <span class="op">-</span><span class="fl">111</span>, <span class="fl">38</span><span class="op">)</span>,         <span class="co"># SW US</span></span>
@@ -323,7 +354,7 @@ parameter/window are dimmed grey. A legend in the bottom-right explains
 the distinction.</p>
 <p>Save the same map to standalone HTML (selfcontained, no sidecar
 directory):</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/edr_save_html.html">edr_save_html</a></span><span class="op">(</span><span class="va">m</span>, <span class="st">"reservoir-southwest.html"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
@@ -356,6 +387,10 @@ error.</li>
 <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a>
 </h2>
 <ul>
+<li>
+<code><a href="../articles/cross-endpoint-water-context.html">vignette("cross-endpoint-water-context")</a></code> – combine a
+Met Office population grid, USGS river discharge, and WWDH reservoir
+storage in one bounded Lake Mead study area.</li>
 <li>
 <code><a href="../articles/compatibility.html">vignette("compatibility")</a></code> – the supported EDR/encoding
 subset, verified endpoint matrix, and known limitations.</li>

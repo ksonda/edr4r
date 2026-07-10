@@ -38,6 +38,8 @@ A typical session looks like:
     [`edr_locations()`](https://ksonda.github.io/edr4r/reference/edr_locations.md)
     /
     [`edr_location()`](https://ksonda.github.io/edr4r/reference/edr_location.md),
+    bounded explicit station sets with
+    [`edr_location_batch()`](https://ksonda.github.io/edr4r/reference/edr_location_batch.md),
     [`edr_cube()`](https://ksonda.github.io/edr4r/reference/edr_cube.md),
     [`edr_area()`](https://ksonda.github.io/edr4r/reference/edr_area.md),
     [`edr_position()`](https://ksonda.github.io/edr4r/reference/edr_position.md),
@@ -65,6 +67,8 @@ is the raw escape hatch.
 Useful links:
 
 - <https://github.com/ksonda/edr4r>
+
+- <https://ksonda.github.io/edr4r/>
 
 - Report bugs at <https://github.com/ksonda/edr4r/issues>
 

@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">edr4r</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,7 +35,8 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/getting-started.html">Getting started with edr4r</a></li>
     <li><a class="dropdown-item" href="../articles/compatibility.html">EDR compatibility and supported scope</a></li>
-    <li><a class="dropdown-item" href="../articles/usgs-streamgages.html">USGS streamgages: discover and map a basin</a></li>
+    <li><a class="dropdown-item" href="../articles/cross-endpoint-water-context.html">Cross-endpoint water context: Lake Mead</a></li>
+    <li><a class="dropdown-item" href="../articles/usgs-streamgages.html">USGS streamgages: bounded discovery and mapping</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -61,7 +62,7 @@
       <h1>EDR compatibility and supported scope</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/v0.2.0-rc.1/vignettes/compatibility.Rmd" class="external-link"><code>vignettes/compatibility.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/main/vignettes/compatibility.Rmd" class="external-link"><code>vignettes/compatibility.Rmd</code></a></small>
       <div class="d-none name"><code>compatibility.Rmd</code></div>
     </div>
 
@@ -143,15 +144,23 @@ advertised <code>f</code> value; no native R conversion yet</td>
 </tr>
 <tr class="odd">
 <td>Pagination/link following</td>
-<td>Not yet supported</td>
-<td>A single locations/items response is returned</td>
+<td>Supported subset</td>
+<td>Opt-in for GeoJSON FeatureCollections from
+<code><a href="../reference/edr_locations.html">edr_locations()</a></code> / <code><a href="../reference/edr_items.html">edr_items()</a></code>; bounded by
+finite page and feature caps</td>
 </tr>
 <tr class="even">
+<td>Multi-location retrieval</td>
+<td>Supported subset</td>
+<td>Explicit IDs through sequential <code><a href="../reference/edr_location_batch.html">edr_location_batch()</a></code>;
+CoverageJSON and CSV only, with a finite request cap</td>
+</tr>
+<tr class="odd">
 <td>HTTP 202/308 asynchronous polling</td>
 <td>Not yet supported</td>
 <td>HTTP 204 empty responses are supported</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>POST queries and EDR Part 2 Pub/Sub</td>
 <td>Out of current scope</td>
 <td>The package is a synchronous, read-only client</td>
@@ -176,7 +185,25 @@ it explicitly with <code><a href="../reference/covjson_to_tibble.html">covjson_t
 verbs return <code>sf</code> when <code>sf</code> is installed and
 otherwise retain an <code>edr_response</code>. CSV responses return a
 tibble. HTTP 204 produces a typed empty result rather than a parser
-failure.</p>
+failure. For numeric CoverageJSON ranges, values serialized as JSON
+strings are coerced only when every non-missing string is finite and
+safely representable; actual text, overflow/underflow, and unsafe
+declared integers remain explicit parser errors.</p>
+<p><code><a href="../reference/edr_location_batch.html">edr_location_batch()</a></code> returns an
+<code>edr_location_batch</code> object with three stable tibbles:
+<code>requests</code> (one status row per input ID), <code>data</code>
+(row-bound CoverageJSON/CSV data with <code>.request_id</code> and
+<code>.location_id</code> provenance), and <code>errors</code>
+(preserved conditions when <code>on_error = "collect"</code>). It is
+sequential in this release so the normal client retry policy remains
+authoritative.</p>
+<p>Pagination is deliberately opt-in. The client follows only the
+server-advertised body link with <code>rel = "next"</code>, treats its
+cursor/offset as opaque, and requires the continuation to remain on the
+original request’s service origin. Reaching <code>max_pages</code> or
+<code>max_features</code> while another page exists is a typed error,
+not a silently partial result. <code><a href="../reference/edr_explore.html">edr_explore()</a></code> does not
+enable collection-wide pagination automatically.</p>
 <p>Local argument and parser failures are raised before issuing unsafe
 follow-up requests. HTTP failures retain their <code>httr2_http_*</code>
 status classes and include a useful server error body when one is
@@ -214,8 +241,8 @@ state matters, or clear that client’s metadata with
 <h2 id="verified-endpoints">Verified endpoints<a class="anchor" aria-label="anchor" href="#verified-endpoints"></a>
 </h2>
 <p>The table records direct compatibility checks, not a permanent
-availability promise. Server metadata was last inspected on
-2026-07-09.</p>
+availability promise. Server metadata and pagination behavior were last
+inspected on 2026-07-10.</p>
 <table class="table">
 <colgroup>
 <col width="25%">
@@ -235,8 +262,9 @@ availability promise. Server metadata was last inspected on
 waterdata</a></td>
 <td>Operational U.S. streamgage service</td>
 <td><code>locations</code></td>
-<td>Collection/location discovery, station time series, CoverageJSON
-parsing, per-location exploration</td>
+<td>Collection/location discovery, opaque cursor pagination,
+station/batch time series, CoverageJSON parsing, per-location
+exploration</td>
 </tr>
 <tr class="even">
 <td><a href="https://api.wwdh.internetofwater.app" class="external-link">Western Water
@@ -246,8 +274,8 @@ Datahub</a></td>
 <code>locations</code>, <code>items</code>, <code>position</code>,
 <code>area</code>, <code>cube</code>
 </td>
-<td>Discovery, parameters, station and bulk queries, plotting and
-mapping</td>
+<td>Discovery, parameters, offset pagination for items, station and bulk
+queries, plotting and mapping</td>
 </tr>
 <tr class="odd">
 <td><a href="https://labs.metoffice.gov.uk/edr/collections?f=html" class="external-link">Met
@@ -259,7 +287,7 @@ Office Labs</a></td>
 <code>radius</code>, <code>trajectory</code>
 </td>
 <td>Cross-implementation metadata, instances, query-specific formats,
-and small terrain CoverageJSON fixtures</td>
+terrain point coverage, and an explicit-CRS population grid</td>
 </tr>
 </tbody>
 </table>
@@ -275,9 +303,16 @@ workflows must not depend on its availability.</p>
 are deterministic and offline. Met Office fixtures retain the response
 shapes needed for capability, instance, and single-Coverage parsing
 tests while omitting large payloads and verbose WKT definitions.</p>
-<p>A separate scheduled/manual workflow performs a tiny, non-blocking
-live probe. An outage there does not fail package CI; it is evidence of
-interoperability drift to investigate.</p>
+<p>Frozen cursor- and offset-shaped pages exercise both pagination
+styles without relying on live service state. Security and edge-case
+tests also cover relative links, cycles, malformed/multiple next links,
+cross-origin continuations, and page or feature caps.</p>
+<p>A separate scheduled/manual workflow performs tiny, non-blocking live
+probes: bounded USGS cursor pagination and station batching, bounded
+WWDH offset pagination, plus the Met Office capability, terrain, and
+population-grid checks. An endpoint outage does not fail package CI; it
+is evidence of availability or interoperability drift to
+investigate.</p>
 </div>
 <div class="section level2">
 <h2 id="what-supports-edr-means-here">What “supports EDR” means here<a class="anchor" aria-label="anchor" href="#what-supports-edr-means-here"></a>
