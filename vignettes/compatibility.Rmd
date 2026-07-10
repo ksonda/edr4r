@@ -106,7 +106,7 @@ promise. Server metadata and pagination behavior were last inspected on
 |---|---|---|---|
 | [USGS waterdata](https://api.waterdata.usgs.gov/ogcapi/beta/) | Operational U.S. streamgage service | `locations` | Collection/location discovery, opaque cursor pagination, station/batch time series, CoverageJSON parsing, per-location exploration |
 | [Western Water Datahub](https://api.wwdh.internetofwater.app) | Operational multi-network pygeoapi deployment | `locations`, `items`, `position`, `area`, `cube` | Discovery, parameters, offset pagination for items, station and bulk queries, plotting and mapping |
-| [Met Office Labs](https://labs.metoffice.gov.uk/edr/collections?f=html) | Non-operational technical demonstrator | `locations`, `items`, `instances`, `position`, `area`, `cube`, `radius`, `trajectory` | Cross-implementation metadata, instances, query-specific formats, and small terrain CoverageJSON fixtures |
+| [Met Office Labs](https://labs.metoffice.gov.uk/edr/collections?f=html) | Non-operational technical demonstrator | `locations`, `items`, `instances`, `position`, `area`, `cube`, `radius`, `trajectory` | Cross-implementation metadata, instances, query-specific formats, terrain point coverage, and an explicit-CRS population grid |
 
 The Met Office service describes itself as an example rather than an
 operational API. It is useful for interoperability testing because its
@@ -127,9 +127,9 @@ page or feature caps.
 
 A separate scheduled/manual workflow performs tiny, non-blocking live probes:
 bounded USGS cursor pagination and station batching, bounded WWDH offset
-pagination, plus the Met Office capability/terrain check. An endpoint outage
-does not fail package CI; it is evidence of availability or interoperability
-drift to investigate.
+pagination, plus the Met Office capability, terrain, and population-grid
+checks. An endpoint outage does not fail package CI; it is evidence of
+availability or interoperability drift to investigate.
 
 ## What "supports EDR" means here
 

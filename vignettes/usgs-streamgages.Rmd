@@ -262,6 +262,9 @@ edr_save_html(m, "piedmont-streamgages.html")
 
 ## See also
 
+- `vignette("cross-endpoint-water-context")` -- place a USGS Hoover Dam
+  discharge series beside WWDH Lake Mead storage and a Met Office population
+  grid.
 - `vignette("getting-started")` -- same workflow against the Western
   Water Datahub, which advertises `cube` for fast bulk fetches.
 - The

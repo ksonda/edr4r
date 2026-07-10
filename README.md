@@ -27,6 +27,9 @@ For cross-server experiments, the
 is another useful endpoint. It is a **technical demonstrator, not an
 operational service**: availability, collections, and response details can
 change without notice, so do not build production workflows around it.
+The cross-endpoint Lake Mead vignette shows its 2015 population grid alongside
+USGS river discharge and Western Water Datahub reservoir storage without
+mixing their provenance or units.
 
 The goal is to take the tedious parts of EDR off your hands — URL
 construction, comma-separated parameter lists, WKT coordinate encoding,

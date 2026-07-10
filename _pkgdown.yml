@@ -60,4 +60,5 @@ articles:
     contents:
       - getting-started
       - compatibility
+      - cross-endpoint-water-context
       - usgs-streamgages

@@ -365,6 +365,9 @@ edr_save_html(m, "reservoir-southwest.html")
 
 ## See also
 
+- `vignette("cross-endpoint-water-context")` -- combine a Met Office
+  population grid, USGS river discharge, and WWDH reservoir storage in one
+  bounded Lake Mead study area.
 - `vignette("compatibility")` -- the supported EDR/encoding subset, verified
   endpoint matrix, and known limitations.
 - `vignette("usgs-streamgages")` -- a walk-through against the USGS

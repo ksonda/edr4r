@@ -63,7 +63,7 @@ jobs:
           extra-packages: local::.
           needs: check
 
-      - name: Check capabilities, instances, and one terrain point
+      - name: Check capabilities, instances, terrain, and population grid
         id: smoke
         # The demonstrator has no availability guarantee. Record drift in the
         # step outcome, but do not turn an external lab outage into a red build.
@@ -77,7 +77,7 @@ jobs:
         run: |
           if [ "${{ steps.smoke.outcome }}" = "success" ]; then
             echo "### Met Office Labs: compatible" >> "$GITHUB_STEP_SUMMARY"
-            echo "Capability, instance-locations, and terrain-position probes passed." >> "$GITHUB_STEP_SUMMARY"
+            echo "Capability, instance-locations, terrain-position, and population-grid probes passed." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "### Met Office Labs: probe failed (non-blocking)" >> "$GITHUB_STEP_SUMMARY"
             echo "This endpoint is a non-operational technical demonstrator; inspect the smoke-step log for outage or compatibility drift." >> "$GITHUB_STEP_SUMMARY"

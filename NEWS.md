@@ -12,6 +12,10 @@
 * Accept finite, safely representable numeric strings in CoverageJSON ranges
   that declare a numeric `dataType`, as currently emitted by USGS waterdata,
   while rejecting text, overflow/underflow, and unsafe declared integers.
+* Add a precomputed cross-endpoint Lake Mead vignette combining a Met Office
+  population `Grid`, a USGS discharge `PointSeries`, and a WWDH
+  `CoverageCollection`, with an executable source retained for deliberate
+  live refreshes.
 * Remove a precomputed base64 map from the USGS vignette, reducing that source
   file by about 1 MB while retaining the runnable interactive-map example.
 
