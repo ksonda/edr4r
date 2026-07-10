@@ -18,7 +18,6 @@
 #' @param parse If `TRUE` (default), parses JSON / GeoJSON / CovJSON
 #'   bodies into R structures. If `FALSE`, returns the raw `httr2`
 #'   response.
-#'
 #' @return A parsed list, tibble, or `edr_response` wrapper; an
 #'   `httr2_response` when `parse = FALSE`; or a typed empty result for HTTP
 #'   204 responses.
@@ -30,7 +29,16 @@ edr_request <- function(client,
                         parse = TRUE) {
   check_client(client)
   format <- match.arg(format)
+  req <- build_edr_http_request(client, path, query, format)
+  resp <- perform_edr_request(req, verbose = client$verbose)
 
+  if (!parse || format == "raw") {
+    return(resp)
+  }
+  parse_response(resp, format = format)
+}
+
+build_edr_http_request <- function(client, path, query, format) {
   if (!is.character(path) || length(path) != 1L) {
     cli::cli_abort("{.arg path} must be a single string.")
   }
@@ -57,17 +65,14 @@ edr_request <- function(client,
   }
 
   req <- httr2::req_headers(req, Accept = accept_header(format))
+  req
+}
 
-  if (isTRUE(client$verbose)) {
+perform_edr_request <- function(req, verbose = FALSE) {
+  if (isTRUE(verbose)) {
     cli::cli_inform("GET {req$url}")
   }
-
-  resp <- httr2::req_perform(req)
-
-  if (!parse || format == "raw") {
-    return(resp)
-  }
-  parse_response(resp, format = format)
+  httr2::req_perform(req)
 }
 
 build_request_url <- function(base_url, path, query) {

@@ -13,7 +13,10 @@ edr_items(
   limit = NULL,
   format = c("geojson", "json"),
   ...,
-  instance_id = NULL
+  instance_id = NULL,
+  paginate = FALSE,
+  max_pages = 100L,
+  max_features = 100000L
 )
 
 edr_item(
@@ -36,7 +39,9 @@ edr_item(
 \item{datetime}{ISO-8601 instant or interval, e.g.
 \code{"2024-01-01/2024-12-31"} or \code{"2024-01-01/.."}.}
 
-\item{limit}{Maximum number of features to return.}
+\item{limit}{Requested server page size. Servers may enforce their own
+maximum or ignore this value; with \code{paginate = TRUE}, use \code{max_features}
+as the client-side total feature cap.}
 
 \item{format}{\code{"geojson"} (default) or \code{"json"}.}
 
@@ -45,6 +50,15 @@ edr_item(
 \item{instance_id}{Optional instance identifier. When supplied, the request
 is sent beneath \verb{/collections/\{collection_id\}/instances/\{instance_id\}}.
 This keyword-only argument leaves existing positional calls unchanged.}
+
+\item{paginate}{If \code{TRUE}, follow same-origin \code{rel = "next"} links and
+combine bounded GeoJSON FeatureCollection pages. Defaults to \code{FALSE}.}
+
+\item{max_pages}{Maximum number of pages to fetch when \code{paginate = TRUE}.
+Must be a finite positive integer; defaults to 100.}
+
+\item{max_features}{Maximum combined feature count when \code{paginate = TRUE}.
+Must be a finite positive integer; defaults to 100,000.}
 
 \item{item_id}{Identifier of a single feature.}
 }

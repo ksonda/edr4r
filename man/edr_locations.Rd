@@ -14,7 +14,10 @@ edr_locations(
   limit = NULL,
   format = c("geojson", "json"),
   ...,
-  instance_id = NULL
+  instance_id = NULL,
+  paginate = FALSE,
+  max_pages = 100L,
+  max_features = 100000L
 )
 }
 \arguments{
@@ -33,7 +36,9 @@ on. Sent as a comma-separated \verb{parameter-name=} query.}
 
 \item{crs}{Optional CRS URI for the response.}
 
-\item{limit}{Maximum number of features to return.}
+\item{limit}{Requested server page size. Servers may enforce their own
+maximum or ignore this value; with \code{paginate = TRUE}, use \code{max_features}
+as the client-side total feature cap.}
 
 \item{format}{\code{"geojson"} (default) or \code{"json"}.}
 
@@ -42,11 +47,22 @@ on. Sent as a comma-separated \verb{parameter-name=} query.}
 \item{instance_id}{Optional instance identifier. When supplied, the request
 is sent beneath \verb{/collections/\{collection_id\}/instances/\{instance_id\}}.
 This keyword-only argument leaves existing positional calls unchanged.}
+
+\item{paginate}{If \code{TRUE}, follow same-origin \code{rel = "next"} links and
+combine bounded GeoJSON FeatureCollection pages. Defaults to \code{FALSE}.}
+
+\item{max_pages}{Maximum number of pages to fetch when \code{paginate = TRUE}.
+Must be a finite positive integer; defaults to 100.}
+
+\item{max_features}{Maximum combined feature count when \code{paginate = TRUE}.
+Must be a finite positive integer; defaults to 100,000.}
 }
 \value{
 When the server returns GeoJSON, an \code{sf} object if the \code{sf}
 package is installed, otherwise an \code{edr_response} wrapping the raw
 GeoJSON. When the server returns CoverageJSON, an \code{edr_response}.
+Successfully paginated results carry an \code{edr_pagination} attribute with
+the completed page and feature counts.
 }
 \description{
 Calls \code{GET /collections/{collection_id}/locations}. With no extra

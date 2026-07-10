@@ -95,13 +95,14 @@ covjson_to_tibble <- function(x, datetime_as_posix = TRUE) {
 #'   and warns.
 #' @export
 geojson_to_sf <- function(x) {
+  pagination <- attr(x, "edr_pagination", exact = TRUE)
   gj <- as_geojson(x)
 
   if (!rlang::is_installed("sf")) {
     cli::cli_warn(
       "{.pkg sf} is not installed; returning properties without geometry."
     )
-    return(geojson_props_tibble(gj))
+    return(restore_pagination_metadata(geojson_props_tibble(gj), pagination))
   }
 
   txt <- jsonlite::toJSON(gj, auto_unbox = TRUE, null = "null", digits = NA)
@@ -113,9 +114,17 @@ geojson_to_sf <- function(x) {
     cli::cli_warn(
       "Could not parse GeoJSON geometry; returning properties only."
     )
-    return(geojson_props_tibble(gj))
+    return(restore_pagination_metadata(geojson_props_tibble(gj), pagination))
   }
-  tibble::as_tibble(res) |> sf::st_as_sf()
+  out <- tibble::as_tibble(res) |> sf::st_as_sf()
+  restore_pagination_metadata(out, pagination)
+}
+
+restore_pagination_metadata <- function(x, pagination) {
+  if (!is.null(pagination)) {
+    attr(x, "edr_pagination") <- pagination
+  }
+  x
 }
 
 # ---------------------------------------------------------------------
@@ -650,13 +659,36 @@ coerce_values <- function(values, n, data_type = NULL, pname = "") {
     expected_kind <- if (identical(data_type, "string")) "string" else "number"
     wrong_kind <- kinds != "missing" & kinds != expected_kind
     if (any(wrong_kind)) {
-      cli::cli_abort(
-        "NdArray range {.val {pname}} declares {.field dataType} {.val {data_type}}, but its values contain {if (expected_kind == 'string') 'numbers' else 'strings'}."
+      if (identical(expected_kind, "string")) {
+        cli::cli_abort(
+          "NdArray range {.val {pname}} declares {.field dataType} {.val {data_type}}, but its values contain numbers."
+        )
+      }
+      # Some otherwise usable EDR servers (including USGS waterdata) declare
+      # numeric CoverageJSON ranges but serialize the values as JSON strings.
+      # Honour the declared type when coercion stays finite and avoids obvious
+      # overflow, underflow, or unsafe integer rounding. Real text still fails
+      # rather than being silently converted to missing values.
+      string_values <- values[kinds == "string"]
+      parsed_strings <- suppressWarnings(as.numeric(string_values))
+      lexical_number <- grepl(
+        "^[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?$",
+        string_values
       )
+      mantissa <- sub("[eE].*$", "", string_values)
+      underflow <- parsed_strings == 0 & grepl("[1-9]", mantissa)
+      unsafe_integer <- identical(data_type, "integer") &
+        abs(parsed_strings) >= 2^53
+      if (any(!lexical_number | is.na(parsed_strings) |
+              !is.finite(parsed_strings) | underflow | unsafe_integer)) {
+        cli::cli_abort(
+          "NdArray range {.val {pname}} declares {.field dataType} {.val {data_type}}, but its values contain strings that are not valid numbers or cannot be represented safely."
+        )
+      }
     }
     if (identical(data_type, "string")) return(as.character(values))
 
-    out <- as.numeric(values)
+    out <- suppressWarnings(as.numeric(values))
     if (identical(data_type, "integer") &&
         any(!is.na(out) & out != floor(out))) {
       cli::cli_abort(

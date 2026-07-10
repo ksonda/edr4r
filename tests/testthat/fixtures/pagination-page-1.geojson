@@ -1,0 +1,32 @@
+{
+  "type": "FeatureCollection",
+  "bbox": [-106.0, 39.0, -104.0, 41.0],
+  "numberMatched": 3,
+  "numberReturned": 2,
+  "features": [
+    {
+      "type": "Feature",
+      "id": "station-a",
+      "geometry": {"type": "Point", "coordinates": [-105.0, 40.0]},
+      "properties": {"name": "Station A", "network": "test"}
+    },
+    {
+      "type": "Feature",
+      "id": "station-b",
+      "geometry": {"type": "Point", "coordinates": [-104.5, 40.5]},
+      "properties": {"name": "Station B", "network": "test"}
+    }
+  ],
+  "links": [
+    {
+      "rel": "self",
+      "href": "https://example.test/collections/demo/locations?limit=2&f=json",
+      "type": "application/geo+json"
+    },
+    {
+      "rel": "next",
+      "href": "?cursor=opaque%2Btoken&limit=2&f=json",
+      "type": "application/geo+json"
+    }
+  ]
+}

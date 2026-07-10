@@ -24,8 +24,9 @@
 #' 1. Build a client with [edr_client()].
 #' 2. Discover what's on offer with [edr_collections()],
 #'    [edr_capabilities()], and [edr_queryables()].
-#' 3. Pull data with [edr_locations()] / [edr_location()], [edr_cube()],
-#'    [edr_area()], [edr_position()], or the less common
+#' 3. Pull data with [edr_locations()] / [edr_location()], bounded explicit
+#'    station sets with [edr_location_batch()], [edr_cube()], [edr_area()],
+#'    [edr_position()], or the less common
 #'    [edr_radius()] / [edr_trajectory()] / [edr_corridor()]. Instance-scoped
 #'    collections can be inspected with [edr_instances()].
 #' 4. Flatten the response with [covjson_to_tibble()] (for CoverageJSON)

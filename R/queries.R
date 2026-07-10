@@ -13,16 +13,26 @@
 #' @param parameter_name Character vector of parameter names to filter
 #'   on. Sent as a comma-separated `parameter-name=` query.
 #' @param crs Optional CRS URI for the response.
-#' @param limit Maximum number of features to return.
+#' @param limit Requested server page size. Servers may enforce their own
+#'   maximum or ignore this value; with `paginate = TRUE`, use `max_features`
+#'   as the client-side total feature cap.
 #' @param format `"geojson"` (default) or `"json"`.
 #' @param ... Additional query parameters passed through verbatim.
 #' @param instance_id Optional instance identifier. When supplied, the request
 #'   is sent beneath `/collections/{collection_id}/instances/{instance_id}`.
 #'   This keyword-only argument leaves existing positional calls unchanged.
+#' @param paginate If `TRUE`, follow same-origin `rel = "next"` links and
+#'   combine bounded GeoJSON FeatureCollection pages. Defaults to `FALSE`.
+#' @param max_pages Maximum number of pages to fetch when `paginate = TRUE`.
+#'   Must be a finite positive integer; defaults to 100.
+#' @param max_features Maximum combined feature count when `paginate = TRUE`.
+#'   Must be a finite positive integer; defaults to 100,000.
 #'
 #' @return When the server returns GeoJSON, an `sf` object if the `sf`
 #'   package is installed, otherwise an `edr_response` wrapping the raw
 #'   GeoJSON. When the server returns CoverageJSON, an `edr_response`.
+#'   Successfully paginated results carry an `edr_pagination` attribute with
+#'   the completed page and feature counts.
 #' @export
 edr_locations <- function(client,
                           collection_id,
@@ -33,21 +43,27 @@ edr_locations <- function(client,
                           limit = NULL,
                           format = c("geojson", "json"),
                           ...,
-                          instance_id = NULL) {
+                          instance_id = NULL,
+                          paginate = FALSE,
+                          max_pages = 100L,
+                          max_features = 100000L) {
   check_client(client)
   path <- collection_query_path(collection_id, "locations", instance_id)
   format <- match.arg(format)
+  check_pagination_args(paginate, max_pages, max_features)
 
   query <- common_query(
     bbox = bbox, datetime = datetime, parameter_name = parameter_name,
     crs = crs, limit = limit, ...
   )
-  resp <- edr_request(
-    client,
-    path,
-    query  = query,
-    format = format
-  )
+  resp <- if (isTRUE(paginate)) {
+    paginated_feature_collection_request(
+      client, path, query = query, format = format,
+      max_pages = max_pages, max_features = max_features
+    )
+  } else {
+    edr_request(client, path, query = query, format = format)
+  }
   promote_geojson(resp)
 }
 
@@ -117,20 +133,26 @@ edr_items <- function(client,
                       limit = NULL,
                       format = c("geojson", "json"),
                       ...,
-                      instance_id = NULL) {
+                      instance_id = NULL,
+                      paginate = FALSE,
+                      max_pages = 100L,
+                      max_features = 100000L) {
   check_client(client)
   path <- collection_query_path(collection_id, "items", instance_id)
   format <- match.arg(format)
+  check_pagination_args(paginate, max_pages, max_features)
 
   query <- common_query(
     bbox = bbox, datetime = datetime, limit = limit, ...
   )
-  resp <- edr_request(
-    client,
-    path,
-    query  = query,
-    format = format
-  )
+  resp <- if (isTRUE(paginate)) {
+    paginated_feature_collection_request(
+      client, path, query = query, format = format,
+      max_pages = max_pages, max_features = max_features
+    )
+  } else {
+    edr_request(client, path, query = query, format = format)
+  }
   promote_geojson(resp)
 }
 

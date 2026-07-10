@@ -1,3 +1,20 @@
+# edr4r 0.3.0 (development version)
+
+* Add opt-in, bounded GeoJSON pagination to `edr_locations()` and
+  `edr_items()`. The client follows server-advertised `rel = "next"` links,
+  supports cursor- and offset-based servers, and refuses unsafe cross-origin
+  continuations or silent partial results at configured caps.
+* Add `edr_location_batch()` for safe, finite, sequential multi-station pulls
+  with stable request/data/error tables, explicit station provenance, and
+  stop-or-collect failure handling.
+* Reuse the batch execution engine inside per-location `edr_explore()` while
+  preserving its existing output and summary-warning contract.
+* Accept finite, safely representable numeric strings in CoverageJSON ranges
+  that declare a numeric `dataType`, as currently emitted by USGS waterdata,
+  while rejecting text, overflow/underflow, and unsafe declared integers.
+* Remove a precomputed base64 map from the USGS vignette, reducing that source
+  file by about 1 MB while retaining the runnable interactive-map example.
+
 # edr4r 0.2.0 (development version)
 
 * Add structured service and collection capability discovery, support checks,

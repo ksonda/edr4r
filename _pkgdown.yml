@@ -32,6 +32,7 @@ reference:
     contents:
       - edr_locations
       - edr_location
+      - edr_location_batch
       - edr_items
       - edr_position
       - edr_area

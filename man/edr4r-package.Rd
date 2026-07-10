@@ -32,8 +32,9 @@ A typical session looks like:
 \item Build a client with \code{\link[=edr_client]{edr_client()}}.
 \item Discover what's on offer with \code{\link[=edr_collections]{edr_collections()}},
 \code{\link[=edr_capabilities]{edr_capabilities()}}, and \code{\link[=edr_queryables]{edr_queryables()}}.
-\item Pull data with \code{\link[=edr_locations]{edr_locations()}} / \code{\link[=edr_location]{edr_location()}}, \code{\link[=edr_cube]{edr_cube()}},
-\code{\link[=edr_area]{edr_area()}}, \code{\link[=edr_position]{edr_position()}}, or the less common
+\item Pull data with \code{\link[=edr_locations]{edr_locations()}} / \code{\link[=edr_location]{edr_location()}}, bounded explicit
+station sets with \code{\link[=edr_location_batch]{edr_location_batch()}}, \code{\link[=edr_cube]{edr_cube()}}, \code{\link[=edr_area]{edr_area()}},
+\code{\link[=edr_position]{edr_position()}}, or the less common
 \code{\link[=edr_radius]{edr_radius()}} / \code{\link[=edr_trajectory]{edr_trajectory()}} / \code{\link[=edr_corridor]{edr_corridor()}}. Instance-scoped
 collections can be inspected with \code{\link[=edr_instances]{edr_instances()}}.
 \item Flatten the response with \code{\link[=covjson_to_tibble]{covjson_to_tibble()}} (for CoverageJSON)
@@ -47,6 +48,7 @@ the raw escape hatch.
 Useful links:
 \itemize{
   \item \url{https://github.com/ksonda/edr4r}
+  \item \url{https://ksonda.github.io/edr4r/}
   \item Report bugs at \url{https://github.com/ksonda/edr4r/issues}
 }
 
