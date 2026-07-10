@@ -1,4 +1,4 @@
-# edr4r (development version)
+# edr4r 0.1.1
 
 * Harden CoverageJSON parsing: honor `NdArray$dataType`, preserve textual
   identifiers and invalid/mixed timestamps, validate array shape and axes,

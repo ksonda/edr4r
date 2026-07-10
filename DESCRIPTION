@@ -1,6 +1,6 @@
 Package: edr4r
 Title: Client for OGC API - Environmental Data Retrieval (EDR)
-Version: 0.1.0.9000
+Version: 0.1.1
 Authors@R:
     person("Kyle", "Onda", role = c("aut", "cre", "cph"),
            email = "konda@lincolninst.edu")
