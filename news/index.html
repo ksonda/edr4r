@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">edr4r</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,11 +34,11 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/ksonda/edr4r/blob/0.1.1/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/ksonda/edr4r/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="edr4r-development-version">edr4r (development version)<a class="anchor" aria-label="anchor" href="#edr4r-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.1.1" id="edr4r-011">edr4r 0.1.1<a class="anchor" aria-label="anchor" href="#edr4r-011"></a></h2>
 <ul><li>Harden CoverageJSON parsing: honor <code>NdArray$dataType</code>, preserve textual identifiers and invalid/mixed timestamps, validate array shape and axes, support tuple/composite trajectory axes, merge child parameter metadata, and fail clearly for tiled or externally referenced data.</li>
 <li>Return typed empty results for HTTP 204 responses, report single Coverage and Feature documents correctly, and reject JSON error bodies when CSV was requested.</li>
 <li>Retry transient transport failures by default, with a client option to disable them, and exercise retries against a real local HTTP server.</li>
