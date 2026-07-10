@@ -4,13 +4,16 @@
 \alias{edr_queryables}
 \title{Get the queryables (filter properties) for a collection}
 \usage{
-edr_queryables(client, collection_id)
+edr_queryables(client, collection_id, refresh = FALSE)
 }
 \arguments{
 \item{client}{An \code{edr_client}.}
 
 \item{collection_id}{Collection identifier as advertised by the
 server -- e.g. \code{"monitoring-locations"} or \code{"daily-values"}.}
+
+\item{refresh}{If \code{TRUE}, bypass and replace any cached response. Discovery
+responses otherwise use the client's \code{cache_ttl}; see \code{\link[=edr_client]{edr_client()}}.}
 }
 \value{
 A list with the parsed queryables document.

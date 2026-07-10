@@ -59,6 +59,9 @@
 #' @param quiet If `FALSE` (default), print a cli progress bar when
 #'   falling back to per-location fetches.
 #' @param ... Forwarded to [edr_map()] when returning a map.
+#' @param instance_id Optional collection instance identifier. When supplied,
+#'   capability planning and every locations/data request use that instance.
+#'   This keyword-only argument leaves existing positional calls unchanged.
 #'
 #' @return A `leaflet` htmlwidget, a `ggplot`, a tidy tibble/list when
 #'   `output = "data"`, or `invisible(file)` when a map is saved.
@@ -92,7 +95,8 @@ edr_explore <- function(client,
                         output         = c("auto", "map", "plot", "data"),
                         plot_view      = c("auto", "time", "profile", "grid"),
                         quiet          = FALSE,
-                        ...) {
+                        ...,
+                        instance_id    = NULL) {
   check_client(client)
   collection_id <- check_collection_id(collection_id)
   method <- match.arg(method)
@@ -106,7 +110,10 @@ edr_explore <- function(client,
   }
   check_max_requests(max_requests)
 
-  method <- resolve_explore_method(client, collection_id, method, bbox, coords)
+  method <- resolve_explore_method(
+    client, collection_id, method, bbox, coords,
+    instance_id = instance_id
+  )
   # Fetch data first whenever the query already has enough spatial input.
   # This lets gridded/profile results return without probing an optional
   # /locations endpoint. Station locations are loaded lazily below only if
@@ -116,6 +123,7 @@ edr_explore <- function(client,
     fetch_explore_locations(
       client, collection_id,
       bbox = bbox, limit = limit,
+      instance_id = instance_id,
       required = method == "per-location" ||
         (method == "cube" && is.null(bbox))
     )
@@ -127,7 +135,8 @@ edr_explore <- function(client,
     method, client, collection_id,
     bbox = bbox, coords = coords, locations = locations,
     datetime = datetime, parameter_name = parameter_name,
-    record_limit = record_limit, max_requests = max_requests, quiet = quiet
+    record_limit = record_limit, max_requests = max_requests, quiet = quiet,
+    instance_id = instance_id
   )
 
   if (output == "data") return(data)
@@ -166,6 +175,7 @@ edr_explore <- function(client,
     locations <- fetch_explore_locations(
       client, collection_id,
       bbox = bbox, limit = limit,
+      instance_id = instance_id,
       required = FALSE
     )
   }
@@ -197,21 +207,37 @@ edr_explore <- function(client,
 
 # Pick the cheapest data-fetch method the collection supports, taking
 # user intent into account.
-resolve_explore_method <- function(client, collection_id, method, bbox, coords) {
+resolve_explore_method <- function(client, collection_id, method, bbox, coords,
+                                   instance_id = NULL) {
   if (method != "auto") return(method)
-  cols <- tryCatch(
-    edr_collections(client),
-    error = function(e) {
-      cli::cli_abort(
-        c("Could not discover query capabilities for collection {.val {collection_id}}.",
-          i = "Automatic fallback was stopped before issuing per-location requests.",
-          i = "Choose {.arg method} explicitly only if the endpoint's capabilities are known."),
-        parent = e
-      )
-    }
-  )
-  hit <- cols$data_queries[cols$id == collection_id]
-  dq <- if (length(hit) == 1L) hit[[1]] else character(0)
+  if (!is.null(instance_id)) {
+    instance <- tryCatch(
+      edr_instance(client, collection_id, instance_id),
+      error = function(e) {
+        cli::cli_abort(
+          c("Could not discover query capabilities for instance {.val {instance_id}} of collection {.val {collection_id}}.",
+            i = "Automatic fallback was stopped before issuing per-location requests.",
+            i = "Choose {.arg method} explicitly only if the endpoint's capabilities are known."),
+          parent = e
+        )
+      }
+    )
+    dq <- query_names_best_effort(instance$data_queries)
+  } else {
+    cols <- tryCatch(
+      edr_collections(client),
+      error = function(e) {
+        cli::cli_abort(
+          c("Could not discover query capabilities for collection {.val {collection_id}}.",
+            i = "Automatic fallback was stopped before issuing per-location requests.",
+            i = "Choose {.arg method} explicitly only if the endpoint's capabilities are known."),
+          parent = e
+        )
+      }
+    )
+    hit <- cols$data_queries[cols$id == collection_id]
+    dq <- if (length(hit) == 1L) hit[[1]] else character(0)
+  }
   if (!is.null(coords) && coords_looks_point(coords) && "position" %in% dq) {
     return("position")
   }
@@ -226,7 +252,8 @@ explore_needs_locations <- function(method, bbox) {
 }
 
 fetch_explore_locations <- function(client, collection_id, bbox, limit,
-                                    required = FALSE) {
+                                    required = FALSE,
+                                    instance_id = NULL) {
   if (!rlang::is_installed("sf")) {
     if (required) {
       cli::cli_abort(
@@ -237,7 +264,11 @@ fetch_explore_locations <- function(client, collection_id, bbox, limit,
     return(NULL)
   }
   locations <- tryCatch(
-    edr_locations(client, collection_id, bbox = bbox, limit = limit),
+    edr_locations(
+      client, collection_id,
+      bbox = bbox, limit = limit,
+      instance_id = instance_id
+    ),
     error = function(e) e
   )
   if (inherits(locations, "error")) {
@@ -264,7 +295,8 @@ fetch_explore_locations <- function(client, collection_id, bbox, limit,
 fetch_explore_data <- function(method, client, collection_id,
                                bbox, coords, locations,
                                datetime, parameter_name,
-                               record_limit, max_requests, quiet) {
+                               record_limit, max_requests, quiet,
+                               instance_id = NULL) {
   switch(method,
     cube = {
       bb <- bbox %||% {
@@ -279,7 +311,8 @@ fetch_explore_data <- function(method, client, collection_id,
         client, collection_id,
         bbox = bb,
         datetime = datetime,
-        parameter_name = parameter_name
+        parameter_name = parameter_name,
+        instance_id = instance_id
       )
       covjson_to_tibble(resp)
     },
@@ -291,7 +324,8 @@ fetch_explore_data <- function(method, client, collection_id,
         client, collection_id,
         coords = coords,
         datetime = datetime,
-        parameter_name = parameter_name
+        parameter_name = parameter_name,
+        instance_id = instance_id
       )
       covjson_to_tibble(resp)
     },
@@ -303,7 +337,8 @@ fetch_explore_data <- function(method, client, collection_id,
         client, collection_id,
         coords = coords,
         datetime = datetime,
-        parameter_name = parameter_name
+        parameter_name = parameter_name,
+        instance_id = instance_id
       )
       covjson_to_tibble(resp)
     },
@@ -321,7 +356,8 @@ fetch_explore_data <- function(method, client, collection_id,
         parameter_name = parameter_name,
         record_limit   = record_limit,
         max_requests   = max_requests,
-        quiet          = quiet
+        quiet          = quiet,
+        instance_id    = instance_id
       )
     }
   )
@@ -380,7 +416,8 @@ fetch_per_station <- function(client, collection_id, ids,
                               datetime, parameter_name,
                               record_limit = NULL,
                               max_requests = Inf,
-                              quiet = FALSE) {
+                              quiet = FALSE,
+                              instance_id = NULL) {
   n <- length(ids)
   check_max_requests(max_requests)
   if (is.finite(max_requests) && n > max_requests) {
@@ -411,7 +448,8 @@ fetch_per_station <- function(client, collection_id, ids,
           client, collection_id,
           location_id    = ids[[i]],
           datetime       = datetime,
-          parameter_name = parameter_name
+          parameter_name = parameter_name,
+          instance_id    = instance_id
         )
         if (!is.null(record_limit)) args$limit <- record_limit
         resp <- do.call(edr_location, args)

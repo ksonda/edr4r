@@ -4,13 +4,16 @@
 \alias{edr_collection}
 \title{Get a single collection's metadata}
 \usage{
-edr_collection(client, collection_id)
+edr_collection(client, collection_id, refresh = FALSE)
 }
 \arguments{
 \item{client}{An \code{edr_client}.}
 
 \item{collection_id}{Collection identifier as advertised by the
 server -- e.g. \code{"monitoring-locations"} or \code{"daily-values"}.}
+
+\item{refresh}{If \code{TRUE}, bypass and replace any cached response. Discovery
+responses otherwise use the client's \code{cache_ttl}; see \code{\link[=edr_client]{edr_client()}}.}
 }
 \value{
 A list with the raw collection document.

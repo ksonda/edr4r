@@ -45,10 +45,19 @@ edr_client <- function(base_url,
                        cache_ttl = 300,
                        headers = NULL,
                        verbose = FALSE) {
-  if (!is.character(base_url) || length(base_url) != 1L || is.na(base_url)) {
-    cli::cli_abort("{.arg base_url} must be a single non-NA string.")
+  if (!is.character(base_url) || length(base_url) != 1L || is.na(base_url) ||
+      !nzchar(base_url)) {
+    cli::cli_abort(
+      "{.arg base_url} must be a single non-NA string and must not be empty."
+    )
   }
+  base_url <- trimws(base_url)
   base_url <- sub("/+$", "", base_url)
+  if (!nzchar(base_url)) {
+    cli::cli_abort(
+      "{.arg base_url} must be a single non-NA string and must not be empty."
+    )
+  }
 
   if (!is.numeric(timeout) || length(timeout) != 1L ||
       is.na(timeout) || !is.finite(timeout) || timeout <= 0) {
@@ -68,6 +77,25 @@ edr_client <- function(base_url,
     cli::cli_abort(
       "{.arg cache_ttl} must be a single non-negative number or {.code Inf}."
     )
+  }
+  if (!is.logical(verbose) || length(verbose) != 1L || is.na(verbose)) {
+    cli::cli_abort("{.arg verbose} must be {.code TRUE} or {.code FALSE}.")
+  }
+
+  if (!is.null(user_agent) &&
+      (!is.character(user_agent) || length(user_agent) != 1L ||
+       is.na(user_agent) || !nzchar(user_agent))) {
+    cli::cli_abort("{.arg user_agent} must be a single non-empty string or {.code NULL}.")
+  }
+  if (!is.null(headers)) {
+    header_names <- names(headers)
+    if (!is.character(headers) || is.null(header_names) ||
+        anyNA(headers) || anyNA(header_names) ||
+        any(!nzchar(header_names))) {
+      cli::cli_abort(
+        "{.arg headers} must be a named character vector with non-empty names and non-NA values."
+      )
+    }
   }
 
   if (is.null(user_agent)) {
@@ -91,7 +119,7 @@ edr_client <- function(base_url,
       cache_ttl  = cache_ttl,
       cache       = new.env(parent = emptyenv()),
       headers    = headers,
-      verbose    = isTRUE(verbose)
+      verbose    = verbose
     ),
     class = "edr_client"
   )
@@ -99,6 +127,13 @@ edr_client <- function(base_url,
 
 #' @export
 format.edr_client <- function(x, ...) {
+  cache_label <- if (is.infinite(x$cache_ttl)) {
+    "until cleared"
+  } else if (identical(x$cache_ttl, 0) || identical(x$cache_ttl, 0L)) {
+    "disabled"
+  } else {
+    paste0(format(x$cache_ttl, scientific = FALSE, trim = TRUE), "s")
+  }
   c(
     cli::format_inline("<edr_client>"),
     cli::format_inline("  base_url:   {.url {x$base_url}}"),
@@ -106,7 +141,7 @@ format.edr_client <- function(x, ...) {
     cli::format_inline("  timeout:    {x$timeout}s"),
     cli::format_inline("  max_tries:  {x$max_tries}"),
     cli::format_inline("  retry transport failures: {x$retry_on_failure}"),
-    cli::format_inline("  discovery cache TTL: {x$cache_ttl}s")
+    cli::format_inline("  discovery cache: {cache_label}")
   )
 }
 

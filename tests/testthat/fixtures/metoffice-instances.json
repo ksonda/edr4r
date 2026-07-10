@@ -1,0 +1,82 @@
+{
+  "links": [
+    {
+      "href": "https://labs.metoffice.gov.uk/edr/collections/moglobal-station-level/instances/",
+      "rel": "self",
+      "type": "application/json"
+    }
+  ],
+  "instances": [
+    {
+      "id": "2022070900",
+      "title": "Met Office (Global)) station level",
+      "extent": {
+        "spatial": {
+          "bbox": [[-180, 90, 180, -90]]
+        },
+        "temporal": {
+          "interval": [["2022-07-12T00:00Z", "2022-07-16T00:00Z"]],
+          "values": ["R38/2022-07-12T00:00Z/PT1H"]
+        }
+      },
+      "data_queries": {
+        "position": {
+          "link": {
+            "href": "https://labs.metoffice.gov.uk/edr/collections/moglobal-station-level/instances/2022070900/position",
+            "rel": "data",
+            "variables": {
+              "title": "Position query",
+              "query_type": "position",
+              "output_formats": ["CoverageJSON", "GeoJSON", "CSV"],
+              "default_output_format": "CoverageJSON",
+              "crs_details": [
+                {"crs": "MO_Global"},
+                {"crs": "EPSG:4326"}
+              ]
+            }
+          }
+        },
+        "locations": {
+          "link": {
+            "href": "https://labs.metoffice.gov.uk/edr/collections/moglobal-station-level/instances/2022070900/locations",
+            "rel": "data",
+            "variables": {
+              "title": "Locations query",
+              "query_type": "locations",
+              "output_formats": ["CoverageJSON", "GeoTiff", "NetCDF"],
+              "default_output_format": "CoverageJSON",
+              "crs_details": [
+                {"crs": "MO_Global"},
+                {"crs": "EPSG:4326"},
+                {"crs": "EPSG:3857"}
+              ]
+            }
+          }
+        }
+      },
+      "crs": ["MO_Global"],
+      "output_formats": ["NetCDF"],
+      "parameter_names": {
+        "air_temperature": {
+          "type": "Parameter",
+          "description": "Air temperature at 1.5m",
+          "unit": {
+            "label": "Kelvin",
+            "symbol": {
+              "value": "K",
+              "type": "https://qudt.org/vocab/unit/K"
+            }
+          },
+          "observedProperty": {
+            "id": "http://codes.wmo.int/grib2/codeflag/4.2/0-0-0",
+            "label": "1.5m Air Temperature"
+          },
+          "measurementType": {
+            "method": "instantaneous",
+            "duration": "PT0M"
+          }
+        }
+      }
+    }
+  ]
+}

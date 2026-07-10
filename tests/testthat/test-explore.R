@@ -206,6 +206,130 @@ test_that("auto explore method requires matching spatial input", {
   )
 })
 
+test_that("auto planning uses instance query capabilities, not the parent collection", {
+  instance <- read_fixture("instance.json")
+  urls <- character()
+  httr2::local_mocked_responses(function(req) {
+    urls <<- c(urls, req$url)
+    mock_json_response(instance)
+  })
+  client <- test_client()
+
+  expect_equal(
+    edr4r:::resolve_explore_method(
+      client, "model", "auto",
+      bbox = c(-10, -10, 10, 10), coords = NULL,
+      instance_id = "2024070900"
+    ),
+    "cube"
+  )
+  expect_equal(
+    edr4r:::resolve_explore_method(
+      client, "model", "auto",
+      bbox = NULL, coords = c(0, 0),
+      instance_id = "2024070900"
+    ),
+    "position"
+  )
+
+  # The second plan reuses the cached instance document; neither plan probes
+  # the parent /collections index, which only needs to advertise instances.
+  expect_equal(length(urls), 1L)
+  expect_match(
+    urls[[1]],
+    "/collections/model/instances/2024070900",
+    fixed = TRUE
+  )
+  request_path <- sub("^https?://[^/]+", "", urls[[1]])
+  request_path <- sub("\\?.*$", "", request_path)
+  expect_equal(request_path, "/collections/model/instances/2024070900")
+})
+
+test_that("instance auto planning tolerates recoverable unnamed query metadata", {
+  instance <- read_fixture("instance.json")
+  instance$data_queries <- unname(list(
+    list(link = list(variables = list(query_type = "cube")))
+  ))
+  httr2::local_mocked_responses(function(req) mock_json_response(instance))
+
+  method <- edr4r:::resolve_explore_method(
+    test_client(), "model", "auto",
+    bbox = c(-10, -10, 10, 10), coords = NULL,
+    instance_id = "2024070900"
+  )
+
+  expect_equal(method, "cube")
+})
+
+test_that("edr_explore auto plans and fetches beneath the selected instance", {
+  instance <- read_fixture("instance.json")
+  urls <- character()
+  httr2::local_mocked_responses(function(req) {
+    urls <<- c(urls, req$url)
+    if (length(urls) == 1L) {
+      mock_json_response(instance)
+    } else {
+      mock_json_response(explore_grid_cov())
+    }
+  })
+
+  out <- edr_explore(
+    test_client(), "model",
+    bbox = c(-110, 40, -108, 41),
+    method = "auto", output = "data",
+    instance_id = "2024070900"
+  )
+
+  expect_s3_class(out, "tbl_df")
+  expect_equal(length(urls), 2L)
+  paths <- sub("\\?.*$", "", urls)
+  expect_match(
+    paths[[1]],
+    "/collections/model/instances/2024070900",
+    fixed = TRUE
+  )
+  expect_match(
+    paths[[2]],
+    "/collections/model/instances/2024070900/cube",
+    fixed = TRUE
+  )
+})
+
+test_that("per-location exploration keeps every request in instance scope", {
+  skip_if_not_installed("sf")
+  locations <- read_fixture("locations.geojson")
+  coverage <- read_fixture("pointseries.covjson")
+  urls <- character()
+  httr2::local_mocked_responses(function(req) {
+    urls <<- c(urls, req$url)
+    if (length(urls) == 1L) {
+      mock_json_response(locations, content_type = "application/geo+json")
+    } else {
+      mock_json_response(coverage)
+    }
+  })
+
+  out <- edr_explore(
+    test_client(), "model",
+    method = "per-location", output = "data", quiet = TRUE,
+    instance_id = "run 00"
+  )
+
+  expect_type(out, "list")
+  expect_equal(length(urls), 3L)
+  prefix <- "/collections/model/instances/run%2000/locations"
+  expect_true(all(grepl(prefix, urls, fixed = TRUE)))
+  expect_equal(
+    sum(grepl(paste0(prefix, "/"), urls, fixed = TRUE)),
+    2L
+  )
+})
+
+test_that("edr_explore keeps instance_id keyword-only", {
+  formal_names <- names(formals(edr_explore))
+  expect_gt(match("instance_id", formal_names), match("...", formal_names))
+})
+
 test_that("per-station fetches warn when stations fail", {
   cov <- read_fixture("pointseries.covjson")
   call_n <- 0L

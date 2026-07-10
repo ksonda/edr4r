@@ -174,6 +174,20 @@ test_that("geojson_props_tibble works without dplyr/sf (no map_dfr regression)",
   expect_true("id" %in% names(tb))
 })
 
+test_that("Met Office single-point CoverageJSON preserves advertised metadata", {
+  cov <- read_fixture("metoffice-terrain.covjson")
+  tb <- covjson_to_tibble(cov)
+
+  expect_equal(nrow(tb), 1L)
+  expect_equal(tb$coverage_id, "1")
+  expect_equal(tb$parameter, "Height")
+  expect_equal(tb$parameter_label, "Height")
+  expect_equal(tb$unit, "m")
+  expect_equal(tb$x, -0.1276)
+  expect_equal(tb$y, 51.5072)
+  expect_equal(tb$value, 18.9776)
+})
+
 test_that("mixed numeric/character parameters in one coverage demote cleanly", {
   cov <- list(
     type = "Coverage",

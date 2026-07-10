@@ -10,6 +10,7 @@ edr_client(
   timeout = 60,
   max_tries = 3,
   retry_on_failure = TRUE,
+  cache_ttl = 300,
   headers = NULL,
   verbose = FALSE
 )
@@ -37,6 +38,11 @@ Defaults to 3.}
 failures such as connection resets and transient DNS / TLS errors. EDR
 requests made by this package are read-only GET requests, so retrying
 them is safe.}
+
+\item{cache_ttl}{Number of seconds to retain discovery responses in this
+client's in-memory cache. Defaults to 300 (five minutes). Use \code{0} to
+disable caching or \code{Inf} to retain metadata until \code{\link[=edr_cache_clear]{edr_cache_clear()}} is
+called. Data-query responses are never cached.}
 
 \item{headers}{Named character vector of extra headers attached to
 every request (e.g. \code{c(Authorization = "Bearer ...")}).}

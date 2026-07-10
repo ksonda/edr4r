@@ -16,6 +16,9 @@
 #' @param limit Maximum number of features to return.
 #' @param format `"geojson"` (default) or `"json"`.
 #' @param ... Additional query parameters passed through verbatim.
+#' @param instance_id Optional instance identifier. When supplied, the request
+#'   is sent beneath `/collections/{collection_id}/instances/{instance_id}`.
+#'   This keyword-only argument leaves existing positional calls unchanged.
 #'
 #' @return When the server returns GeoJSON, an `sf` object if the `sf`
 #'   package is installed, otherwise an `edr_response` wrapping the raw
@@ -29,9 +32,10 @@ edr_locations <- function(client,
                           crs = NULL,
                           limit = NULL,
                           format = c("geojson", "json"),
-                          ...) {
+                          ...,
+                          instance_id = NULL) {
   check_client(client)
-  collection_id <- collection_path_id(collection_id)
+  path <- collection_query_path(collection_id, "locations", instance_id)
   format <- match.arg(format)
 
   query <- common_query(
@@ -40,7 +44,7 @@ edr_locations <- function(client,
   )
   resp <- edr_request(
     client,
-    paste0("collections/", collection_id, "/locations"),
+    path,
     query  = query,
     format = format
   )
@@ -74,9 +78,10 @@ edr_location <- function(client,
                          z = NULL,
                          crs = NULL,
                          format = c("covjson", "geojson", "csv", "json"),
-                         ...) {
+                         ...,
+                         instance_id = NULL) {
   check_client(client)
-  collection_id <- collection_path_id(collection_id)
+  path <- collection_query_path(collection_id, "locations", instance_id)
   loc <- check_path_id(location_id, "location_id")
   format <- match.arg(format)
 
@@ -86,7 +91,7 @@ edr_location <- function(client,
   )
   edr_request(
     client,
-    paste0("collections/", collection_id, "/locations/", loc),
+    paste0(path, "/", loc),
     query  = query,
     format = format
   )
@@ -111,9 +116,10 @@ edr_items <- function(client,
                       datetime = NULL,
                       limit = NULL,
                       format = c("geojson", "json"),
-                      ...) {
+                      ...,
+                      instance_id = NULL) {
   check_client(client)
-  collection_id <- collection_path_id(collection_id)
+  path <- collection_query_path(collection_id, "items", instance_id)
   format <- match.arg(format)
 
   query <- common_query(
@@ -121,7 +127,7 @@ edr_items <- function(client,
   )
   resp <- edr_request(
     client,
-    paste0("collections/", collection_id, "/items"),
+    path,
     query  = query,
     format = format
   )
@@ -135,14 +141,15 @@ edr_item <- function(client,
                      collection_id,
                      item_id,
                      format = c("geojson", "json"),
-                     ...) {
+                     ...,
+                     instance_id = NULL) {
   check_client(client)
-  collection_id <- collection_path_id(collection_id)
+  path <- collection_query_path(collection_id, "items", instance_id)
   it <- check_path_id(item_id, "item_id")
   format <- match.arg(format)
   resp <- edr_request(
     client,
-    paste0("collections/", collection_id, "/items/", it),
+    paste0(path, "/", it),
     query  = list(...),
     format = format
   )
@@ -169,9 +176,10 @@ edr_position <- function(client,
                          z = NULL,
                          crs = NULL,
                          format = c("covjson", "json"),
-                         ...) {
+                         ...,
+                         instance_id = NULL) {
   check_client(client)
-  collection_id <- collection_path_id(collection_id)
+  path <- collection_query_path(collection_id, "position", instance_id)
   format <- match.arg(format)
 
   query <- common_query(
@@ -184,7 +192,7 @@ edr_position <- function(client,
   )
   edr_request(
     client,
-    paste0("collections/", collection_id, "/position"),
+    path,
     query  = query,
     format = format
   )
@@ -209,9 +217,10 @@ edr_area <- function(client,
                      z = NULL,
                      crs = NULL,
                      format = c("covjson", "json"),
-                     ...) {
+                     ...,
+                     instance_id = NULL) {
   check_client(client)
-  collection_id <- collection_path_id(collection_id)
+  path <- collection_query_path(collection_id, "area", instance_id)
   format <- match.arg(format)
 
   query <- common_query(
@@ -224,7 +233,7 @@ edr_area <- function(client,
   )
   edr_request(
     client,
-    paste0("collections/", collection_id, "/area"),
+    path,
     query  = query,
     format = format
   )
@@ -246,9 +255,10 @@ edr_cube <- function(client,
                      z = NULL,
                      crs = NULL,
                      format = c("covjson", "json"),
-                     ...) {
+                     ...,
+                     instance_id = NULL) {
   check_client(client)
-  collection_id <- collection_path_id(collection_id)
+  path <- collection_query_path(collection_id, "cube", instance_id)
   format <- match.arg(format)
   bbox <- check_bbox(bbox)
 
@@ -262,7 +272,7 @@ edr_cube <- function(client,
   )
   edr_request(
     client,
-    paste0("collections/", collection_id, "/cube"),
+    path,
     query  = query,
     format = format
   )
@@ -287,9 +297,10 @@ edr_radius <- function(client,
                        z = NULL,
                        crs = NULL,
                        format = c("covjson", "json"),
-                       ...) {
+                       ...,
+                       instance_id = NULL) {
   check_client(client)
-  collection_id <- collection_path_id(collection_id)
+  path <- collection_query_path(collection_id, "radius", instance_id)
   format <- match.arg(format)
   within <- check_distance(within, "within")
   within_units <- check_unit(within_units, "within_units")
@@ -306,7 +317,7 @@ edr_radius <- function(client,
   )
   edr_request(
     client,
-    paste0("collections/", collection_id, "/radius"),
+    path,
     query  = query,
     format = format
   )
@@ -329,9 +340,10 @@ edr_trajectory <- function(client,
                            z = NULL,
                            crs = NULL,
                            format = c("covjson", "json"),
-                           ...) {
+                           ...,
+                           instance_id = NULL) {
   check_client(client)
-  collection_id <- collection_path_id(collection_id)
+  path <- collection_query_path(collection_id, "trajectory", instance_id)
   format <- match.arg(format)
 
   query <- common_query(
@@ -344,7 +356,7 @@ edr_trajectory <- function(client,
   )
   edr_request(
     client,
-    paste0("collections/", collection_id, "/trajectory"),
+    path,
     query  = query,
     format = format
   )
@@ -374,9 +386,10 @@ edr_corridor <- function(client,
                          z = NULL,
                          crs = NULL,
                          format = c("covjson", "json"),
-                         ...) {
+                         ...,
+                         instance_id = NULL) {
   check_client(client)
-  collection_id <- collection_path_id(collection_id)
+  path <- collection_query_path(collection_id, "corridor", instance_id)
   format <- match.arg(format)
   corridor_width <- check_distance(corridor_width, "corridor_width", allow_zero = FALSE)
   corridor_height <- check_distance(corridor_height, "corridor_height", allow_zero = FALSE)
@@ -397,7 +410,7 @@ edr_corridor <- function(client,
   )
   edr_request(
     client,
-    paste0("collections/", collection_id, "/corridor"),
+    path,
     query  = query,
     format = format
   )
@@ -405,6 +418,18 @@ edr_corridor <- function(client,
 
 # ---------------------------------------------------------------------
 # query plumbing
+
+collection_query_path <- function(collection_id, query_type,
+                                  instance_id = NULL,
+                                  call = rlang::caller_env()) {
+  collection_id <- collection_path_id(collection_id, call = call)
+  path <- paste0("collections/", collection_id)
+  if (!is.null(instance_id)) {
+    instance_id <- check_path_id(instance_id, "instance_id", call = call)
+    path <- paste0(path, "/instances/", instance_id)
+  }
+  paste0(path, "/", query_type)
+}
 
 common_query <- function(...) {
   args <- list(...)

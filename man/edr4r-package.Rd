@@ -6,9 +6,10 @@
 \alias{edr4r-package}
 \title{edr4r: A tidy R client for OGC API - Environmental Data Retrieval}
 \description{
-\code{edr4r} talks to any service that implements
-\href{https://ogcapi.ogc.org/edr/}{OGC API - Environmental Data Retrieval}.
-It's general-purpose, but most of the testing and real-world use to
+\code{edr4r} talks to
+\href{https://ogcapi.ogc.org/edr/}{OGC API - Environmental Data Retrieval}
+services with JSON discovery metadata and CoverageJSON, GeoJSON, or CSV
+query responses. It's general-purpose, but most testing and real-world use to
 date has been against in-situ monitoring networks -- the kind of
 service that exposes stream gauges, weather stations, snow telemetry,
 or reservoir telemetry as EDR collections.
@@ -29,11 +30,12 @@ and advertised data may change without notice.
 A typical session looks like:
 \enumerate{
 \item Build a client with \code{\link[=edr_client]{edr_client()}}.
-\item Discover what's on offer with \code{\link[=edr_collections]{edr_collections()}} and
-\code{\link[=edr_queryables]{edr_queryables()}}.
+\item Discover what's on offer with \code{\link[=edr_collections]{edr_collections()}},
+\code{\link[=edr_capabilities]{edr_capabilities()}}, and \code{\link[=edr_queryables]{edr_queryables()}}.
 \item Pull data with \code{\link[=edr_locations]{edr_locations()}} / \code{\link[=edr_location]{edr_location()}}, \code{\link[=edr_cube]{edr_cube()}},
 \code{\link[=edr_area]{edr_area()}}, \code{\link[=edr_position]{edr_position()}}, or the less common
-\code{\link[=edr_radius]{edr_radius()}} / \code{\link[=edr_trajectory]{edr_trajectory()}} / \code{\link[=edr_corridor]{edr_corridor()}}.
+\code{\link[=edr_radius]{edr_radius()}} / \code{\link[=edr_trajectory]{edr_trajectory()}} / \code{\link[=edr_corridor]{edr_corridor()}}. Instance-scoped
+collections can be inspected with \code{\link[=edr_instances]{edr_instances()}}.
 \item Flatten the response with \code{\link[=covjson_to_tibble]{covjson_to_tibble()}} (for CoverageJSON)
 or \code{\link[=geojson_to_sf]{geojson_to_sf()}} (for GeoJSON).
 }

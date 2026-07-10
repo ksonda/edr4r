@@ -12,10 +12,18 @@ edr_items(
   datetime = NULL,
   limit = NULL,
   format = c("geojson", "json"),
-  ...
+  ...,
+  instance_id = NULL
 )
 
-edr_item(client, collection_id, item_id, format = c("geojson", "json"), ...)
+edr_item(
+  client,
+  collection_id,
+  item_id,
+  format = c("geojson", "json"),
+  ...,
+  instance_id = NULL
+)
 }
 \arguments{
 \item{client}{An \code{edr_client}.}
@@ -33,6 +41,10 @@ edr_item(client, collection_id, item_id, format = c("geojson", "json"), ...)
 \item{format}{\code{"geojson"} (default) or \code{"json"}.}
 
 \item{...}{Additional query parameters passed through verbatim.}
+
+\item{instance_id}{Optional instance identifier. When supplied, the request
+is sent beneath \verb{/collections/\{collection_id\}/instances/\{instance_id\}}.
+This keyword-only argument leaves existing positional calls unchanged.}
 
 \item{item_id}{Identifier of a single feature.}
 }

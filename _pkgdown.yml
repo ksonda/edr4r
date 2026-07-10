@@ -13,6 +13,7 @@ reference:
     desc: Construct and configure an EDR client.
     contents:
       - edr_client
+      - edr_cache_clear
   - title: Discovery
     desc: List collections, conformance classes, data parameters, and filterable properties.
     contents:
@@ -20,6 +21,10 @@ reference:
       - edr_conformance
       - edr_collections
       - edr_collection
+      - edr_instances
+      - edr_capabilities
+      - edr_supports
+      - edr_diagnose
       - edr_parameters
       - edr_queryables
   - title: Query verbs
@@ -53,4 +58,5 @@ articles:
     navbar: ~
     contents:
       - getting-started
+      - compatibility
       - usgs-streamgages

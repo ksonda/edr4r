@@ -4,15 +4,22 @@
 \alias{edr_collections}
 \title{List collections offered by the service}
 \usage{
-edr_collections(client)
+edr_collections(client, refresh = FALSE)
 }
 \arguments{
 \item{client}{An \code{edr_client}.}
+
+\item{refresh}{If \code{TRUE}, bypass and replace any cached response. Discovery
+responses otherwise use the client's \code{cache_ttl}; see \code{\link[=edr_client]{edr_client()}}.}
 }
 \value{
 A tibble with one row per collection. Always includes \code{id},
-\code{title}, \code{description}, \code{extent_bbox}, \code{crs}, \code{data_queries}, and
-\code{links} columns.
+\code{title}, \code{description}, spatial/temporal/vertical extent columns,
+\code{extent_crs} (\code{crs} is retained as a compatibility alias), \code{output_crs},
+\code{output_formats}, \code{parameters}, \code{data_queries}, \code{query_details},
+\code{query_error}, \code{has_instances}, and \code{links} columns. \code{extent_bbox} is a
+convenience view of the first bounding box; all spatial extents are
+retained in \code{extent_bboxes} and \code{extent_spatial} list columns.
 }
 \description{
 List collections offered by the service
