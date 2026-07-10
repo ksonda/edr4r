@@ -76,5 +76,4 @@ usgs
 #>   timeout:    60s
 #>   max_tries:  3
 #>   retry transport failures: TRUE
-#>   discovery cache TTL: 300s
 ```
