@@ -173,7 +173,14 @@ interactive_chart_html <- function(payload, width = 560, height = 300) {
 }
 
 numeric_or_null <- function(x) {
-  out <- suppressWarnings(as.numeric(x))
+  if (length(x) != 1L || is.null(x) ||
+      (is.character(x) && !nzchar(trimws(x)))) {
+    return(NA_real_)
+  }
+  out <- suppressWarnings(tryCatch(
+    as.numeric(x),
+    error = function(e) NA_real_
+  ))
   if (length(out) != 1L || !is.finite(out)) NA_real_ else out
 }
 

@@ -57,6 +57,35 @@ test_that("CSV responses parse to a tibble", {
   expect_equal(res$value, 100.5)
 })
 
+test_that("HTTP 204 returns typed empty results", {
+  httr2::local_mocked_responses(function(req) mock_empty_response())
+  cov <- edr_request(test_client(), "collections/demo/position", format = "covjson")
+  expect_s3_class(cov, "edr_empty_response")
+  expect_s3_class(cov, "edr_covjson")
+  expect_equal(nrow(covjson_to_tibble(cov)), 0L)
+  expect_output(print(cov), "status: 204")
+
+  httr2::local_mocked_responses(function(req) mock_empty_response())
+  geo <- edr_request(test_client(), "collections/demo/locations", format = "geojson")
+  expect_s3_class(geo, "edr_empty_response")
+  expect_s3_class(geo, "edr_geojson")
+
+  httr2::local_mocked_responses(function(req) mock_empty_response())
+  csv <- edr_request(test_client(), "collections/demo/items", format = "csv")
+  expect_s3_class(csv, "tbl_df")
+  expect_equal(nrow(csv), 0L)
+})
+
+test_that("CSV requests reject JSON success bodies", {
+  httr2::local_mocked_responses(function(req) {
+    mock_json_response(list(type = "Coverage", domain = list(), ranges = list()))
+  })
+  expect_error(
+    edr_request(test_client(), "collections/demo/position", format = "csv"),
+    "Expected a CSV response"
+  )
+})
+
 test_that("CSV parser handles quoted fields, embedded commas, and newlines", {
   # Regression guard for anyone tempted to swap the parser for something
   # naive (split-on-comma). Base R's read.csv already handles all three.
@@ -87,10 +116,6 @@ test_that("HTTP errors are surfaced", {
 })
 
 test_that("is_transient_edr classifies status codes correctly", {
-  # httr2's local_mocked_responses bypasses the retry loop, so the retry
-  # *integration* is intentionally not tested here. Instead, unit-test the
-  # decision predicate: 408, 429, and 5xx are transient; everything else
-  # (including 4xx other than 408/429) is not.
   status <- function(s) structure(list(status_code = s), class = "httr2_response")
 
   for (s in c(408L, 429L, 500L, 502L, 503L, 504L, 599L)) {
@@ -101,6 +126,38 @@ test_that("is_transient_edr classifies status codes correctly", {
     expect_false(edr4r:::is_transient_edr(status(s)),
                  info = paste("status =", s))
   }
+})
+
+test_that("edr_request retries transient responses against a real server", {
+  skip_if_not_installed("webfakes")
+
+  app <- webfakes::new_app()
+  app$locals$attempts <- 0L
+  app$get("/collections", function(req, res) {
+    res$app$locals$attempts <- res$app$locals$attempts + 1L
+
+    if (res$app$locals$attempts == 1L) {
+      res$set_header("Retry-After", "0")
+      res$set_status(503L)
+      return(res$send_json(list(description = "try again")))
+    }
+
+    res$send_json(
+      list(ok = TRUE, attempts = res$app$locals$attempts),
+      auto_unbox = TRUE
+    )
+  })
+
+  process <- webfakes::new_app_process(app)
+  on.exit(process$stop(), add = TRUE)
+
+  result <- edr_request(
+    edr_client(process$url(), max_tries = 3L),
+    "collections"
+  )
+
+  expect_true(result$ok)
+  expect_equal(result$attempts, 2L)
 })
 
 test_that("edr_error_body surfaces JSON 'description' in the error message", {
@@ -154,4 +211,17 @@ test_that("verbose = TRUE logs the request URL", {
     edr_request(cl, "collections"),
     "GET .*collections"
   )
+})
+
+test_that("single Coverage and Feature responses print the correct count", {
+  cov <- structure(
+    list(covjson = list(type = "Coverage", domain = list(), ranges = list())),
+    class = c("edr_response", "edr_covjson", "list")
+  )
+  feature <- structure(
+    list(geojson = list(type = "Feature", properties = list(), geometry = NULL)),
+    class = c("edr_response", "edr_geojson", "list")
+  )
+  expect_output(print(cov), "coverages: 1")
+  expect_output(print(feature), "features: 1")
 })

@@ -36,6 +36,10 @@ edr_item(client, collection_id, item_id, format = c("geojson", "json"), ...)
 
 \item{item_id}{Identifier of a single feature.}
 }
+\value{
+An \code{sf} object when \code{sf} is installed and the server returns
+GeoJSON; otherwise an \code{edr_response} wrapping the GeoJSON document.
+}
 \description{
 Many EDR servers expose an OGC API Features \verb{/items} endpoint
 alongside the EDR queries. Behaviour varies: some deployments

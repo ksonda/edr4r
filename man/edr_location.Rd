@@ -42,6 +42,11 @@ on. Sent as a comma-separated \verb{parameter-name=} query.}
 
 \item{...}{Additional query parameters passed through verbatim.}
 }
+\value{
+An \code{edr_response} containing CoverageJSON or GeoJSON, or a tibble
+for CSV responses. Use \code{\link[=covjson_to_tibble]{covjson_to_tibble()}} or \code{\link[=geojson_to_sf]{geojson_to_sf()}} to
+convert structured JSON responses.
+}
 \description{
 Calls \code{GET /collections/{collection_id}/locations/{location_id}}.
 Typically returns CoverageJSON; pass the result to

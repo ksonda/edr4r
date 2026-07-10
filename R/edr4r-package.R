@@ -7,11 +7,16 @@
 #' service that exposes stream gauges, weather stations, snow telemetry,
 #' or reservoir telemetry as EDR collections.
 #'
-#' Two example endpoints worth pointing it at:
+#' Two operational endpoints worth pointing it at:
 #'
 #' * [USGS waterdata OGC API](https://api.waterdata.usgs.gov/ogcapi/beta/)
 #' * [Western Water Datahub](https://api.wwdh.internetofwater.app)
 #'   (a [pygeoapi](https://pygeoapi.io) deployment)
+#'
+#' The [Met Office Labs EDR demonstrator](https://labs.metoffice.gov.uk/edr/collections?f=html)
+#' is also useful for cross-server compatibility experiments. It is a
+#' technical demonstrator, not an operational service, so its availability
+#' and advertised data may change without notice.
 #'
 #' A typical session looks like:
 #'

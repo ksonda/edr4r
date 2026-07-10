@@ -9,7 +9,7 @@ edr_corridor(
   collection_id,
   coords,
   corridor_width,
-  corridor_height = NULL,
+  corridor_height,
   width_units = "km",
   height_units = "m",
   datetime = NULL,
@@ -30,7 +30,8 @@ rows, or an \code{sfc} linestring.}
 
 \item{corridor_width}{Width of the corridor.}
 
-\item{corridor_height}{Optional vertical extent.}
+\item{corridor_height}{Vertical extent of the corridor. Required by the
+EDR corridor query requirements.}
 
 \item{width_units}{Units for \code{corridor_width}.}
 
@@ -46,9 +47,13 @@ on. Sent as a comma-separated \verb{parameter-name=} query.}
 
 \item{crs}{Optional CRS URI for the response.}
 
-\item{format}{\code{"covjson"} (default), \code{"geojson"}, \code{"csv"}, or \code{"json"}.}
+\item{format}{\code{"covjson"} (default) or \code{"json"}.}
 
 \item{...}{Additional query parameters passed through verbatim.}
+}
+\value{
+An \code{edr_response} containing the server's CoverageJSON response.
+Convert it with \code{\link[=covjson_to_tibble]{covjson_to_tibble()}}.
 }
 \description{
 Calls \code{GET /collections/{collection_id}/corridor}.

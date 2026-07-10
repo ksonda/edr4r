@@ -1,0 +1,44 @@
+{
+  "type": "Coverage",
+  "id": "survey-track-7",
+  "parameters": {
+    "temperature": {
+      "type": "Parameter",
+      "unit": { "symbol": "Cel" },
+      "observedProperty": { "label": { "en": "Water temperature" } }
+    }
+  },
+  "domain": {
+    "type": "Domain",
+    "domainType": "Trajectory",
+    "axes": {
+      "composite": {
+        "dataType": "tuple",
+        "coordinates": ["t", "x", "y", "z"],
+        "values": [
+          ["2024-06-01T10:00:00Z", -71.100, 42.350, 1.5],
+          ["2024-06-01T10:05:00-04:00", -71.095, 42.352, 2.0],
+          ["2024-06-01T14:10:00+00:00", -71.090, 42.355, 2.5]
+        ]
+      }
+    },
+    "referencing": [
+      {
+        "coordinates": ["x", "y", "z"],
+        "system": {
+          "type": "GeographicCRS",
+          "id": "http://www.opengis.net/def/crs/EPSG/0/4979"
+        }
+      }
+    ]
+  },
+  "ranges": {
+    "temperature": {
+      "type": "NdArray",
+      "dataType": "float",
+      "axisNames": ["composite"],
+      "shape": [3],
+      "values": [18.2, 18.4, 18.5]
+    }
+  }
+}

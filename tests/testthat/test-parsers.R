@@ -77,6 +77,64 @@ test_that("covjson_to_tibble materializes regular grid axes", {
   expect_equal(v(-112, 36), 23)
 })
 
+test_that("covjson_to_tibble expands composite trajectory coordinates", {
+  cov <- read_fixture("trajectory.covjson")
+  tb <- covjson_to_tibble(cov)
+
+  expect_equal(nrow(tb), 3L)
+  expect_equal(unique(tb$coverage_id), "survey-track-7")
+  expect_equal(tb$x, c(-71.100, -71.095, -71.090))
+  expect_equal(tb$y, c(42.350, 42.352, 42.355))
+  expect_equal(tb$z, c(1.5, 2.0, 2.5))
+  expect_equal(tb$value, c(18.2, 18.4, 18.5))
+  expect_s3_class(tb$datetime, "POSIXct")
+  expect_equal(
+    as.numeric(tb$datetime),
+    as.numeric(as.POSIXct(c(
+      "2024-06-01 10:00:00",
+      "2024-06-01 14:05:00",
+      "2024-06-01 14:10:00"
+    ), tz = "UTC"))
+  )
+})
+
+test_that("composite and primitive axes align in row-major order", {
+  cov <- list(
+    type = "Coverage",
+    domain = list(
+      type = "Domain",
+      domainType = "MultiPointSeries",
+      axes = list(
+        t = list(values = list(
+          "2024-01-01T00:00:00Z",
+          "2024-01-01T01:00:00Z"
+        )),
+        composite = list(
+          dataType = "tuple",
+          coordinates = list("x", "y"),
+          values = list(list(-105, 40), list(-104, 41))
+        )
+      )
+    ),
+    ranges = list(
+      reading = list(
+        type = "NdArray", dataType = "float",
+        axisNames = list("t", "composite"), shape = list(2L, 2L),
+        values = list(11, 12, 21, 22)
+      )
+    )
+  )
+
+  tb <- covjson_to_tibble(cov)
+  expect_equal(tb$x, c(-105, -104, -105, -104))
+  expect_equal(tb$y, c(40, 41, 40, 41))
+  expect_equal(tb$value, c(11, 12, 21, 22))
+  expect_equal(
+    format(tb$datetime, "%H:%M", tz = "UTC"),
+    c("00:00", "00:00", "01:00", "01:00")
+  )
+})
+
 test_that("covjson_to_tibble accepts an edr_response wrapper", {
   cov <- read_fixture("pointseries.covjson")
   wrapped <- structure(list(covjson = cov),
@@ -210,8 +268,88 @@ test_that("mixed numeric and text values in one range preserve text", {
   expect_equal(tb$value, c("1.5", "suspect", NA_character_))
 })
 
-test_that("parse_datetime picks the first format that parses any element", {
-  # Single-format axis: full parse.
+test_that("declared string ranges preserve numeric-looking identifiers", {
+  cov <- list(
+    type = "Coverage",
+    domain = list(
+      domainType = "PointSeries",
+      axes = list(
+        x = list(values = list(0)),
+        y = list(values = list(0)),
+        t = list(values = list(
+          "2024-01-01T00:00:00Z",
+          "2024-01-02T00:00:00Z",
+          "2024-01-03T00:00:00Z"
+        ))
+      )
+    ),
+    ranges = list(
+      station_code = list(
+        type = "NdArray", dataType = "string",
+        axisNames = list("t"), shape = list(3L),
+        values = list("00123", "1e3", NULL)
+      )
+    )
+  )
+
+  expect_silent(tb <- covjson_to_tibble(cov))
+  expect_type(tb$value, "character")
+  expect_equal(tb$value, c("00123", "1e3", NA_character_))
+})
+
+test_that("coverage-level parameter metadata augments and overrides collection metadata", {
+  scalar_range <- function(value) {
+    list(type = "NdArray", dataType = "float", values = list(value))
+  }
+  cov <- list(
+    type = "CoverageCollection",
+    parameters = list(
+      inherited = list(
+        observedProperty = list(label = list(en = "Inherited label")),
+        unit = list(symbol = "m")
+      ),
+      overridden = list(
+        observedProperty = list(label = list(en = "Parent label")),
+        unit = list(symbol = "parent-unit")
+      )
+    ),
+    coverages = list(list(
+      type = "Coverage",
+      id = "child-metadata",
+      parameters = list(
+        overridden = list(
+          observedProperty = list(label = list(en = "Child label"))
+        ),
+        child_only = list(
+          observedProperty = list(label = list(en = "Child only")),
+          unit = list(symbol = "s")
+        )
+      ),
+      domain = list(
+        type = "Domain",
+        domainType = "Point",
+        axes = list(
+          x = list(values = list(-71)),
+          y = list(values = list(42))
+        )
+      ),
+      ranges = list(
+        inherited = scalar_range(1),
+        overridden = scalar_range(2),
+        child_only = scalar_range(3)
+      )
+    ))
+  )
+
+  tb <- covjson_to_tibble(cov)
+  expect_equal(
+    tb$parameter_label,
+    c("Inherited label", "Child label", "Child only")
+  )
+  expect_equal(tb$unit, c("m", "parent-unit", "s"))
+})
+
+test_that("parse_datetime handles each ISO-8601 representation element-wise", {
   iso <- c("2023-01-01T00:00:00Z", "2023-01-02T00:00:00Z")
   p <- edr4r:::parse_datetime(iso)
   expect_s3_class(p, "POSIXct")
@@ -221,18 +359,169 @@ test_that("parse_datetime picks the first format that parses any element", {
   p2 <- edr4r:::parse_datetime(date_only)
   expect_s3_class(p2, "POSIXct")
   expect_false(any(is.na(p2)))
+
+  mixed <- c(
+    "2023-01-01",
+    "2023-01-02T00:00:00Z",
+    "2023-01-02T01:30:00+01:30",
+    "2023-01-01T19:00:00-05:00"
+  )
+  p3 <- edr4r:::parse_datetime(mixed)
+  expect_s3_class(p3, "POSIXct")
+  expect_false(any(is.na(p3)))
+  expect_equal(
+    as.numeric(p3),
+    as.numeric(as.POSIXct(c(
+      "2023-01-01 00:00:00",
+      "2023-01-02 00:00:00",
+      "2023-01-02 00:00:00",
+      "2023-01-02 00:00:00"
+    ), tz = "UTC"))
+  )
 })
 
-test_that("parse_datetime silently NA-fills when an axis mixes formats", {
-  # ASSUMPTION lock-in: the parser picks the first matching format from
-  # its list and applies it to the whole vector. Values that don't match
-  # that format become NA. If a server ever mixes ISO timestamps with
-  # date-only strings on the same axis, the date-only ones drop out.
+test_that("parse_datetime keeps all original values if any value is invalid", {
+  mixed <- c("2023-01-01T00:00:00Z", "not-a-date", NA_character_)
+  expect_warning(p <- edr4r:::parse_datetime(mixed), "keeping.*character")
+  expect_type(p, "character")
+  expect_identical(p, mixed)
+})
+
+test_that("datetime parsing never drops a valid offset timestamp", {
+  cov <- read_fixture("trajectory.covjson")
+  cov$domain$axes$composite$values[[2]][[1]] <- "not-a-date"
+  expect_warning(tb <- covjson_to_tibble(cov), "keeping.*character")
+  expect_type(tb$datetime, "character")
+  expect_equal(tb$datetime[[1]], "2024-06-01T10:00:00Z")
+  expect_equal(tb$datetime[[2]], "not-a-date")
+})
+
+test_that("NdArray invariants are validated before flattening", {
+  make_coverage <- function(range, domain = NULL) {
+    if (is.null(domain)) {
+      domain <- list(
+        type = "Domain",
+        domainType = "PointSeries",
+        axes = list(
+          x = list(values = list(0)),
+          y = list(values = list(0)),
+          t = list(values = list("2024-01-01", "2024-01-02"))
+        )
+      )
+    }
+    list(type = "Coverage", domain = domain, ranges = list(p = range))
+  }
+
+  expect_error(
+    covjson_to_tibble(make_coverage(list(
+      type = "NdArray", dataType = "float",
+      axisNames = list("t"), shape = list(3L), values = list(1, 2)
+    ))),
+    "shape requires 3 values, not 2"
+  )
+  expect_error(
+    covjson_to_tibble(make_coverage(list(
+      type = "NdArray", dataType = "float",
+      axisNames = list("t"), shape = list(1L), values = list(1)
+    ))),
+    "domain axis has 2 values"
+  )
+  expect_error(
+    covjson_to_tibble(make_coverage(list(
+      type = "NdArray", dataType = "float", values = list(1)
+    ))),
+    "omits non-scalar domain axes"
+  )
+  expect_error(
+    covjson_to_tibble(make_coverage(list(
+      type = "NdArray", dataType = "integer",
+      axisNames = list("t"), shape = list(2L), values = list(1, 2.5)
+    ))),
+    "non-integer values"
+  )
+  expect_error(
+    covjson_to_tibble(make_coverage(list(
+      type = "NdArray", dataType = "float",
+      axisNames = list("t"), shape = list(2L), values = list(1, "bad")
+    ))),
+    "declares.*float.*strings"
+  )
+
+  scalar <- make_coverage(
+    list(
+      type = "NdArray", dataType = "float",
+      shape = list(), axisNames = list(), values = list(7)
+    ),
+    domain = list(
+      type = "Domain", domainType = "Point",
+      axes = list(x = list(values = list(0)), y = list(values = list(0)))
+    )
+  )
+  expect_equal(covjson_to_tibble(scalar)$value, 7)
+})
+
+test_that("unsupported or external CoverageJSON components fail clearly", {
+  point_domain <- list(
+    type = "Domain", domainType = "Point",
+    axes = list(x = list(values = list(0)), y = list(values = list(0)))
+  )
+
+  expect_error(
+    covjson_to_tibble(list(
+      type = "Coverage",
+      domain = "https://example.test/domain/1",
+      ranges = list(p = list(type = "NdArray", values = list(1)))
+    )),
+    "external domain"
+  )
+  expect_error(
+    covjson_to_tibble(list(
+      type = "Coverage", domain = point_domain,
+      ranges = list(p = "https://example.test/ranges/p")
+    )),
+    "external.*ranges"
+  )
+  expect_error(
+    covjson_to_tibble(list(
+      type = "Coverage", domain = point_domain,
+      ranges = list(p = list(type = "TiledNdArray", tileSets = list()))
+    )),
+    "TiledNdArray.*not yet supported"
+  )
+  expect_error(
+    covjson_to_tibble(list(
+      type = "Coverage", domain = point_domain,
+      ranges = list(p = list(type = "SomethingElse", values = list(1)))
+    )),
+    "expected.*NdArray"
+  )
+})
+
+test_that("malformed tuple axes fail before coordinates are fabricated", {
+  cov <- list(
+    type = "Coverage",
+    domain = list(
+      type = "Domain", domainType = "Trajectory",
+      axes = list(composite = list(
+        dataType = "tuple",
+        coordinates = list("t", "x", "y"),
+        values = list(list("2024-01-01T00:00:00Z", -71))
+      ))
+    ),
+    ranges = list(p = list(
+      type = "NdArray", dataType = "float",
+      axisNames = list("composite"), shape = list(1L), values = list(1)
+    ))
+  )
+
+  expect_error(covjson_to_tibble(cov), "does not match its 3 coordinates")
+})
+
+test_that("mixed datetime formats no longer create silent missing values", {
   mixed <- c("2023-01-01", "2023-01-02T00:00:00Z")
   p <- edr4r:::parse_datetime(mixed)
   expect_s3_class(p, "POSIXct")
-  # ISO timestamp format wins (listed first); date-only becomes NA.
-  expect_true(is.na(p[[1]]))
+  expect_false(is.na(p[[1]]))
   expect_false(is.na(p[[2]]))
 })
 

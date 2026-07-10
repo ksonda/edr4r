@@ -62,6 +62,9 @@ edr_locations <- function(client,
 #'   round-trip through HTTP path segments.
 #' @param z Vertical level filter.
 #' @param format `"covjson"` (default), `"geojson"`, `"csv"`, or `"json"`.
+#' @return An `edr_response` containing CoverageJSON or GeoJSON, or a tibble
+#'   for CSV responses. Use [covjson_to_tibble()] or [geojson_to_sf()] to
+#'   convert structured JSON responses.
 #' @export
 edr_location <- function(client,
                          collection_id,
@@ -99,6 +102,8 @@ edr_location <- function(client,
 #' queries ([edr_locations()], [edr_area()], [edr_cube()], etc.).
 #'
 #' @inheritParams edr_locations
+#' @return An `sf` object when `sf` is installed and the server returns
+#'   GeoJSON; otherwise an `edr_response` wrapping the GeoJSON document.
 #' @export
 edr_items <- function(client,
                       collection_id,
@@ -152,6 +157,9 @@ edr_item <- function(client,
 #' @inheritParams edr_location
 #' @param coords Either a length-2 numeric vector `c(lon, lat)`, a
 #'   length-3 vector `c(lon, lat, z)`, or a WKT POINT string.
+#' @param format `"covjson"` (default) or `"json"`.
+#' @return An `edr_response` containing the server's CoverageJSON response.
+#'   Convert it with [covjson_to_tibble()].
 #' @export
 edr_position <- function(client,
                          collection_id,
@@ -188,6 +196,7 @@ edr_position <- function(client,
 #' the `coords` parameter.
 #'
 #' @inheritParams edr_position
+#' @inherit edr_position return
 #' @param coords WKT polygon string, or a matrix / data.frame of
 #'   `(lon, lat)` rows that will be closed into a POLYGON. May also be
 #'   an `sf` / `sfc` polygon if `sf` is installed.
@@ -226,6 +235,7 @@ edr_area <- function(client,
 #' Calls `GET /collections/{collection_id}/cube` with a bounding box.
 #'
 #' @inheritParams edr_area
+#' @inherit edr_position return
 #' @param bbox Numeric vector of length 4 or 6.
 #' @export
 edr_cube <- function(client,
@@ -263,6 +273,7 @@ edr_cube <- function(client,
 #' Calls `GET /collections/{collection_id}/radius`.
 #'
 #' @inheritParams edr_position
+#' @inherit edr_position return
 #' @param within Radius value.
 #' @param within_units Units of `within` (e.g. `"km"`, `"mi"`).
 #' @export
@@ -280,9 +291,8 @@ edr_radius <- function(client,
   check_client(client)
   collection_id <- collection_path_id(collection_id)
   format <- match.arg(format)
-  if (!is.numeric(within) || length(within) != 1L) {
-    cli::cli_abort("{.arg within} must be a single numeric value.")
-  }
+  within <- check_distance(within, "within")
+  within_units <- check_unit(within_units, "within_units")
 
   query <- common_query(
     coords         = to_wkt_point(coords),
@@ -307,6 +317,7 @@ edr_radius <- function(client,
 #' Calls `GET /collections/{collection_id}/trajectory`.
 #'
 #' @inheritParams edr_position
+#' @inherit edr_position return
 #' @param coords WKT LINESTRING, a matrix / data.frame of `(lon, lat)`
 #'   rows, or an `sfc` linestring.
 #' @export
@@ -344,8 +355,10 @@ edr_trajectory <- function(client,
 #' Calls `GET /collections/{collection_id}/corridor`.
 #'
 #' @inheritParams edr_trajectory
+#' @inherit edr_position return
 #' @param corridor_width Width of the corridor.
-#' @param corridor_height Optional vertical extent.
+#' @param corridor_height Vertical extent of the corridor. Required by the
+#'   EDR corridor query requirements.
 #' @param width_units Units for `corridor_width`.
 #' @param height_units Units for `corridor_height`.
 #' @export
@@ -353,7 +366,7 @@ edr_corridor <- function(client,
                          collection_id,
                          coords,
                          corridor_width,
-                         corridor_height = NULL,
+                         corridor_height,
                          width_units = "km",
                          height_units = "m",
                          datetime = NULL,
@@ -365,6 +378,10 @@ edr_corridor <- function(client,
   check_client(client)
   collection_id <- collection_path_id(collection_id)
   format <- match.arg(format)
+  corridor_width <- check_distance(corridor_width, "corridor_width", allow_zero = FALSE)
+  corridor_height <- check_distance(corridor_height, "corridor_height", allow_zero = FALSE)
+  width_units <- check_unit(width_units, "width_units")
+  height_units <- check_unit(height_units, "height_units")
 
   query <- common_query(
     coords            = to_wkt_linestring(coords),
@@ -404,6 +421,7 @@ common_query <- function(...) {
 
   # bbox -> "minx,miny,maxx,maxy"
   if (!is.null(args$bbox)) {
+    args$bbox <- check_bbox(args$bbox)
     args$bbox <- paste(args$bbox, collapse = ",")
   }
   # datetime can be a 2-vector or a single string with "/".
@@ -444,5 +462,43 @@ check_bbox <- function(bbox, call = rlang::caller_env()) {
       call = call
     )
   }
+  if (any(!is.finite(bbox))) {
+    cli::cli_abort(
+      "{.arg bbox} must contain only finite values.",
+      call = call
+    )
+  }
+  n_dim <- length(bbox) / 2L
+  if (any(bbox[seq_len(n_dim)] > bbox[n_dim + seq_len(n_dim)])) {
+    cli::cli_abort(
+      c("{.arg bbox} minimum values must not exceed maximum values.",
+        i = "Expected minima followed by maxima."),
+      call = call
+    )
+  }
   bbox
+}
+
+check_distance <- function(x, arg, allow_zero = TRUE,
+                           call = rlang::caller_env()) {
+  valid_bound <- if (allow_zero) x >= 0 else x > 0
+  if (!is.numeric(x) || length(x) != 1L || is.na(x) ||
+      !is.finite(x) || !isTRUE(valid_bound)) {
+    qualifier <- if (allow_zero) "non-negative" else "positive"
+    cli::cli_abort(
+      "{.arg {arg}} must be a single finite {qualifier} number.",
+      call = call
+    )
+  }
+  x
+}
+
+check_unit <- function(x, arg, call = rlang::caller_env()) {
+  if (!is.character(x) || length(x) != 1L || is.na(x) || !nzchar(x)) {
+    cli::cli_abort(
+      "{.arg {arg}} must be a single non-empty string.",
+      call = call
+    )
+  }
+  x
 }

@@ -56,14 +56,16 @@ test_that("edr_explore fetches per-station data and returns a leaflet map", {
 
   gj  <- read_fixture("locations.geojson")
   cov <- read_fixture("pointseries.covjson")
+  cols <- read_fixture("collections.json")
 
-  # The mock returns the locations FeatureCollection on the first call
-  # (the /locations request) and the same CovJSON for each /locations/{id}
-  # request after that.
+  # Auto planning discovers capabilities first, then retrieves locations,
+  # then fetches one CovJSON response per location.
   call_n <- 0L
   httr2::local_mocked_responses(function(req) {
     call_n <<- call_n + 1L
     if (call_n == 1L) {
+      mock_json_response(cols)
+    } else if (call_n == 2L) {
       mock_json_response(gj, content_type = "application/geo+json")
     } else {
       mock_json_response(cov)
@@ -138,13 +140,13 @@ test_that("edr_explore method = 'cube' uses one bulk call, no per-station N+1", 
   call_n <- 0L
   httr2::local_mocked_responses(function(req) {
     call_n <<- call_n + 1L
-    # call 1: edr_locations -> FeatureCollection
-    # call 2: edr_cube      -> CoverageCollection
+    # Data is fetched first so coverage responses can avoid probing locations.
+    # This point-series cube then needs locations for a station map.
     # No per-station N+1 calls expected.
     if (call_n == 1L) {
-      mock_json_response(gj, content_type = "application/geo+json")
-    } else if (call_n == 2L) {
       mock_json_response(cube)
+    } else if (call_n == 2L) {
+      mock_json_response(gj, content_type = "application/geo+json")
     } else {
       cli::cli_abort("Unexpected extra HTTP call (#{call_n}); cube path should make exactly 2.")
     }
@@ -268,11 +270,7 @@ test_that("edr_explore auto falls back to coverage maps when locations are unava
   call_n <- 0L
   httr2::local_mocked_responses(function(req) {
     call_n <<- call_n + 1L
-    if (call_n == 1L) {
-      mock_json_response(list(description = "no locations"), status = 404L)
-    } else {
-      mock_json_response(explore_grid_cov())
-    }
+    mock_json_response(explore_grid_cov())
   })
 
   p <- edr_explore(
@@ -283,7 +281,7 @@ test_that("edr_explore auto falls back to coverage maps when locations are unava
   )
   expect_s3_class(p, "leaflet")
   expect_equal(extract_render_payload(p)$mode, "grid")
-  expect_equal(call_n, 2L)
+  expect_equal(call_n, 1L)
 })
 
 test_that("edr_explore output = 'map' can return coverage maps without locations", {
@@ -292,11 +290,7 @@ test_that("edr_explore output = 'map' can return coverage maps without locations
   call_n <- 0L
   httr2::local_mocked_responses(function(req) {
     call_n <<- call_n + 1L
-    if (call_n == 1L) {
-      mock_json_response(list(description = "no locations"), status = 404L)
-    } else {
-      mock_json_response(explore_profile_cov())
-    }
+    mock_json_response(explore_profile_cov())
   })
 
   m <- edr_explore(
@@ -307,7 +301,7 @@ test_that("edr_explore output = 'map' can return coverage maps without locations
   )
   expect_s3_class(m, "leaflet")
   expect_equal(extract_render_payload(m)$mode, "profile")
-  expect_equal(call_n, 2L)
+  expect_equal(call_n, 1L)
 })
 
 test_that("edr_explore + edr_save_html round-trip to disk", {
@@ -319,11 +313,14 @@ test_that("edr_explore + edr_save_html round-trip to disk", {
 
   gj  <- read_fixture("locations.geojson")
   cov <- read_fixture("pointseries.covjson")
+  cols <- read_fixture("collections.json")
 
   call_n <- 0L
   httr2::local_mocked_responses(function(req) {
     call_n <<- call_n + 1L
     if (call_n == 1L) {
+      mock_json_response(cols)
+    } else if (call_n == 2L) {
       mock_json_response(gj, content_type = "application/geo+json")
     } else {
       mock_json_response(cov)
@@ -338,4 +335,100 @@ test_that("edr_explore + edr_save_html round-trip to disk", {
   expect_equal(result, path)
   expect_true(file.exists(path))
   expect_gt(file.info(path)$size, 10000L)
+})
+
+test_that("output = 'plot' works through the per-location route", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("sf")
+  gj <- read_fixture("locations.geojson")
+  cov <- read_fixture("pointseries.covjson")
+  call_n <- 0L
+  httr2::local_mocked_responses(function(req) {
+    call_n <<- call_n + 1L
+    if (call_n == 1L) {
+      mock_json_response(gj, content_type = "application/geo+json")
+    } else {
+      mock_json_response(cov)
+    }
+  })
+
+  p <- edr_explore(
+    test_client(), "demo",
+    method = "per-location",
+    output = "plot",
+    quiet = TRUE
+  )
+  expect_s3_class(p, "ggplot")
+  expect_true(".location_id" %in% names(p$data))
+  expect_equal(length(unique(p$data$.location_id)), 2L)
+  expect_equal(call_n, 3L)
+})
+
+test_that("auto planning stops when capability discovery fails", {
+  call_n <- 0L
+  httr2::local_mocked_responses(function(req) {
+    call_n <<- call_n + 1L
+    mock_json_response(list(description = "metadata unavailable"), status = 503L)
+  })
+  expect_error(
+    edr_explore(test_client(), "demo", method = "auto", output = "data"),
+    "Automatic fallback was stopped"
+  )
+  expect_equal(call_n, 1L)
+})
+
+test_that("per-location exploration enforces max_requests before data calls", {
+  skip_if_not_installed("sf")
+  gj <- read_fixture("locations.geojson")
+  call_n <- 0L
+  httr2::local_mocked_responses(function(req) {
+    call_n <<- call_n + 1L
+    mock_json_response(gj, content_type = "application/geo+json")
+  })
+  expect_error(
+    edr_explore(
+      test_client(), "demo",
+      method = "per-location", output = "data",
+      max_requests = 1L, quiet = TRUE
+    ),
+    "exceeding.*max_requests"
+  )
+  expect_equal(call_n, 1L)
+})
+
+test_that("bulk data output skips an unnecessary locations request", {
+  call_n <- 0L
+  httr2::local_mocked_responses(function(req) {
+    call_n <<- call_n + 1L
+    mock_json_response(explore_grid_cov())
+  })
+  out <- edr_explore(
+    test_client(), "grid-demo",
+    bbox = c(-110, 40, -108, 41),
+    method = "cube", output = "data"
+  )
+  expect_s3_class(out, "tbl_df")
+  expect_equal(call_n, 1L)
+})
+
+test_that("file is rejected for non-map output before network activity", {
+  call_n <- 0L
+  httr2::local_mocked_responses(function(req) {
+    call_n <<- call_n + 1L
+    cli::cli_abort("network should not be called")
+  })
+  expect_error(
+    edr_explore(
+      test_client(), "demo", method = "cube",
+      bbox = c(0, 0, 1, 1), output = "data", file = tempfile()
+    ),
+    "only supported.*map"
+  )
+  expect_equal(call_n, 0L)
+})
+
+test_that("max_requests rejects fractional and out-of-range integers", {
+  expect_error(edr4r:::check_max_requests(1.5), "positive integer")
+  expect_error(edr4r:::check_max_requests(1e20), "positive integer")
+  expect_silent(edr4r:::check_max_requests(Inf))
 })

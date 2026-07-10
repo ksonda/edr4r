@@ -55,4 +55,7 @@ test_that("WKT coercion rejects wrong geometry types and bad coordinates", {
 test_that("bbox validation rejects bad lengths", {
   expect_error(edr4r:::check_bbox(c(1, 2, 3)), "length 4 or 6")
   expect_silent(edr4r:::check_bbox(c(1, 2, 3, 4)))
+  expect_error(edr4r:::check_bbox(c(1, 2, Inf, 4)), "finite")
+  expect_error(edr4r:::check_bbox(c(4, 2, 1, 3)), "minimum")
+  expect_silent(edr4r:::check_bbox(c(1, 2, 3, 4, 5, 6)))
 })

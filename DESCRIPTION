@@ -1,12 +1,13 @@
 Package: edr4r
 Title: Client for OGC API - Environmental Data Retrieval (EDR)
-Version: 0.1.0
+Version: 0.1.0.9000
 Authors@R:
     person("Kyle", "Onda", role = c("aut", "cre", "cph"),
            email = "konda@lincolninst.edu")
-Description: A tidy R client for any service implementing the OGC API -
-    Environmental Data Retrieval ('EDR') standard. General purpose, but
-    most of its real-world use is against in-situ monitoring networks
+Description: A tidy R client for services implementing the OGC API -
+    Environmental Data Retrieval ('EDR') standard with JSON discovery and
+    'GeoJSON' or 'CoverageJSON' query responses. General purpose, but most
+    of its real-world use is against in-situ monitoring networks
     (stream gauges, weather stations, snow and reservoir telemetry)
     that expose their stations and time series as EDR collections.
     Known working endpoints include the USGS waterdata OGC API and the
@@ -22,7 +23,7 @@ Depends:
     R (>= 4.1)
 Imports:
     cli,
-    httr2 (>= 1.0.0),
+    httr2 (>= 1.1.0),
     jsonlite,
     purrr,
     rlang,
@@ -37,7 +38,8 @@ Suggests:
     rmarkdown,
     sf,
     svglite,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    webfakes
 Config/testthat/edition: 3
 RoxygenNote: 7.3.3
 Roxygen: list(markdown = TRUE)

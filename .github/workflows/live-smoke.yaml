@@ -1,0 +1,49 @@
+name: Live EDR interoperability smoke checks
+
+on:
+  schedule:
+    # The Met Office Labs endpoint is a non-operational demonstrator. Weekly is
+    # frequent enough to catch compatibility drift without treating it as an
+    # availability monitor.
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  metoffice-labs:
+    name: Met Office Labs demonstrator
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: local::.
+          needs: check
+
+      - name: Discover collections and query one terrain point
+        id: smoke
+        # The demonstrator has no availability guarantee. Record drift in the
+        # step outcome, but do not turn an external lab outage into a red build.
+        continue-on-error: true
+        timeout-minutes: 2
+        run: Rscript tools/live-smoke-metoffice.R
+
+      - name: Summarize result
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.smoke.outcome }}" = "success" ]; then
+            echo "### Met Office Labs: compatible" >> "$GITHUB_STEP_SUMMARY"
+            echo "Collection discovery and the terrain position probe passed." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Met Office Labs: probe failed (non-blocking)" >> "$GITHUB_STEP_SUMMARY"
+            echo "This endpoint is a non-operational technical demonstrator; inspect the smoke-step log for outage or compatibility drift." >> "$GITHUB_STEP_SUMMARY"
+          fi
