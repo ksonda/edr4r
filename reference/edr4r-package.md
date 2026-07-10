@@ -1,11 +1,12 @@
 # edr4r: A tidy R client for OGC API - Environmental Data Retrieval
 
-`edr4r` talks to any service that implements [OGC API - Environmental
-Data Retrieval](https://ogcapi.ogc.org/edr/). It's general-purpose, but
-most of the testing and real-world use to date has been against in-situ
-monitoring networks – the kind of service that exposes stream gauges,
-weather stations, snow telemetry, or reservoir telemetry as EDR
-collections.
+`edr4r` talks to [OGC API - Environmental Data
+Retrieval](https://ogcapi.ogc.org/edr/) services with JSON discovery
+metadata and CoverageJSON, GeoJSON, or CSV query responses. It's
+general-purpose, but most testing and real-world use to date has been
+against in-situ monitoring networks – the kind of service that exposes
+stream gauges, weather stations, snow telemetry, or reservoir telemetry
+as EDR collections.
 
 ## Details
 
@@ -28,7 +29,8 @@ A typical session looks like:
     [`edr_client()`](https://ksonda.github.io/edr4r/reference/edr_client.md).
 
 2.  Discover what's on offer with
-    [`edr_collections()`](https://ksonda.github.io/edr4r/reference/edr_collections.md)
+    [`edr_collections()`](https://ksonda.github.io/edr4r/reference/edr_collections.md),
+    [`edr_capabilities()`](https://ksonda.github.io/edr4r/reference/edr_capabilities.md),
     and
     [`edr_queryables()`](https://ksonda.github.io/edr4r/reference/edr_queryables.md).
 
@@ -45,6 +47,8 @@ A typical session looks like:
     [`edr_trajectory()`](https://ksonda.github.io/edr4r/reference/edr_trajectory.md)
     /
     [`edr_corridor()`](https://ksonda.github.io/edr4r/reference/edr_corridor.md).
+    Instance-scoped collections can be inspected with
+    [`edr_instances()`](https://ksonda.github.io/edr4r/reference/edr_instances.md).
 
 4.  Flatten the response with
     [`covjson_to_tibble()`](https://ksonda.github.io/edr4r/reference/covjson_to_tibble.md)

@@ -13,6 +13,7 @@ edr_client(
   timeout = 60,
   max_tries = 3,
   retry_on_failure = TRUE,
+  cache_ttl = 300,
   headers = NULL,
   verbose = FALSE
 )
@@ -51,6 +52,14 @@ edr_client(
   connection resets and transient DNS / TLS errors. EDR requests made by
   this package are read-only GET requests, so retrying them is safe.
 
+- cache_ttl:
+
+  Number of seconds to retain discovery responses in this client's
+  in-memory cache. Defaults to 300 (five minutes). Use `0` to disable
+  caching or `Inf` to retain metadata until
+  [`edr_cache_clear()`](https://ksonda.github.io/edr4r/reference/edr_cache_clear.md)
+  is called. Data-query responses are never cached.
+
 - headers:
 
   Named character vector of extra headers attached to every request
@@ -72,8 +81,9 @@ usgs <- edr_client("https://api.waterdata.usgs.gov/ogcapi/beta")
 usgs
 #> <edr_client>
 #>   base_url:   <https://api.waterdata.usgs.gov/ogcapi/beta>
-#>   user_agent: edr4r/0.1.1 (+https://github.com/ksonda/edr4r)
+#>   user_agent: edr4r/0.1.1.9000 (+https://github.com/ksonda/edr4r)
 #>   timeout:    60s
 #>   max_tries:  3
 #>   retry transport failures: TRUE
+#>   discovery cache: 300s
 ```

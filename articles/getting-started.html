@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">edr4r</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/getting-started.html">Getting started with edr4r</a></li>
+    <li><a class="dropdown-item" href="../articles/compatibility.html">EDR compatibility and supported scope</a></li>
     <li><a class="dropdown-item" href="../articles/usgs-streamgages.html">USGS streamgages: discover and map a basin</a></li>
   </ul>
 </li>
@@ -60,17 +61,18 @@
       <h1>Getting started with edr4r</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/0.1.1/vignettes/getting-started.Rmd" class="external-link"><code>vignettes/getting-started.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/main/vignettes/getting-started.Rmd" class="external-link"><code>vignettes/getting-started.Rmd</code></a></small>
       <div class="d-none name"><code>getting-started.Rmd</code></div>
     </div>
 
     
     
-<p><code>edr4r</code> is a small, tidy client for any service that
-speaks <a href="https://ogcapi.ogc.org/edr/" class="external-link">OGC API - Environmental
-Data Retrieval</a>. Most of the real-world use to date has been against
-in-situ monitoring networks – stream gauges, weather stations, snow
-telemetry, reservoir telemetry – but the package itself is generic.</p>
+<p><code>edr4r</code> is a small, tidy client for <a href="https://ogcapi.ogc.org/edr/" class="external-link">OGC API - Environmental Data
+Retrieval</a> services with JSON discovery metadata and CoverageJSON,
+GeoJSON, or CSV query responses. Most of the real-world use to date has
+been against in-situ monitoring networks – stream gauges, weather
+stations, snow telemetry, reservoir telemetry – but the package itself
+is generic.</p>
 <p>Two example endpoints you can point it at right now:</p>
 <ul>
 <li><a href="https://api.waterdata.usgs.gov/ogcapi/beta/" class="external-link">USGS waterdata
@@ -93,12 +95,17 @@ USGS example lives in its own article,
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>Install the released version from CRAN:</p>
+<p>CRAN currently provides the stable <code>0.1.1</code> release:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"edr4r"</span><span class="op">)</span></span></code></pre></div>
-<p>or the development version from GitHub with <a href="https://pak.r-lib.org/" class="external-link">pak</a>:</p>
+<p>The upcoming <code>0.2.0</code> API is available as a GitHub-only
+release candidate with <a href="https://pak.r-lib.org/" class="external-link">pak</a>:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"ksonda/edr4r"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"ksonda/edr4r@v0.2.0-rc.1"</span><span class="op">)</span></span></code></pre></div>
+<p>This preview has not been submitted to CRAN and intentionally reports
+development version <code>0.1.1.9000</code> inside R. Use
+<code>pak::pak("ksonda/edr4r")</code> instead when you want the mutable
+development branch.</p>
 </div>
 <div class="section level2">
 <h2 id="create-a-client">1. Create a client<a class="anchor" aria-label="anchor" href="#create-a-client"></a>
@@ -111,12 +118,16 @@ USGS example lives in its own article,
 <span><span class="va">client</span></span>
 <span><span class="co">#&gt; &lt;edr_client&gt;</span></span>
 <span><span class="co">#&gt;   base_url:   &lt;https://api.wwdh.internetofwater.app&gt;</span></span>
-<span><span class="co">#&gt;   user_agent: edr4r/0.1.0 (+https://github.com/ksonda/edr4r)</span></span>
+<span><span class="co">#&gt;   user_agent: edr4r/0.1.1.9000 (+https://github.com/ksonda/edr4r)</span></span>
 <span><span class="co">#&gt;   timeout:    60s</span></span>
-<span><span class="co">#&gt;   max_tries:  3</span></span></code></pre></div>
+<span><span class="co">#&gt;   max_tries:  3</span></span>
+<span><span class="co">#&gt;   retry transport failures: TRUE</span></span>
+<span><span class="co">#&gt;   discovery cache: 300s</span></span></code></pre></div>
 <p>The client just stores connection settings (base URL, user agent,
-timeout, retry policy). Pass <code>verbose = TRUE</code> to echo every
-request URL, or <code>headers =</code> to attach auth tokens.</p>
+timeout, retry policy, and an in-memory discovery cache). Pass
+<code>verbose = TRUE</code> to echo every request URL,
+<code>headers =</code> to attach auth tokens, or
+<code>cache_ttl =</code> to change the metadata lifetime.</p>
 <div class="section level3">
 <h3 id="try-a-second-edr-implementation">Try a second EDR implementation<a class="anchor" aria-label="anchor" href="#try-a-second-edr-implementation"></a>
 </h3>
@@ -151,7 +162,7 @@ serves.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">collections</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_collections.html">edr_collections</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span></span>
 <span><span class="va">collections</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"title"</span>, <span class="st">"data_queries"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt; # A tibble: 35 × 3</span></span>
+<span><span class="co">#&gt; # A tibble: 37 × 3</span></span>
 <span><span class="co">#&gt;    id                 title                                         data_queries</span></span>
 <span><span class="co">#&gt;    &lt;chr&gt;              &lt;chr&gt;                                         &lt;list&gt;</span></span>
 <span><span class="co">#&gt;  1 rise-edr           USBR Reclamation Information Sharing Environ… &lt;chr [4]&gt;</span></span>
@@ -164,15 +175,27 @@ serves.</p>
 <span><span class="co">#&gt;  8 noaa-qpf-day-3     NOAA Weather Prediction Center Quantitative … &lt;NULL&gt;</span></span>
 <span><span class="co">#&gt;  9 noaa-qpf-day-4-5   NOAA Weather Prediction Center Quantitative … &lt;NULL&gt;</span></span>
 <span><span class="co">#&gt; 10 noaa-qpf-day-6-7   NOAA Weather Prediction Center Quantitative … &lt;NULL&gt;</span></span>
-<span><span class="co">#&gt; # ℹ 25 more rows</span></span></code></pre></div>
+<span><span class="co">#&gt; # ℹ 27 more rows</span></span></code></pre></div>
 <p>The <code>data_queries</code> column tells you which EDR query types
 each collection supports (<code>locations</code>, <code>cube</code>,
 <code>area</code>, …). Hit a verb the server doesn’t implement and you
 get an HTTP error.</p>
+<p>For a new endpoint, inspect the richer capability metadata or run
+safe, metadata-only diagnostics before choosing a query:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">caps</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_capabilities.html">edr_capabilities</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"rise-edr"</span><span class="op">)</span></span>
+<span><span class="va">caps</span><span class="op">$</span><span class="va">queries</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/edr_supports.html">edr_supports</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"rise-edr"</span>, query <span class="op">=</span> <span class="st">"cube"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/edr_diagnose.html">edr_diagnose</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"rise-edr"</span><span class="op">)</span></span></code></pre></div>
+<p>Landing, conformance, collection, instance, and queryables metadata
+is cached inside the client for a bounded period. Pass
+<code>refresh = TRUE</code> to a discovery call when you need a fresh
+server response, or call <code>edr_cache_clear(client)</code>.</p>
 <p>To see the data parameters a collection exposes (the values you can
 pass to <code>parameter_name =</code> on the query verbs), use
 <code><a href="../reference/edr_parameters.html">edr_parameters()</a></code>:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">params</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_parameters.html">edr_parameters</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"rise-edr"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">params</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 782</span></span>
@@ -190,7 +213,7 @@ pass to <code>parameter_name =</code> on the query verbs), use
 OGC queryables JSON Schema (filter properties for CQL2 / OGC API
 Features). For discovering parameter names,
 <code><a href="../reference/edr_parameters.html">edr_parameters()</a></code> is what you want.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Pick out the daily reservoir storage parameter (id "3"):</span></span>
 <span><span class="va">params</span><span class="op">[</span><span class="va">params</span><span class="op">$</span><span class="va">id</span> <span class="op">==</span> <span class="st">"3"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"name"</span>, <span class="st">"unit_symbol"</span>, <span class="st">"unit_label"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt; # A tibble: 1 × 4</span></span>
@@ -205,7 +228,7 @@ Features). For discovering parameter names,
 index as a GeoJSON <code>FeatureCollection</code>, promoted to an
 <code>sf</code> object when <a href="https://r-spatial.github.io/sf/" class="external-link"><code>sf</code></a> is
 installed:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stations</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_locations.html">edr_locations</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"rise-edr"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">stations</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 926</span></span>
@@ -234,7 +257,7 @@ verbs accept either, and <code><a href="../reference/edr_map.html">edr_map()</a>
 <p>Pick a known station (Lake Mead, <code>_id</code> 3514) and a
 parameter (<code>3</code>, Daily Reservoir Storage) and you get
 CoverageJSON back. Flatten it with <code><a href="../reference/covjson_to_tibble.html">covjson_to_tibble()</a></code>:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_location.html">edr_location</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>, <span class="st">"rise-edr"</span>,</span>
 <span>  location_id    <span class="op">=</span> <span class="fl">3514</span>,</span>
@@ -260,7 +283,7 @@ CoverageJSON back. Flatten it with <code><a href="../reference/covjson_to_tibble
 </h2>
 <p><code><a href="../reference/edr_plot.html">edr_plot()</a></code> is a small <code>ggplot2</code> wrapper for
 the tidy tibble:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/edr_plot.html">edr_plot</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"Lake Mead — daily reservoir storage"</span><span class="op">)</span></span></code></pre></div>
 <div class="figure">
@@ -280,7 +303,7 @@ coloured by station. Add layers or themes like any other ggplot.</p>
 popups – much faster than fetching one station at a time.
 <code>rise-edr</code> advertises <code>cube</code>, so the default
 <code>method = "auto"</code> takes that path.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_explore.html">edr_explore</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>, <span class="st">"rise-edr"</span>,</span>
 <span>  bbox           <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">114</span>, <span class="fl">32</span>, <span class="op">-</span><span class="fl">111</span>, <span class="fl">38</span><span class="op">)</span>,         <span class="co"># SW US</span></span>
@@ -300,7 +323,7 @@ parameter/window are dimmed grey. A legend in the bottom-right explains
 the distinction.</p>
 <p>Save the same map to standalone HTML (selfcontained, no sidecar
 directory):</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/edr_save_html.html">edr_save_html</a></span><span class="op">(</span><span class="va">m</span>, <span class="st">"reservoir-southwest.html"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
@@ -333,6 +356,9 @@ error.</li>
 <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a>
 </h2>
 <ul>
+<li>
+<code><a href="../articles/compatibility.html">vignette("compatibility")</a></code> – the supported EDR/encoding
+subset, verified endpoint matrix, and known limitations.</li>
 <li>
 <code><a href="../articles/usgs-streamgages.html">vignette("usgs-streamgages")</a></code> – a walk-through against
 the USGS waterdata endpoint, which only advertises

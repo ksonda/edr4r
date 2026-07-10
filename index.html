@@ -11,8 +11,8 @@
 <script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Client for OGC API - Environmental Data Retrieval (EDR)">
-<meta name="description" content="A tidy R client for services implementing the OGC API - Environmental Data Retrieval (EDR) standard with JSON discovery and GeoJSON or CoverageJSON query responses. General purpose, but most of its real-world use is against in-situ monitoring networks (stream gauges, weather stations, snow and reservoir telemetry) that expose their stations and time series as EDR collections. Known working endpoints include the USGS waterdata OGC API and the Western Water Datahub. Provides discovery, query, and parsing helpers for the locations, items, position, area, cube, radius, trajectory, and corridor query types. Returns CoverageJSON as tidy tibble rows and GeoJSON as sf objects.">
-<meta property="og:description" content="A tidy R client for services implementing the OGC API - Environmental Data Retrieval (EDR) standard with JSON discovery and GeoJSON or CoverageJSON query responses. General purpose, but most of its real-world use is against in-situ monitoring networks (stream gauges, weather stations, snow and reservoir telemetry) that expose their stations and time series as EDR collections. Known working endpoints include the USGS waterdata OGC API and the Western Water Datahub. Provides discovery, query, and parsing helpers for the locations, items, position, area, cube, radius, trajectory, and corridor query types. Returns CoverageJSON as tidy tibble rows and GeoJSON as sf objects.">
+<meta name="description" content="A tidy R client for services implementing the OGC API - Environmental Data Retrieval (EDR) standard with JSON discovery and GeoJSON, CoverageJSON, or CSV query responses. General purpose, but most of its real-world use is against in-situ monitoring networks (stream gauges, weather stations, snow and reservoir telemetry) that expose their stations and time series as EDR collections. Known working endpoints include the USGS waterdata OGC API and the Western Water Datahub. Provides cached capability and instance discovery, endpoint diagnostics, and query/parsing helpers for the locations, items, position, area, cube, radius, trajectory, and corridor query types. Converts CoverageJSON to tidy tibble rows, parses CSV as tibbles, and converts GeoJSON to sf objects.">
+<meta property="og:description" content="A tidy R client for services implementing the OGC API - Environmental Data Retrieval (EDR) standard with JSON discovery and GeoJSON, CoverageJSON, or CSV query responses. General purpose, but most of its real-world use is against in-situ monitoring networks (stream gauges, weather stations, snow and reservoir telemetry) that expose their stations and time series as EDR collections. Known working endpoints include the USGS waterdata OGC API and the Western Water Datahub. Provides cached capability and instance discovery, endpoint diagnostics, and query/parsing helpers for the locations, items, position, area, cube, radius, trajectory, and corridor query types. Converts CoverageJSON to tidy tibble rows, parses CSV as tibbles, and converts GeoJSON to sf objects.">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">edr4r</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,6 +36,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="articles/getting-started.html">Getting started with edr4r</a></li>
+    <li><a class="dropdown-item" href="articles/compatibility.html">EDR compatibility and supported scope</a></li>
     <li><a class="dropdown-item" href="articles/usgs-streamgages.html">USGS streamgages: discover and map a basin</a></li>
   </ul>
 </li>
@@ -58,7 +59,7 @@
 </h1></div>
 <!-- badges: start -->
 
-<p>An R client for any service that speaks <a href="https://ogcapi.ogc.org/edr/" class="external-link">OGC API - Environmental Data Retrieval</a> (EDR). The spec is general, but in practice this package gets the most use against <strong>in-situ monitoring networks</strong> — stream gauges, weather stations, snow telemetry, reservoir telemetry — that expose their stations and time series through EDR.</p>
+<p>An R client for <a href="https://ogcapi.ogc.org/edr/" class="external-link">OGC API - Environmental Data Retrieval</a> (EDR) services that expose JSON discovery metadata and CoverageJSON, GeoJSON, or CSV query responses. The spec is general, but in practice this package gets the most use against <strong>in-situ monitoring networks</strong> — stream gauges, weather stations, snow telemetry, reservoir telemetry — that expose their stations and time series through EDR.</p>
 <p>Two known-good places to point it:</p>
 <ul>
 <li>
@@ -73,21 +74,27 @@
 <strong>CoverageJSON</strong> → a long <a href="https://tibble.tidyverse.org/" class="external-link"><code>tibble</code></a> (one row per coverage × parameter × time step), via <code><a href="reference/covjson_to_tibble.html">covjson_to_tibble()</a></code>.</li>
 <li>
 <strong>GeoJSON</strong> → an <a href="https://r-spatial.github.io/sf/" class="external-link"><code>sf</code></a> object, via <code><a href="reference/geojson_to_sf.html">geojson_to_sf()</a></code>.</li>
+<li>
+<strong>CSV</strong> → a <code>tibble</code>, parsed directly by the query helper.</li>
 </ul>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>Install the released version from CRAN:</p>
+<p>CRAN currently provides the stable <code>0.1.1</code> release:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"edr4r"</span><span class="op">)</span></span></code></pre></div>
-<p>Or the development version from GitHub:</p>
+<p>The upcoming <code>0.2.0</code> API is available as a GitHub-only release candidate. It has not been submitted to CRAN:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("pak")</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"ksonda/edr4r@v0.2.0-rc.1"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Follow the mutable development branch instead:</span></span>
 <span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"ksonda/edr4r"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># or</span></span>
 <span><span class="co"># install.packages("remotes")</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"ksonda/edr4r"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"ksonda/edr4r@v0.2.0-rc.1"</span><span class="op">)</span></span></code></pre></div>
+<p>The release-candidate package intentionally reports development version <code>0.1.1.9000</code> inside R. The final version will become <code>0.2.0</code> only when that release is prepared for CRAN.</p>
 <p>For local development:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/ksonda/edr4r.git</span>
 <span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="bu">cd</span> edr4r</span>
@@ -105,16 +112,18 @@
 <span><span class="co"># or "https://api.wwdh.internetofwater.app"</span></span>
 <span><span class="co"># or "http://localhost:5005" if you're running pygeoapi locally</span></span>
 <span></span>
-<span><span class="fu"><a href="reference/edr_collections.html">edr_collections</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span></span>
-<span><span class="co">#&gt; # A tibble: N × 7</span></span>
-<span><span class="co">#&gt;   id                   title                description  extent_bbox crs   data_queries links</span></span>
-<span><span class="co">#&gt;   &lt;chr&gt;                &lt;chr&gt;                &lt;chr&gt;        &lt;list&gt;      &lt;chr&gt; &lt;list&gt;       &lt;list&gt;</span></span>
-<span><span class="co">#&gt; 1 monitoring-locations Monitoring locations ...          &lt;dbl [4]&gt;   ...   &lt;chr [3]&gt;    ...</span></span>
-<span><span class="co">#&gt; 2 daily-values         Daily values         ...          &lt;dbl [4]&gt;   ...   &lt;chr [3]&gt;    ...</span></span>
-<span><span class="co">#&gt; ...</span></span></code></pre></div>
-<p>The collection IDs above (<code>monitoring-locations</code>, <code>daily-values</code>) are the ones I used as placeholders — every server advertises its own. The first thing to do against a new service is run <code><a href="reference/edr_collections.html">edr_collections()</a></code> and read the <code>data_queries</code> column to see which EDR endpoints each collection supports.</p>
-<p>To try the non-operational Met Office demonstrator with a deliberately small request, query one terrain point rather than a forecast collection:</p>
+<span><span class="va">collections</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_collections.html">edr_collections</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span></span>
+<span><span class="va">collections</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"title"</span>, <span class="st">"data_queries"</span>, <span class="st">"output_formats"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<p>Collection IDs are service-specific. The first thing to do against a new service is run <code><a href="reference/edr_collections.html">edr_collections()</a></code> and read the <code>data_queries</code> column to see which EDR endpoints each collection supports.</p>
+<p>For a new or unfamiliar implementation, inspect its advertised support before issuing data queries:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/edr_capabilities.html">edr_capabilities</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"daily-edr"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/edr_supports.html">edr_supports</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"daily-edr"</span>, query <span class="op">=</span> <span class="st">"locations"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/edr_diagnose.html">edr_diagnose</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"daily-edr"</span><span class="op">)</span></span></code></pre></div>
+<p><code><a href="reference/edr_supports.html">edr_supports()</a></code> reports what metadata advertises; <code>FALSE</code> is not proof that a partially conformant server cannot handle the request.</p>
+<p>Discovery metadata is cached per client for a short, configurable period. Use <code>refresh = TRUE</code> when current server state matters, or <code>edr_cache_clear(client)</code> to clear it explicitly.</p>
+<p>To try the non-operational Met Office demonstrator with a deliberately small request, query one terrain point rather than a forecast collection:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">met</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_client.html">edr_client</a></span><span class="op">(</span></span>
 <span>  <span class="st">"https://labs.metoffice.gov.uk/edr"</span>,</span>
 <span>  timeout <span class="op">=</span> <span class="fl">10</span>,</span>
@@ -129,11 +138,26 @@
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">terrain</span><span class="op">)</span></span></code></pre></div>
 <p>This example is also exercised by a scheduled, non-blocking live smoke check; it is never run as part of CRAN checks or the regular test suite.</p>
+<p>Collections representing model runs may advertise instances. The same query verbs work below an instance when <code>instance_id</code> is named explicitly:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">runs</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_instances.html">edr_instances</a></span><span class="op">(</span><span class="va">met</span>, <span class="st">"moglobal-station-level"</span><span class="op">)</span></span>
+<span><span class="va">run_id</span> <span class="op">&lt;-</span> <span class="va">runs</span><span class="op">$</span><span class="va">id</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span>
+<span></span>
+<span><span class="va">run_capabilities</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_capabilities.html">edr_capabilities</a></span><span class="op">(</span></span>
+<span>  <span class="va">met</span>, <span class="st">"moglobal-station-level"</span>, instance_id <span class="op">=</span> <span class="va">run_id</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/edr_supports.html">edr_supports</a></span><span class="op">(</span></span>
+<span>  <span class="va">run_capabilities</span>, query <span class="op">=</span> <span class="st">"locations"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">run_locations</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_locations.html">edr_locations</a></span><span class="op">(</span></span>
+<span>  <span class="va">met</span>, <span class="st">"moglobal-station-level"</span>,</span>
+<span>  instance_id <span class="op">=</span> <span class="va">run_id</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="find-stations">Find stations<a class="anchor" aria-label="anchor" href="#find-stations"></a>
 </h3>
 <p><code><a href="reference/edr_locations.html">edr_locations()</a></code> with no filters returns the full station list as GeoJSON. If you have <a href="https://r-spatial.github.io/sf/" class="external-link"><code>sf</code></a> installed, it gets promoted to an <code>sf</code> object automatically:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">locs</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_locations.html">edr_locations</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"monitoring-locations"</span><span class="op">)</span></span>
 <span><span class="va">locs</span>                            <span class="co"># sf POINTs with station attributes</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_geometry</a></span><span class="op">(</span><span class="va">locs</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
@@ -142,7 +166,7 @@
 <h3 id="pull-a-time-series-for-one-station">Pull a time series for one station<a class="anchor" aria-label="anchor" href="#pull-a-time-series-for-one-station"></a>
 </h3>
 <p>Once you know a station ID, ask for its values. The server returns CoverageJSON; <code><a href="reference/covjson_to_tibble.html">covjson_to_tibble()</a></code> flattens it into one row per (coverage × parameter × timestamp):</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_location.html">edr_location</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>, <span class="st">"daily-values"</span>,</span>
 <span>  location_id    <span class="op">=</span> <span class="st">"08313000"</span>,</span>
@@ -162,7 +186,7 @@
 <h3 id="spatial-filters--bbox-and-polygon">Spatial filters — bbox and polygon<a class="anchor" aria-label="anchor" href="#spatial-filters--bbox-and-polygon"></a>
 </h3>
 <p>To grab everything inside a rectangle, use <code><a href="reference/edr_cube.html">edr_cube()</a></code>:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cube</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_cube.html">edr_cube</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>, <span class="st">"daily-values"</span>,</span>
 <span>  bbox           <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">120</span>, <span class="fl">39</span>, <span class="op">-</span><span class="fl">118</span>, <span class="fl">41</span><span class="op">)</span>,</span>
@@ -171,7 +195,7 @@
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">cube</span><span class="op">)</span></span></code></pre></div>
 <p>For an arbitrary polygon, <code><a href="reference/edr_area.html">edr_area()</a></code> takes WKT, an <code>sf</code> polygon, or a matrix of <code>(lon, lat)</code> rows (it’ll close the ring for you):</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ring</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">109</span>, <span class="fl">47</span>, <span class="op">-</span><span class="fl">104</span>, <span class="fl">47</span>, <span class="op">-</span><span class="fl">104</span>, <span class="fl">49</span>, <span class="op">-</span><span class="fl">109</span>, <span class="fl">49</span><span class="op">)</span>,</span>
 <span>  ncol <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span></span>
@@ -184,11 +208,11 @@
 <h3 id="plot-a-time-series">Plot a time series<a class="anchor" aria-label="anchor" href="#plot-a-time-series"></a>
 </h3>
 <p><code><a href="reference/edr_plot.html">edr_plot()</a></code> is a small <code>ggplot2</code> wrapper over the tidy tibble:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_plot.html">edr_plot</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span>            <span class="co"># accepts an edr_response directly</span></span></code></pre></div>
 <p>Facets by parameter (so different units don’t share a y-axis) and colours by station. Add layers or themes like any other ggplot.</p>
 <p>It also auto-detects common non-station shapes:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_plot.html">edr_plot</a></span><span class="op">(</span><span class="va">cube</span><span class="op">)</span>            <span class="co"># x/y grid -&gt; tile map</span></span>
 <span><span class="fu"><a href="reference/edr_plot.html">edr_plot</a></span><span class="op">(</span><span class="va">profile</span><span class="op">)</span>         <span class="co"># varying z -&gt; vertical profile</span></span>
 <span></span>
@@ -200,14 +224,14 @@
 <h3 id="map-stations-with-per-station-popups">Map stations with per-station popups<a class="anchor" aria-label="anchor" href="#map-stations-with-per-station-popups"></a>
 </h3>
 <p><code><a href="reference/edr_map.html">edr_map()</a></code> puts the stations on a leaflet basemap. Pass <code>data =</code> as a named list keyed by station id (the shape [edr_explore()] produces) and each marker gets a popup with an inline plot and a “Download CSV” link for that station’s data — embedded as a <code>data:</code> URI so the saved HTML is selfcontained:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stations</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_locations.html">edr_locations</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"monitoring-locations"</span>,</span>
 <span>                          bbox <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">116</span>, <span class="fl">35.5</span>, <span class="op">-</span><span class="fl">114</span>, <span class="fl">36.5</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">data_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"3514"</span> <span class="op">=</span> <span class="fu"><a href="reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_map.html">edr_map</a></span><span class="op">(</span><span class="va">stations</span>, data <span class="op">=</span> <span class="va">data_list</span>, popup <span class="op">=</span> <span class="st">"plot+csv"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/edr_save_html.html">edr_save_html</a></span><span class="op">(</span><span class="va">m</span>, <span class="st">"stations.html"</span><span class="op">)</span></span></code></pre></div>
 <p>For a quick exploratory pass over a whole collection, <code><a href="reference/edr_explore.html">edr_explore()</a></code> does the fetch + plot + map in one call:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_explore.html">edr_explore</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>, <span class="st">"daily-values"</span>,</span>
 <span>  bbox           <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">116</span>, <span class="fl">35.5</span>, <span class="op">-</span><span class="fl">114</span>, <span class="fl">36.5</span><span class="op">)</span>,</span>
@@ -217,14 +241,14 @@
 <span>  file           <span class="op">=</span> <span class="st">"snapshot.html"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Gridded coverages and vertical profiles can be mapped too. <code><a href="reference/edr_map.html">edr_map()</a></code> detects tidy CoverageJSON grids/profiles and puts slice selectors inside the leaflet widget when there are multiple parameters or datetimes; grids also get a <code>z</code> selector when multiple vertical levels are present:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">cube</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/edr_map.html">edr_map</a></span><span class="op">(</span><span class="va">grid</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">profile</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">profile_resp</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/edr_map.html">edr_map</a></span><span class="op">(</span><span class="va">profile</span><span class="op">)</span></span></code></pre></div>
 <p><code><a href="reference/edr_explore.html">edr_explore()</a></code> uses the same behavior for bulk coverage queries. Use <code>output = "plot"</code> when you want a ggplot instead of the interactive map:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_explore.html">edr_explore</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"gridded-collection"</span>,</span>
 <span>            bbox <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">120</span>, <span class="fl">39</span>, <span class="op">-</span><span class="fl">118</span>, <span class="fl">41</span><span class="op">)</span>,</span>
 <span>            method <span class="op">=</span> <span class="st">"cube"</span><span class="op">)</span></span>
@@ -241,16 +265,18 @@
 <h3 id="weird-ids-csv-and-an-escape-hatch">Weird IDs, CSV, and an escape hatch<a class="anchor" aria-label="anchor" href="#weird-ids-csv-and-an-escape-hatch"></a>
 </h3>
 <p>Some monitoring networks use compound station IDs — colon-separated triplets are a common pattern. The client URL-encodes reserved characters for you:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_location.html">edr_location</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"station-network"</span>, <span class="st">"1185:CO:SNTL"</span>,</span>
 <span>             datetime <span class="op">=</span> <span class="st">"2024-01-01/.."</span><span class="op">)</span></span></code></pre></div>
 <p>If the server advertises CSV, you can ask for it instead of CovJSON:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_location.html">edr_location</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"daily-values"</span>, <span class="st">"08313000"</span>,</span>
 <span>             datetime <span class="op">=</span> <span class="st">"2010-01-01/.."</span>, format <span class="op">=</span> <span class="st">"csv"</span><span class="op">)</span></span></code></pre></div>
-<p>And if you need to hit an endpoint the package doesn’t wrap (instances, custom queryables, anything weird), <code><a href="reference/edr_request.html">edr_request()</a></code> is the raw escape hatch:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="reference/edr_request.html">edr_request</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"collections/daily-values/instances"</span>, format <span class="op">=</span> <span class="st">"json"</span><span class="op">)</span></span></code></pre></div>
+<p>And if you need to hit an endpoint or encoding the package doesn’t wrap, <code><a href="reference/edr_request.html">edr_request()</a></code> is the raw escape hatch:</p>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">service_description</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_request.html">edr_request</a></span><span class="op">(</span></span>
+<span>  <span class="va">client</span>, <span class="st">"api"</span>, format <span class="op">=</span> <span class="st">"raw"</span>, parse <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -285,8 +311,24 @@
 <td><code>/collections</code></td>
 </tr>
 <tr>
+<td>
+<code><a href="reference/edr_capabilities.html">edr_capabilities()</a></code> / <code><a href="reference/edr_supports.html">edr_supports()</a></code> / <code><a href="reference/edr_diagnose.html">edr_diagnose()</a></code>
+</td>
+<td>inspect advertised support</td>
+</tr>
+<tr>
+<td><code><a href="reference/edr_cache_clear.html">edr_cache_clear()</a></code></td>
+<td>clear cached discovery metadata</td>
+</tr>
+<tr>
 <td><code><a href="reference/edr_queryables.html">edr_queryables()</a></code></td>
 <td><code>/collections/{id}/queryables</code></td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/edr_instances.html">edr_instances()</a></code> / <code><a href="reference/edr_instances.html">edr_instance()</a></code>
+</td>
+<td><code>/collections/{id}/instances[/{instance}]</code></td>
 </tr>
 <tr>
 <td>
@@ -336,9 +378,11 @@
 </tr>
 </tbody>
 </table>
+<p>Every collection query helper also accepts named <code>instance_id =</code>; when set, the path becomes <code>/collections/{id}/instances/{instance_id}/{query}</code>.</p>
 <blockquote>
 <p><strong>What a server actually supports varies.</strong> Every query verb above is in the <a href="https://ogcapi.ogc.org/edr/" class="external-link">EDR spec</a> and supported by the client, but most servers implement only a subset. On in-situ monitoring deployments, <code>locations</code>, <code>position</code>, <code>cube</code>, and <code>area</code> are common; <code>radius</code>, <code>trajectory</code>, and <code>corridor</code> less so. Hitting a verb the server doesn’t implement gives you an HTTP error. Check the <code>data_queries</code> column from <code><a href="reference/edr_collections.html">edr_collections()</a></code> before you assume a query will work.</p>
 </blockquote>
+<p>See <code><a href="articles/compatibility.html">vignette("compatibility")</a></code> for the precise supported subset, return formats, known limitations, and the distinction between verified and merely advertised endpoint behavior.</p>
 </div>
 <div class="section level2">
 <h2 id="common-parameters">Common parameters<a class="anchor" aria-label="anchor" href="#common-parameters"></a>
@@ -355,6 +399,8 @@
 <code>coords</code> — for <code>position</code>/<code>area</code>/<code>radius</code>/<code>trajectory</code>/<code>corridor</code>: a WKT string, a numeric vector / 2-column matrix of lon-lat, or an <code>sf</code>/<code>sfc</code> geometry.</li>
 <li>
 <code>z</code>, <code>crs</code>, <code>limit</code> — passed through when supplied.</li>
+<li>
+<code>instance_id</code> — named, optional model-run/version identifier; inserts the standard <code>/instances/{id}</code> path segment before the query type.</li>
 <li>
 <code>...</code> — any extra query parameter is forwarded verbatim.</li>
 </ul>

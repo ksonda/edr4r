@@ -15,7 +15,7 @@ fallback. Optionally writes a map to a self-contained HTML file."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">edr4r</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -27,6 +27,7 @@ fallback. Optionally writes a map to a self-contained HTML file."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started.html">Getting started with edr4r</a></li>
+    <li><a class="dropdown-item" href="../articles/compatibility.html">EDR compatibility and supported scope</a></li>
     <li><a class="dropdown-item" href="../articles/usgs-streamgages.html">USGS streamgages: discover and map a basin</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -42,7 +43,7 @@ fallback. Optionally writes a map to a self-contained HTML file."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>One-shot fetch + plot + map for a collection</h1>
-      <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/0.1.1/R/explore.R" class="external-link"><code>R/explore.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/main/R/explore.R" class="external-link"><code>R/explore.R</code></a></small>
       <div class="d-none name"><code>edr_explore.Rd</code></div>
     </div>
 
@@ -72,7 +73,8 @@ fallback. Optionally writes a map to a self-contained HTML file.</p>
 <span>  output <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"map"</span>, <span class="st">"plot"</span>, <span class="st">"data"</span><span class="op">)</span>,</span>
 <span>  plot_view <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"time"</span>, <span class="st">"profile"</span>, <span class="st">"grid"</span><span class="op">)</span>,</span>
 <span>  quiet <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  <span class="va">...</span></span>
+<span>  <span class="va">...</span>,</span>
+<span>  instance_id <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -161,6 +163,12 @@ falling back to per-location fetches.</p></dd>
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Forwarded to <code><a href="edr_map.html">edr_map()</a></code> when returning a map.</p></dd>
+
+
+<dt id="arg-instance-id">instance_id<a class="anchor" aria-label="anchor" href="#arg-instance-id"></a></dt>
+<dd><p>Optional collection instance identifier. When supplied,
+capability planning and every locations/data request use that instance.
+This keyword-only argument leaves existing positional calls unchanged.</p></dd>
 
 </dl></div>
     <div class="section level2">

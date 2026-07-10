@@ -5,7 +5,7 @@ Get a single collection's metadata
 ## Usage
 
 ``` r
-edr_collection(client, collection_id)
+edr_collection(client, collection_id, refresh = FALSE)
 ```
 
 ## Arguments
@@ -18,6 +18,12 @@ edr_collection(client, collection_id)
 
   Collection identifier as advertised by the server – e.g.
   `"monitoring-locations"` or `"daily-values"`.
+
+- refresh:
+
+  If `TRUE`, bypass and replace any cached response. Discovery responses
+  otherwise use the client's `cache_ttl`; see
+  [`edr_client()`](https://ksonda.github.io/edr4r/reference/edr_client.md).
 
 ## Value
 

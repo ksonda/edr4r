@@ -11,7 +11,7 @@ etc.).
 ## Usage
 
 ``` r
-edr_parameters(client, collection_id)
+edr_parameters(client, collection_id, refresh = FALSE)
 ```
 
 ## Arguments
@@ -25,10 +25,17 @@ edr_parameters(client, collection_id)
   Collection identifier as advertised by the server – e.g.
   `"monitoring-locations"` or `"daily-values"`.
 
+- refresh:
+
+  If `TRUE`, bypass and replace any cached response. Discovery responses
+  otherwise use the client's `cache_ttl`; see
+  [`edr_client()`](https://ksonda.github.io/edr4r/reference/edr_client.md).
+
 ## Value
 
 A tibble with one row per parameter. Columns: `id`, `name`,
-`description`, `unit_symbol`, `unit_label`, `observed_property`.
+`description`, unit and observed-property metadata, `data_type`,
+`measurement_type`, `extent`, category metadata, and `raw`.
 
 ## Details
 

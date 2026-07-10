@@ -30,7 +30,8 @@ edr_explore(
   output = c("auto", "map", "plot", "data"),
   plot_view = c("auto", "time", "profile", "grid"),
   quiet = FALSE,
-  ...
+  ...,
+  instance_id = NULL
 )
 ```
 
@@ -125,6 +126,12 @@ edr_explore(
   Forwarded to
   [`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md)
   when returning a map.
+
+- instance_id:
+
+  Optional collection instance identifier. When supplied, capability
+  planning and every locations/data request use that instance. This
+  keyword-only argument leaves existing positional calls unchanged.
 
 ## Value
 

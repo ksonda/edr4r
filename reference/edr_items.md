@@ -20,10 +20,18 @@ edr_items(
   datetime = NULL,
   limit = NULL,
   format = c("geojson", "json"),
-  ...
+  ...,
+  instance_id = NULL
 )
 
-edr_item(client, collection_id, item_id, format = c("geojson", "json"), ...)
+edr_item(
+  client,
+  collection_id,
+  item_id,
+  format = c("geojson", "json"),
+  ...,
+  instance_id = NULL
+)
 ```
 
 ## Arguments
@@ -57,6 +65,12 @@ edr_item(client, collection_id, item_id, format = c("geojson", "json"), ...)
 - ...:
 
   Additional query parameters passed through verbatim.
+
+- instance_id:
+
+  Optional instance identifier. When supplied, the request is sent
+  beneath `/collections/{collection_id}/instances/{instance_id}`. This
+  keyword-only argument leaves existing positional calls unchanged.
 
 - item_id:
 

@@ -6,6 +6,8 @@ Construct and configure an EDR client.
 
 - [`edr_client()`](https://ksonda.github.io/edr4r/reference/edr_client.md)
   : Create an EDR client
+- [`edr_cache_clear()`](https://ksonda.github.io/edr4r/reference/edr_cache_clear.md)
+  : Clear cached EDR discovery metadata
 
 ## Discovery
 
@@ -20,6 +22,15 @@ properties.
   : List collections offered by the service
 - [`edr_collection()`](https://ksonda.github.io/edr4r/reference/edr_collection.md)
   : Get a single collection's metadata
+- [`edr_instances()`](https://ksonda.github.io/edr4r/reference/edr_instances.md)
+  [`edr_instance()`](https://ksonda.github.io/edr4r/reference/edr_instances.md)
+  : List instances of an EDR collection
+- [`edr_capabilities()`](https://ksonda.github.io/edr4r/reference/edr_capabilities.md)
+  : Inspect advertised EDR capabilities
+- [`edr_supports()`](https://ksonda.github.io/edr4r/reference/edr_supports.md)
+  : Test an advertised EDR capability
+- [`edr_diagnose()`](https://ksonda.github.io/edr4r/reference/edr_diagnose.md)
+  : Diagnose an EDR endpoint's discovery surface
 - [`edr_parameters()`](https://ksonda.github.io/edr4r/reference/edr_parameters.md)
   : List the data parameters a collection serves
 - [`edr_queryables()`](https://ksonda.github.io/edr4r/reference/edr_queryables.md)

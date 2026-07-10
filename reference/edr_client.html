@@ -11,7 +11,7 @@ applied to every request."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">edr4r</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -23,6 +23,7 @@ applied to every request."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started.html">Getting started with edr4r</a></li>
+    <li><a class="dropdown-item" href="../articles/compatibility.html">EDR compatibility and supported scope</a></li>
     <li><a class="dropdown-item" href="../articles/usgs-streamgages.html">USGS streamgages: discover and map a basin</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -38,7 +39,7 @@ applied to every request."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Create an EDR client</h1>
-      <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/0.1.1/R/client.R" class="external-link"><code>R/client.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/main/R/client.R" class="external-link"><code>R/client.R</code></a></small>
       <div class="d-none name"><code>edr_client.Rd</code></div>
     </div>
 
@@ -56,6 +57,7 @@ applied to every request.</p>
 <span>  timeout <span class="op">=</span> <span class="fl">60</span>,</span>
 <span>  max_tries <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>  retry_on_failure <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  cache_ttl <span class="op">=</span> <span class="fl">300</span>,</span>
 <span>  headers <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -98,6 +100,13 @@ requests made by this package are read-only GET requests, so retrying
 them is safe.</p></dd>
 
 
+<dt id="arg-cache-ttl">cache_ttl<a class="anchor" aria-label="anchor" href="#arg-cache-ttl"></a></dt>
+<dd><p>Number of seconds to retain discovery responses in this
+client's in-memory cache. Defaults to 300 (five minutes). Use <code>0</code> to
+disable caching or <code>Inf</code> to retain metadata until <code><a href="edr_cache_clear.html">edr_cache_clear()</a></code> is
+called. Data-query responses are never cached.</p></dd>
+
+
 <dt id="arg-headers">headers<a class="anchor" aria-label="anchor" href="#arg-headers"></a></dt>
 <dd><p>Named character vector of extra headers attached to
 every request (e.g. <code>c(Authorization = "Bearer ...")</code>).</p></dd>
@@ -119,10 +128,11 @@ are made. Useful for debugging.</p></dd>
 <span class="r-in"><span><span class="va">usgs</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;edr_client&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   base_url:   <span style="color: #0000BB; font-style: italic;">&lt;https://api.waterdata.usgs.gov/ogcapi/beta&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   user_agent: edr4r/0.1.1 (+https://github.com/ksonda/edr4r)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   user_agent: edr4r/0.1.1.9000 (+https://github.com/ksonda/edr4r)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   timeout:    60s</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   max_tries:  3</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   retry transport failures: TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   discovery cache: 300s</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

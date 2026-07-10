@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">edr4r</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,6 +19,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started.html">Getting started with edr4r</a></li>
+    <li><a class="dropdown-item" href="../articles/compatibility.html">EDR compatibility and supported scope</a></li>
     <li><a class="dropdown-item" href="../articles/usgs-streamgages.html">USGS streamgages: discover and map a basin</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -34,11 +35,17 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/ksonda/edr4r/blob/0.1.1/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/ksonda/edr4r/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.1.1" id="edr4r-011">edr4r 0.1.1<a class="anchor" aria-label="anchor" href="#edr4r-011"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.2.0" id="edr4r-020-development-version">edr4r 0.2.0 (development version)<a class="anchor" aria-label="anchor" href="#edr4r-020-development-version"></a></h2>
+<ul><li>Add structured service and collection capability discovery, support checks, endpoint diagnostics, and per-client TTL caching for discovery metadata.</li>
+<li>Add collection-instance discovery and optional instance-scoped paths across all query verbs and <code><a href="../reference/edr_explore.html">edr_explore()</a></code>.</li>
+<li>Add a documented compatibility contract plus frozen Met Office Labs metadata/terrain fixtures for deterministic cross-server tests.</li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.1" id="edr4r-011">edr4r 0.1.1<a class="anchor" aria-label="anchor" href="#edr4r-011"></a></h2><p class="text-muted">CRAN release: 2026-07-10</p>
 <ul><li>Harden CoverageJSON parsing: honor <code>NdArray$dataType</code>, preserve textual identifiers and invalid/mixed timestamps, validate array shape and axes, support tuple/composite trajectory axes, merge child parameter metadata, and fail clearly for tiled or externally referenced data.</li>
 <li>Return typed empty results for HTTP 204 responses, report single Coverage and Feature documents correctly, and reject JSON error bodies when CSV was requested.</li>
 <li>Retry transient transport failures by default, with a client option to disable them, and exercise retries against a real local HTTP server.</li>

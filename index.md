@@ -1,10 +1,12 @@
 # edr4r
 
-An R client for any service that speaks [OGC API - Environmental Data
-Retrieval](https://ogcapi.ogc.org/edr/) (EDR). The spec is general, but
-in practice this package gets the most use against **in-situ monitoring
-networks** — stream gauges, weather stations, snow telemetry, reservoir
-telemetry — that expose their stations and time series through EDR.
+An R client for [OGC API - Environmental Data
+Retrieval](https://ogcapi.ogc.org/edr/) (EDR) services that expose JSON
+discovery metadata and CoverageJSON, GeoJSON, or CSV query responses.
+The spec is general, but in practice this package gets the most use
+against **in-situ monitoring networks** — stream gauges, weather
+stations, snow telemetry, reservoir telemetry — that expose their
+stations and time series through EDR.
 
 Two known-good places to point it:
 
@@ -32,27 +34,36 @@ do data analysis with:
   [`covjson_to_tibble()`](https://ksonda.github.io/edr4r/reference/covjson_to_tibble.md).
 - **GeoJSON** → an [`sf`](https://r-spatial.github.io/sf/) object, via
   [`geojson_to_sf()`](https://ksonda.github.io/edr4r/reference/geojson_to_sf.md).
+- **CSV** → a `tibble`, parsed directly by the query helper.
 
 ## Installation
 
-Install the released version from CRAN:
+CRAN currently provides the stable `0.1.1` release:
 
 ``` r
 
 install.packages("edr4r")
 ```
 
-Or the development version from GitHub:
+The upcoming `0.2.0` API is available as a GitHub-only release
+candidate. It has not been submitted to CRAN:
 
 ``` r
 
 # install.packages("pak")
+pak::pak("ksonda/edr4r@v0.2.0-rc.1")
+
+# Follow the mutable development branch instead:
 pak::pak("ksonda/edr4r")
 
 # or
 # install.packages("remotes")
-remotes::install_github("ksonda/edr4r")
+remotes::install_github("ksonda/edr4r@v0.2.0-rc.1")
 ```
+
+The release-candidate package intentionally reports development version
+`0.1.1.9000` inside R. The final version will become `0.2.0` only when
+that release is prepared for CRAN.
 
 For local development:
 
@@ -78,21 +89,33 @@ client <- edr_client("https://api.waterdata.usgs.gov/ogcapi/beta")
 # or "https://api.wwdh.internetofwater.app"
 # or "http://localhost:5005" if you're running pygeoapi locally
 
-edr_collections(client)
-#> # A tibble: N × 7
-#>   id                   title                description  extent_bbox crs   data_queries links
-#>   <chr>                <chr>                <chr>        <list>      <chr> <list>       <list>
-#> 1 monitoring-locations Monitoring locations ...          <dbl [4]>   ...   <chr [3]>    ...
-#> 2 daily-values         Daily values         ...          <dbl [4]>   ...   <chr [3]>    ...
-#> ...
+collections <- edr_collections(client)
+collections[, c("id", "title", "data_queries", "output_formats")]
 ```
 
-The collection IDs above (`monitoring-locations`, `daily-values`) are
-the ones I used as placeholders — every server advertises its own. The
-first thing to do against a new service is run
+Collection IDs are service-specific. The first thing to do against a new
+service is run
 [`edr_collections()`](https://ksonda.github.io/edr4r/reference/edr_collections.md)
 and read the `data_queries` column to see which EDR endpoints each
 collection supports.
+
+For a new or unfamiliar implementation, inspect its advertised support
+before issuing data queries:
+
+``` r
+
+edr_capabilities(client, "daily-edr")
+edr_supports(client, "daily-edr", query = "locations")
+edr_diagnose(client, "daily-edr")
+```
+
+[`edr_supports()`](https://ksonda.github.io/edr4r/reference/edr_supports.md)
+reports what metadata advertises; `FALSE` is not proof that a partially
+conformant server cannot handle the request.
+
+Discovery metadata is cached per client for a short, configurable
+period. Use `refresh = TRUE` when current server state matters, or
+`edr_cache_clear(client)` to clear it explicitly.
 
 To try the non-operational Met Office demonstrator with a deliberately
 small request, query one terrain point rather than a forecast
@@ -117,6 +140,27 @@ covjson_to_tibble(terrain)
 
 This example is also exercised by a scheduled, non-blocking live smoke
 check; it is never run as part of CRAN checks or the regular test suite.
+
+Collections representing model runs may advertise instances. The same
+query verbs work below an instance when `instance_id` is named
+explicitly:
+
+``` r
+
+runs <- edr_instances(met, "moglobal-station-level")
+run_id <- runs$id[[1]]
+
+run_capabilities <- edr_capabilities(
+  met, "moglobal-station-level", instance_id = run_id
+)
+edr_supports(
+  run_capabilities, query = "locations"
+)
+run_locations <- edr_locations(
+  met, "moglobal-station-level",
+  instance_id = run_id
+)
+```
 
 ### Find stations
 
@@ -302,14 +346,15 @@ edr_location(client, "daily-values", "08313000",
              datetime = "2010-01-01/..", format = "csv")
 ```
 
-And if you need to hit an endpoint the package doesn’t wrap (instances,
-custom queryables, anything weird),
+And if you need to hit an endpoint or encoding the package doesn’t wrap,
 [`edr_request()`](https://ksonda.github.io/edr4r/reference/edr_request.md)
 is the raw escape hatch:
 
 ``` r
 
-edr_request(client, "collections/daily-values/instances", format = "json")
+service_description <- edr_request(
+  client, "api", format = "raw", parse = FALSE
+)
 ```
 
 ## API at a glance
@@ -319,7 +364,10 @@ edr_request(client, "collections/daily-values/instances", format = "json")
 | [`edr_client()`](https://ksonda.github.io/edr4r/reference/edr_client.md) | construct a client |
 | [`edr_landing()`](https://ksonda.github.io/edr4r/reference/edr_landing.md) / [`edr_conformance()`](https://ksonda.github.io/edr4r/reference/edr_conformance.md) | `/`, `/conformance` |
 | [`edr_collections()`](https://ksonda.github.io/edr4r/reference/edr_collections.md) / [`edr_collection()`](https://ksonda.github.io/edr4r/reference/edr_collection.md) | `/collections` |
+| [`edr_capabilities()`](https://ksonda.github.io/edr4r/reference/edr_capabilities.md) / [`edr_supports()`](https://ksonda.github.io/edr4r/reference/edr_supports.md) / [`edr_diagnose()`](https://ksonda.github.io/edr4r/reference/edr_diagnose.md) | inspect advertised support |
+| [`edr_cache_clear()`](https://ksonda.github.io/edr4r/reference/edr_cache_clear.md) | clear cached discovery metadata |
 | [`edr_queryables()`](https://ksonda.github.io/edr4r/reference/edr_queryables.md) | `/collections/{id}/queryables` |
+| [`edr_instances()`](https://ksonda.github.io/edr4r/reference/edr_instances.md) / [`edr_instance()`](https://ksonda.github.io/edr4r/reference/edr_instances.md) | `/collections/{id}/instances[/{instance}]` |
 | [`edr_locations()`](https://ksonda.github.io/edr4r/reference/edr_locations.md) / [`edr_location()`](https://ksonda.github.io/edr4r/reference/edr_location.md) | `/collections/{id}/locations[/{loc}]` |
 | [`edr_items()`](https://ksonda.github.io/edr4r/reference/edr_items.md) / [`edr_item()`](https://ksonda.github.io/edr4r/reference/edr_items.md) | `/collections/{id}/items[/{item}]` |
 | [`edr_position()`](https://ksonda.github.io/edr4r/reference/edr_position.md) | `/collections/{id}/position` |
@@ -331,6 +379,10 @@ edr_request(client, "collections/daily-values/instances", format = "json")
 | [`edr_request()`](https://ksonda.github.io/edr4r/reference/edr_request.md) | low-level escape hatch |
 | [`covjson_to_tibble()`](https://ksonda.github.io/edr4r/reference/covjson_to_tibble.md) / [`geojson_to_sf()`](https://ksonda.github.io/edr4r/reference/geojson_to_sf.md) | response parsers |
 
+Every collection query helper also accepts named `instance_id =`; when
+set, the path becomes
+`/collections/{id}/instances/{instance_id}/{query}`.
+
 > **What a server actually supports varies.** Every query verb above is
 > in the [EDR spec](https://ogcapi.ogc.org/edr/) and supported by the
 > client, but most servers implement only a subset. On in-situ
@@ -340,6 +392,12 @@ edr_request(client, "collections/daily-values/instances", format = "json")
 > `data_queries` column from
 > [`edr_collections()`](https://ksonda.github.io/edr4r/reference/edr_collections.md)
 > before you assume a query will work.
+
+See
+[`vignette("compatibility")`](https://ksonda.github.io/edr4r/articles/compatibility.md)
+for the precise supported subset, return formats, known limitations, and
+the distinction between verified and merely advertised endpoint
+behavior.
 
 ## Common parameters
 
@@ -358,6 +416,8 @@ Every query verb accepts the standard EDR filters:
   WKT string, a numeric vector / 2-column matrix of lon-lat, or an
   `sf`/`sfc` geometry.
 - `z`, `crs`, `limit` — passed through when supplied.
+- `instance_id` — named, optional model-run/version identifier; inserts
+  the standard `/instances/{id}` path segment before the query type.
 - `...` — any extra query parameter is forwarded verbatim.
 
 ## License

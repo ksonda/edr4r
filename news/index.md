@@ -1,6 +1,19 @@
 # Changelog
 
+## edr4r 0.2.0 (development version)
+
+- Add structured service and collection capability discovery, support
+  checks, endpoint diagnostics, and per-client TTL caching for discovery
+  metadata.
+- Add collection-instance discovery and optional instance-scoped paths
+  across all query verbs and
+  [`edr_explore()`](https://ksonda.github.io/edr4r/reference/edr_explore.md).
+- Add a documented compatibility contract plus frozen Met Office Labs
+  metadata/terrain fixtures for deterministic cross-server tests.
+
 ## edr4r 0.1.1
+
+CRAN release: 2026-07-10
 
 - Harden CoverageJSON parsing: honor `NdArray$dataType`, preserve
   textual identifiers and invalid/mixed timestamps, validate array shape

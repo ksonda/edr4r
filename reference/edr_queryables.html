@@ -17,7 +17,7 @@ use edr_parameters()."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">edr4r</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,6 +29,7 @@ use edr_parameters()."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started.html">Getting started with edr4r</a></li>
+    <li><a class="dropdown-item" href="../articles/compatibility.html">EDR compatibility and supported scope</a></li>
     <li><a class="dropdown-item" href="../articles/usgs-streamgages.html">USGS streamgages: discover and map a basin</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -44,7 +45,7 @@ use edr_parameters()."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Get the queryables (filter properties) for a collection</h1>
-      <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/0.1.1/R/discovery.R" class="external-link"><code>R/discovery.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/main/R/discovery.R" class="external-link"><code>R/discovery.R</code></a></small>
       <div class="d-none name"><code>edr_queryables.Rd</code></div>
     </div>
 
@@ -59,7 +60,7 @@ use <code><a href="edr_parameters.html">edr_parameters()</a></code>.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">edr_queryables</span><span class="op">(</span><span class="va">client</span>, <span class="va">collection_id</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">edr_queryables</span><span class="op">(</span><span class="va">client</span>, <span class="va">collection_id</span>, refresh <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -73,6 +74,11 @@ use <code><a href="edr_parameters.html">edr_parameters()</a></code>.</p>
 <dt id="arg-collection-id">collection_id<a class="anchor" aria-label="anchor" href="#arg-collection-id"></a></dt>
 <dd><p>Collection identifier as advertised by the
 server – e.g. <code>"monitoring-locations"</code> or <code>"daily-values"</code>.</p></dd>
+
+
+<dt id="arg-refresh">refresh<a class="anchor" aria-label="anchor" href="#arg-refresh"></a></dt>
+<dd><p>If <code>TRUE</code>, bypass and replace any cached response. Discovery
+responses otherwise use the client's <code>cache_ttl</code>; see <code><a href="edr_client.html">edr_client()</a></code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

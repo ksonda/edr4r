@@ -16,7 +16,8 @@ edr_radius(
   z = NULL,
   crs = NULL,
   format = c("covjson", "json"),
-  ...
+  ...,
+  instance_id = NULL
 )
 ```
 
@@ -68,6 +69,12 @@ edr_radius(
 - ...:
 
   Additional query parameters passed through verbatim.
+
+- instance_id:
+
+  Optional instance identifier. When supplied, the request is sent
+  beneath `/collections/{collection_id}/instances/{instance_id}`. This
+  keyword-only argument leaves existing positional calls unchanged.
 
 ## Value
 
