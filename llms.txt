@@ -15,6 +15,13 @@ Two known-good places to point it:
   [pygeoapi](https://pygeoapi.io) deployment that wraps RISE, SNOTEL,
   USACE, AWDB and other monitoring sources behind a single EDR endpoint.
 
+For cross-server experiments, the [Met Office Labs EDR
+demonstrator](https://labs.metoffice.gov.uk/edr/collections?f=html) is
+another useful endpoint. It is a **technical demonstrator, not an
+operational service**: availability, collections, and response details
+can change without notice, so do not build production workflows around
+it.
+
 The goal is to take the tedious parts of EDR off your hands — URL
 construction, comma-separated parameter lists, WKT coordinate encoding,
 retries, content negotiation — and hand back something you can actually
@@ -86,6 +93,30 @@ first thing to do against a new service is run
 [`edr_collections()`](https://ksonda.github.io/edr4r/reference/edr_collections.md)
 and read the `data_queries` column to see which EDR endpoints each
 collection supports.
+
+To try the non-operational Met Office demonstrator with a deliberately
+small request, query one terrain point rather than a forecast
+collection:
+
+``` r
+
+met <- edr_client(
+  "https://labs.metoffice.gov.uk/edr",
+  timeout = 10,
+  max_tries = 1
+)
+
+terrain <- edr_position(
+  met,
+  "terrain_tiles",
+  coords = c(-0.1276, 51.5072),
+  parameter_name = "Height"
+)
+covjson_to_tibble(terrain)
+```
+
+This example is also exercised by a scheduled, non-blocking live smoke
+check; it is never run as part of CRAN checks or the regular test suite.
 
 ### Find stations
 

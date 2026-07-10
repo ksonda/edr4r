@@ -61,3 +61,8 @@ edr_item(client, collection_id, item_id, format = c("geojson", "json"), ...)
 - item_id:
 
   Identifier of a single feature.
+
+## Value
+
+An `sf` object when `sf` is installed and the server returns GeoJSON;
+otherwise an `edr_response` wrapping the GeoJSON document.

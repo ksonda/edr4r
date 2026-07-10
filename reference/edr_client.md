@@ -12,6 +12,7 @@ edr_client(
   user_agent = NULL,
   timeout = 60,
   max_tries = 3,
+  retry_on_failure = TRUE,
   headers = NULL,
   verbose = FALSE
 )
@@ -44,6 +45,12 @@ edr_client(
   Maximum number of attempts per request. The client retries on 408,
   429, and 5xx responses with exponential backoff. Defaults to 3.
 
+- retry_on_failure:
+
+  If `TRUE` (default), retry low-level transport failures such as
+  connection resets and transient DNS / TLS errors. EDR requests made by
+  this package are read-only GET requests, so retrying them is safe.
+
 - headers:
 
   Named character vector of extra headers attached to every request
@@ -65,7 +72,8 @@ usgs <- edr_client("https://api.waterdata.usgs.gov/ogcapi/beta")
 usgs
 #> <edr_client>
 #>   base_url:   <https://api.waterdata.usgs.gov/ogcapi/beta>
-#>   user_agent: edr4r/0.1.0 (+https://github.com/ksonda/edr4r)
+#>   user_agent: edr4r/0.1.0.9000 (+https://github.com/ksonda/edr4r)
 #>   timeout:    60s
 #>   max_tries:  3
+#>   retry transport failures: TRUE
 ```

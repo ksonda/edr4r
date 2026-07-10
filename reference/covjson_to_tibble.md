@@ -1,10 +1,11 @@
 # Convert a CoverageJSON response to a tidy tibble
 
 Flattens a CoverageJSON `Coverage` or `CoverageCollection` into a long
-tibble with one row per (coverage, parameter, time-step). Handles the
-`Point` and `PointSeries` domain types used by station-based EDR
-providers, and falls back to a general N-dimensional unrolling for
-`Grid`-like domains.
+tibble with one row per (coverage, parameter, domain position). Handles
+primitive, regularly spaced, and composite tuple axes, including the
+axes used by `Grid`, `PointSeries`, `MultiPointSeries`, and `Trajectory`
+domains. Inline `NdArray` ranges are validated before they are
+flattened.
 
 ## Usage
 

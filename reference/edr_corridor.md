@@ -10,7 +10,7 @@ edr_corridor(
   collection_id,
   coords,
   corridor_width,
-  corridor_height = NULL,
+  corridor_height,
   width_units = "km",
   height_units = "m",
   datetime = NULL,
@@ -43,7 +43,8 @@ edr_corridor(
 
 - corridor_height:
 
-  Optional vertical extent.
+  Vertical extent of the corridor. Required by the EDR corridor query
+  requirements.
 
 - width_units:
 
@@ -73,8 +74,14 @@ edr_corridor(
 
 - format:
 
-  `"covjson"` (default), `"geojson"`, `"csv"`, or `"json"`.
+  `"covjson"` (default) or `"json"`.
 
 - ...:
 
   Additional query parameters passed through verbatim.
+
+## Value
+
+An `edr_response` containing the server's CoverageJSON response. Convert
+it with
+[`covjson_to_tibble()`](https://ksonda.github.io/edr4r/reference/covjson_to_tibble.md).

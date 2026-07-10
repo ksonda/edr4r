@@ -50,5 +50,5 @@ edr_request(
 
 ## Value
 
-The parsed body (list / tibble / sf) or an `httr2_response` when
-`parse = FALSE`.
+A parsed list, tibble, or `edr_response` wrapper; an `httr2_response`
+when `parse = FALSE`; or a typed empty result for HTTP 204 responses.

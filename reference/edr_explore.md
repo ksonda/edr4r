@@ -1,13 +1,15 @@
 # One-shot fetch + plot + map for a collection
 
-Convenience wrapper that finds stations via
-[`edr_locations()`](https://ksonda.github.io/edr4r/reference/edr_locations.md),
-fetches time series with **one** bulk request via
+Convenience wrapper that plans a supported query, fetches data with
+**one** bulk request via
 [`edr_cube()`](https://ksonda.github.io/edr4r/reference/edr_cube.md) or
 [`edr_area()`](https://ksonda.github.io/edr4r/reference/edr_area.md)
-when the collection supports it, and hands the lot to
-[`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md) for
-rendering. Optionally writes the map to a selfcontained HTML file.
+when possible, and hands the result to
+[`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md) or
+[`edr_plot()`](https://ksonda.github.io/edr4r/reference/edr_plot.md).
+Station locations are requested only when the result needs a station map
+or a per-location fallback. Optionally writes a map to a self-contained
+HTML file.
 
 ## Usage
 
@@ -21,6 +23,7 @@ edr_explore(
   parameter_name = NULL,
   limit = NULL,
   record_limit = NULL,
+  max_requests = 100L,
   file = NULL,
   popup = "plot+csv",
   method = c("auto", "cube", "area", "position", "per-location"),
@@ -77,6 +80,12 @@ edr_explore(
   in the per-location path. Useful for servers (e.g. USGS waterdata)
   that cap responses at ~10 records by default. Ignored on the cube and
   area paths.
+
+- max_requests:
+
+  Maximum number of per-location data requests permitted in one call.
+  Defaults to 100. Set to `Inf` only when an intentionally unbounded
+  batch is acceptable. Ignored by bulk methods.
 
 - file:
 

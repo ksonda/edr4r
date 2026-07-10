@@ -65,3 +65,12 @@ edr_location(
 - ...:
 
   Additional query parameters passed through verbatim.
+
+## Value
+
+An `edr_response` containing CoverageJSON or GeoJSON, or a tibble for
+CSV responses. Use
+[`covjson_to_tibble()`](https://ksonda.github.io/edr4r/reference/covjson_to_tibble.md)
+or
+[`geojson_to_sf()`](https://ksonda.github.io/edr4r/reference/geojson_to_sf.md)
+to convert structured JSON responses.

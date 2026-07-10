@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">edr4r</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,8 +39,12 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="edr4r-development-version">edr4r (development version)<a class="anchor" aria-label="anchor" href="#edr4r-development-version"></a></h2>
-<ul><li>Preserve mixed numeric/text CoverageJSON values as character instead of silently converting text values to <code>NA</code>.</li>
-<li>Make <code>edr_explore(method = "auto")</code> choose bulk spatial queries only when the matching spatial input is supplied.</li>
+<ul><li>Harden CoverageJSON parsing: honor <code>NdArray$dataType</code>, preserve textual identifiers and invalid/mixed timestamps, validate array shape and axes, support tuple/composite trajectory axes, merge child parameter metadata, and fail clearly for tiled or externally referenced data.</li>
+<li>Return typed empty results for HTTP 204 responses, report single Coverage and Feature documents correctly, and reject JSON error bodies when CSV was requested.</li>
+<li>Retry transient transport failures by default, with a client option to disable them, and exercise retries against a real local HTTP server.</li>
+<li>Make <code>corridor_height</code> required, validate radius/corridor distances and units, and reject non-finite or reversed bounding boxes consistently.</li>
+<li>Make <code>edr_explore(method = "auto")</code> choose bulk spatial queries only when the matching spatial input is supplied. Capability discovery failures now stop before an accidental per-station request fan-out.</li>
+<li>Add a <code>max_requests</code> safety cap to per-location exploration, preserve station identity in combined plots, and avoid optional location discovery calls for grid/profile and data-only bulk results.</li>
 <li>Add grid and vertical-profile plot views to <code><a href="../reference/edr_plot.html">edr_plot()</a></code>, with automatic view detection.</li>
 <li>Allow <code><a href="../reference/edr_explore.html">edr_explore()</a></code> to return plots or data for gridded/profile coverage queries, including <code>method = "position"</code> for profile-style responses.</li>
 <li>Add interactive coverage maps to <code><a href="../reference/edr_map.html">edr_map()</a></code> and <code><a href="../reference/edr_explore.html">edr_explore()</a></code>, with in-map selectors for gridded coverage slices (<code>parameter</code>, <code>datetime</code>, <code>z</code>) and profile selectors for <code>parameter</code> / <code>datetime</code>.</li>
@@ -48,6 +52,10 @@
 <li>Warn when per-station <code><a href="../reference/edr_explore.html">edr_explore()</a></code> fallback fetches fail.</li>
 <li>Tighten collection-id, coordinate, and WKT validation.</li>
 <li>Add <code>max_match_distance</code> to <code><a href="../reference/edr_map.html">edr_map()</a></code> for bounded spatial matching.</li>
+<li>Fix map filtering and matching so blank JavaScript values remain missing, requested parameters determine station availability, and all coverage groups assigned to the same station are retained.</li>
+<li>Run R CMD check and coverage workflows on the <code>dev</code> branch as well as the release branch.</li>
+<li>Add a real headless-Chrome smoke test for coverage-map controls, redraws, popups, and uncaught JavaScript errors.</li>
+<li>Document the non-operational Met Office Labs EDR demonstrator and probe one tiny terrain query in a weekly/manual, non-blocking interoperability job.</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="edr4r-010">edr4r 0.1.0<a class="anchor" aria-label="anchor" href="#edr4r-010"></a></h2><p class="text-muted">CRAN release: 2026-06-18</p>
@@ -66,7 +74,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

@@ -55,8 +55,14 @@ edr_area(
 
 - format:
 
-  `"covjson"` (default), `"geojson"`, `"csv"`, or `"json"`.
+  `"covjson"` (default) or `"json"`.
 
 - ...:
 
   Additional query parameters passed through verbatim.
+
+## Value
+
+An `edr_response` containing the server's CoverageJSON response. Convert
+it with
+[`covjson_to_tibble()`](https://ksonda.github.io/edr4r/reference/covjson_to_tibble.md).

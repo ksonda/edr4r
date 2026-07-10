@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">edr4r</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -78,6 +78,12 @@ OGC API</a></li>
 <li><a href="https://api.wwdh.internetofwater.app" class="external-link">Western Water
 Datahub</a></li>
 </ul>
+<p>The <a href="https://labs.metoffice.gov.uk/edr/collections?f=html" class="external-link">Met Office
+Labs EDR demonstrator</a> is another useful endpoint for cross-server
+experiments. It is a <strong>technical demonstrator, not an operational
+service</strong>: its availability, collections, and response details
+may change without notice, so it should not be used as a production
+dependency.</p>
 <p>This vignette uses the Western Water Datahub’s <code>rise-edr</code>
 collection as one real endpoint for demonstrating the core
 <code>edr4r</code> workflow. WWDH dataset notes, raw HTTP walkthroughs,
@@ -111,13 +117,38 @@ USGS example lives in its own article,
 <p>The client just stores connection settings (base URL, user agent,
 timeout, retry policy). Pass <code>verbose = TRUE</code> to echo every
 request URL, or <code>headers =</code> to attach auth tokens.</p>
+<div class="section level3">
+<h3 id="try-a-second-edr-implementation">Try a second EDR implementation<a class="anchor" aria-label="anchor" href="#try-a-second-edr-implementation"></a>
+</h3>
+<p>A small terrain lookup is a low-cost way to exercise the
+non-operational Met Office demonstrator without downloading forecast
+data:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">met_client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_client.html">edr_client</a></span><span class="op">(</span></span>
+<span>  <span class="st">"https://labs.metoffice.gov.uk/edr"</span>,</span>
+<span>  timeout <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  max_tries <span class="op">=</span> <span class="fl">1</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">terrain</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_position.html">edr_position</a></span><span class="op">(</span></span>
+<span>  <span class="va">met_client</span>,</span>
+<span>  <span class="st">"terrain_tiles"</span>,</span>
+<span>  coords <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">0.1276</span>, <span class="fl">51.5072</span><span class="op">)</span>,</span>
+<span>  parameter_name <span class="op">=</span> <span class="st">"Height"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">terrain</span><span class="op">)</span></span></code></pre></div>
+<p>Because the endpoint is explicitly experimental, this request is not
+run when the vignette is built or during <code>R CMD check</code>. The
+repository exercises it separately in a scheduled, non-blocking live
+smoke check.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="discover-collections-and-parameters">2. Discover collections and parameters<a class="anchor" aria-label="anchor" href="#discover-collections-and-parameters"></a>
 </h2>
 <p><code><a href="../reference/edr_collections.html">edr_collections()</a></code> lists every EDR collection the service
 serves.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">collections</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_collections.html">edr_collections</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span></span>
 <span><span class="va">collections</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"title"</span>, <span class="st">"data_queries"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt; # A tibble: 35 × 3</span></span>
@@ -141,7 +172,7 @@ get an HTTP error.</p>
 <p>To see the data parameters a collection exposes (the values you can
 pass to <code>parameter_name =</code> on the query verbs), use
 <code><a href="../reference/edr_parameters.html">edr_parameters()</a></code>:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">params</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_parameters.html">edr_parameters</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"rise-edr"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">params</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 782</span></span>
@@ -159,7 +190,7 @@ pass to <code>parameter_name =</code> on the query verbs), use
 OGC queryables JSON Schema (filter properties for CQL2 / OGC API
 Features). For discovering parameter names,
 <code><a href="../reference/edr_parameters.html">edr_parameters()</a></code> is what you want.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Pick out the daily reservoir storage parameter (id "3"):</span></span>
 <span><span class="va">params</span><span class="op">[</span><span class="va">params</span><span class="op">$</span><span class="va">id</span> <span class="op">==</span> <span class="st">"3"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"name"</span>, <span class="st">"unit_symbol"</span>, <span class="st">"unit_label"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt; # A tibble: 1 × 4</span></span>
@@ -174,7 +205,7 @@ Features). For discovering parameter names,
 index as a GeoJSON <code>FeatureCollection</code>, promoted to an
 <code>sf</code> object when <a href="https://r-spatial.github.io/sf/" class="external-link"><code>sf</code></a> is
 installed:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stations</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_locations.html">edr_locations</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"rise-edr"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">stations</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 926</span></span>
@@ -203,7 +234,7 @@ verbs accept either, and <code><a href="../reference/edr_map.html">edr_map()</a>
 <p>Pick a known station (Lake Mead, <code>_id</code> 3514) and a
 parameter (<code>3</code>, Daily Reservoir Storage) and you get
 CoverageJSON back. Flatten it with <code><a href="../reference/covjson_to_tibble.html">covjson_to_tibble()</a></code>:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_location.html">edr_location</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>, <span class="st">"rise-edr"</span>,</span>
 <span>  location_id    <span class="op">=</span> <span class="fl">3514</span>,</span>
@@ -229,7 +260,7 @@ CoverageJSON back. Flatten it with <code><a href="../reference/covjson_to_tibble
 </h2>
 <p><code><a href="../reference/edr_plot.html">edr_plot()</a></code> is a small <code>ggplot2</code> wrapper for
 the tidy tibble:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/edr_plot.html">edr_plot</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"Lake Mead — daily reservoir storage"</span><span class="op">)</span></span></code></pre></div>
 <div class="figure">
@@ -249,7 +280,7 @@ coloured by station. Add layers or themes like any other ggplot.</p>
 popups – much faster than fetching one station at a time.
 <code>rise-edr</code> advertises <code>cube</code>, so the default
 <code>method = "auto"</code> takes that path.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_explore.html">edr_explore</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>, <span class="st">"rise-edr"</span>,</span>
 <span>  bbox           <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">114</span>, <span class="fl">32</span>, <span class="op">-</span><span class="fl">111</span>, <span class="fl">38</span><span class="op">)</span>,         <span class="co"># SW US</span></span>
@@ -269,7 +300,7 @@ parameter/window are dimmed grey. A legend in the bottom-right explains
 the distinction.</p>
 <p>Save the same map to standalone HTML (selfcontained, no sidecar
 directory):</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/edr_save_html.html">edr_save_html</a></span><span class="op">(</span><span class="va">m</span>, <span class="st">"reservoir-southwest.html"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
@@ -323,7 +354,7 @@ presentation material.</li>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

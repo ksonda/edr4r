@@ -73,8 +73,10 @@ edr_map(
 
 - parameter:
 
-  Optional character vector restricting which parameters get plotted in
-  each popup.
+  Optional character vector restricting which parameters are displayed.
+  On station maps, the filtered rows also determine whether a station is
+  marked as having data. On coverage maps, only matching rows are
+  included in the widget payload.
 
 - plot_width, plot_height:
 
