@@ -4,10 +4,13 @@
 \alias{edr_conformance}
 \title{Declared OGC API conformance classes}
 \usage{
-edr_conformance(client)
+edr_conformance(client, refresh = FALSE)
 }
 \arguments{
 \item{client}{An \code{edr_client}.}
+
+\item{refresh}{If \code{TRUE}, bypass and replace any cached response. Discovery
+responses otherwise use the client's \code{cache_ttl}; see \code{\link[=edr_client]{edr_client()}}.}
 }
 \value{
 A character vector of conformance class URIs.

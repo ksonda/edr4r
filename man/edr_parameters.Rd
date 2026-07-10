@@ -4,18 +4,21 @@
 \alias{edr_parameters}
 \title{List the data parameters a collection serves}
 \usage{
-edr_parameters(client, collection_id)
+edr_parameters(client, collection_id, refresh = FALSE)
 }
 \arguments{
 \item{client}{An \code{edr_client}.}
 
 \item{collection_id}{Collection identifier as advertised by the
 server -- e.g. \code{"monitoring-locations"} or \code{"daily-values"}.}
+
+\item{refresh}{If \code{TRUE}, bypass and replace any cached response. Discovery
+responses otherwise use the client's \code{cache_ttl}; see \code{\link[=edr_client]{edr_client()}}.}
 }
 \value{
 A tibble with one row per parameter. Columns:
-\code{id}, \code{name}, \code{description}, \code{unit_symbol}, \code{unit_label},
-\code{observed_property}.
+\code{id}, \code{name}, \code{description}, unit and observed-property metadata,
+\code{data_type}, \code{measurement_type}, \code{extent}, category metadata, and \code{raw}.
 }
 \description{
 Pulls the \code{parameter_names} block out of the collection document

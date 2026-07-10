@@ -15,7 +15,8 @@ edr_radius(
   z = NULL,
   crs = NULL,
   format = c("covjson", "json"),
-  ...
+  ...,
+  instance_id = NULL
 )
 }
 \arguments{
@@ -43,6 +44,10 @@ on. Sent as a comma-separated \verb{parameter-name=} query.}
 \item{format}{\code{"covjson"} (default) or \code{"json"}.}
 
 \item{...}{Additional query parameters passed through verbatim.}
+
+\item{instance_id}{Optional instance identifier. When supplied, the request
+is sent beneath \verb{/collections/\{collection_id\}/instances/\{instance_id\}}.
+This keyword-only argument leaves existing positional calls unchanged.}
 }
 \value{
 An \code{edr_response} containing the server's CoverageJSON response.

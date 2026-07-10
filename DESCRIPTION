@@ -1,22 +1,24 @@
 Package: edr4r
 Title: Client for OGC API - Environmental Data Retrieval (EDR)
-Version: 0.1.1
+Version: 0.1.1.9000
 Authors@R:
     person("Kyle", "Onda", role = c("aut", "cre", "cph"),
            email = "konda@lincolninst.edu")
 Description: A tidy R client for services implementing the OGC API -
     Environmental Data Retrieval ('EDR') standard with JSON discovery and
-    'GeoJSON' or 'CoverageJSON' query responses. General purpose, but most
-    of its real-world use is against in-situ monitoring networks
+    'GeoJSON', 'CoverageJSON', or 'CSV' query responses. General purpose,
+    but most of its real-world use is against in-situ monitoring networks
     (stream gauges, weather stations, snow and reservoir telemetry)
     that expose their stations and time series as EDR collections.
     Known working endpoints include the USGS waterdata OGC API and the
-    Western Water Datahub. Provides discovery, query, and parsing
-    helpers for the locations, items, position, area, cube, radius,
-    trajectory, and corridor query types. Returns 'CoverageJSON' as
-    tidy 'tibble' rows and 'GeoJSON' as 'sf' objects.
+    Western Water Datahub. Provides cached capability and instance discovery,
+    endpoint diagnostics, and query/parsing helpers for the locations, items,
+    position, area, cube, radius, trajectory, and corridor query types.
+    Converts 'CoverageJSON' to tidy 'tibble' rows, parses 'CSV' as tibbles,
+    and converts 'GeoJSON' to 'sf' objects.
 License: MIT + file LICENSE
-URL: https://github.com/ksonda/edr4r
+URL: https://github.com/ksonda/edr4r,
+    https://ksonda.github.io/edr4r/
 BugReports: https://github.com/ksonda/edr4r/issues
 Encoding: UTF-8
 Depends:

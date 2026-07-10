@@ -4,10 +4,13 @@
 \alias{edr_landing}
 \title{EDR service landing page}
 \usage{
-edr_landing(client)
+edr_landing(client, refresh = FALSE)
 }
 \arguments{
 \item{client}{An \code{edr_client}.}
+
+\item{refresh}{If \code{TRUE}, bypass and replace any cached response. Discovery
+responses otherwise use the client's \code{cache_ttl}; see \code{\link[=edr_client]{edr_client()}}.}
 }
 \value{
 A list with the parsed landing document.

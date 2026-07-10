@@ -19,6 +19,12 @@ client <- edr_client(
   max_tries = 1
 )
 
+service_capabilities <- edr_capabilities(client)
+if (!edr_supports(service_capabilities, conformance = "edr/core")) {
+  stop("The service no longer advertises the EDR core conformance class.",
+       call. = FALSE)
+}
+
 collections <- edr_collections(client)
 if (!is.data.frame(collections) || nrow(collections) < 1L) {
   stop("Collection discovery returned no collections.", call. = FALSE)
@@ -30,6 +36,59 @@ if (nrow(terrain_row) != 1L) {
 }
 if (!"position" %in% terrain_row$data_queries[[1L]]) {
   stop("terrain_tiles no longer advertises a position query.", call. = FALSE)
+}
+
+terrain_capabilities <- edr_capabilities(client, "terrain_tiles")
+if (!edr_supports(
+  terrain_capabilities,
+  query = "position",
+  format = "CoverageJSON"
+)) {
+  stop("terrain_tiles no longer advertises position as CoverageJSON.",
+       call. = FALSE)
+}
+
+message("Checking forecast-instance discovery ...")
+forecast_collection <- "moglobal-station-level"
+runs <- edr_instances(client, forecast_collection)
+valid_run_ids <- if (is.data.frame(runs) && "id" %in% names(runs)) {
+  runs$id[!is.na(runs$id) & nzchar(trimws(runs$id))]
+} else {
+  character()
+}
+if (length(valid_run_ids) == 0L) {
+  stop("Forecast instance discovery returned no usable instance ids.",
+       call. = FALSE)
+}
+run_id <- valid_run_ids[[1L]]
+run_capabilities <- edr_capabilities(
+  client,
+  forecast_collection,
+  instance_id = run_id
+)
+if (!edr_supports(
+  run_capabilities,
+  query = "locations"
+)) {
+  stop("The forecast instance no longer advertises a locations query.",
+       call. = FALSE)
+}
+run_locations <- edr_locations(
+  client,
+  forecast_collection,
+  instance_id = run_id
+)
+run_location_count <- if (is.data.frame(run_locations)) {
+  nrow(run_locations)
+} else if (inherits(run_locations, "edr_geojson")) {
+  features <- run_locations$geojson$features
+  if (is.null(features)) 0L else length(features)
+} else {
+  0L
+}
+if (run_location_count < 1L) {
+  stop("The forecast instance locations query returned no features.",
+       call. = FALSE)
 }
 
 message("Checking one terrain position (timeout ", request_timeout, "s) ...")
@@ -53,7 +112,9 @@ if (!any(is.finite(terrain_data$value))) {
 
 message(
   "Met Office Labs smoke check passed: ", nrow(collections),
-  " collections; terrain height = ",
+  " collections; forecast instance ", run_id,
+  " with ", run_location_count, " locations",
+  "; terrain height = ",
   format(terrain_data$value[which(is.finite(terrain_data$value))[1L]], digits = 6),
   " ", terrain_data$unit[which(is.finite(terrain_data$value))[1L]], "."
 )

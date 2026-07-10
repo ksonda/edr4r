@@ -1,0 +1,100 @@
+{
+  "instances": [
+    {
+      "id": "2024070900",
+      "title": "Global model run 2024-07-09 00Z",
+      "description": "A frozen forecast model instance.",
+      "keywords": ["forecast", "model run"],
+      "extent": {
+        "spatial": {
+          "bbox": [[-180, -90, 180, 90]],
+          "crs": "CRS84"
+        },
+        "temporal": {
+          "interval": [["2024-07-09T00:00:00Z", "2024-07-14T00:00:00Z"]]
+        },
+        "vertical": {
+          "interval": [[0, 10000]],
+          "vrs": "EPSG:5703"
+        }
+      },
+      "crs": ["CRS84", "EPSG:4326"],
+      "output_formats": ["CoverageJSON", "NetCDF"],
+      "parameter_names": {
+        "air_temperature": {
+          "type": "Parameter",
+          "observedProperty": {"label": "Air temperature"}
+        }
+      },
+      "data_queries": {
+        "position": {
+          "link": {
+            "href": "https://example.test/collections/model/instances/2024070900/position",
+            "variables": {
+              "title": "Position query",
+              "query_type": "position",
+              "output_formats": ["CoverageJSON", "CSV"],
+              "default_output_format": "CoverageJSON"
+            }
+          }
+        },
+        "cube": {
+          "link": {
+            "href": "https://example.test/collections/model/instances/2024070900/cube",
+            "variables": {
+              "title": "Cube query",
+              "query_type": "cube",
+              "output_formats": ["CoverageJSON", "NetCDF"],
+              "default_output_format": "CoverageJSON"
+            }
+          }
+        },
+        "locations": {
+          "link": {
+            "href": "https://example.test/collections/model/instances/2024070900/locations",
+            "variables": {
+              "title": "Locations query",
+              "query_type": "locations",
+              "output_formats": ["GeoJSON"]
+            }
+          }
+        }
+      },
+      "links": [
+        {
+          "href": "https://example.test/collections/model/instances/2024070900",
+          "rel": "self",
+          "type": "application/json"
+        }
+      ]
+    },
+    {
+      "id": "analysis 00",
+      "title": "Analysis run",
+      "description": "An instance whose identifier requires path encoding.",
+      "extent": {
+        "spatial": {"bbox": [[-125, 24, -66, 50]]}
+      },
+      "data_queries": {
+        "area": {
+          "link": {
+            "href": "https://example.test/collections/model/instances/analysis%2000/area",
+            "variables": {
+              "title": "Area query",
+              "query_type": "area",
+              "output_formats": ["CoverageJSON"]
+            }
+          }
+        }
+      },
+      "links": []
+    }
+  ],
+  "links": [
+    {
+      "href": "https://example.test/collections/model/instances",
+      "rel": "self",
+      "type": "application/json"
+    }
+  ]
+}

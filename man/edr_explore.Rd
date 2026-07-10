@@ -20,7 +20,8 @@ edr_explore(
   output = c("auto", "map", "plot", "data"),
   plot_view = c("auto", "time", "profile", "grid"),
   quiet = FALSE,
-  ...
+  ...,
+  instance_id = NULL
 )
 }
 \arguments{
@@ -74,6 +75,10 @@ plot. Defaults to \code{"auto"}.}
 falling back to per-location fetches.}
 
 \item{...}{Forwarded to \code{\link[=edr_map]{edr_map()}} when returning a map.}
+
+\item{instance_id}{Optional collection instance identifier. When supplied,
+capability planning and every locations/data request use that instance.
+This keyword-only argument leaves existing positional calls unchanged.}
 }
 \value{
 A \code{leaflet} htmlwidget, a \code{ggplot}, a tidy tibble/list when

@@ -1,0 +1,44 @@
+{
+  "type": "Coverage",
+  "domain": {
+    "type": "Domain",
+    "domainType": "Point",
+    "axes": {
+      "x": {"values": [-0.1276]},
+      "y": {"values": [51.5072]}
+    },
+    "referencing": [
+      {
+        "coordinates": ["x", "y"],
+        "system": {
+          "type": "GeographicCRS",
+          "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+        }
+      }
+    ]
+  },
+  "parameters": {
+    "Height": {
+      "type": "Parameter",
+      "description": {"en": "Height above MSL"},
+      "unit": {
+        "label": {"en": "m"},
+        "symbol": {
+          "value": "m",
+          "type": "https://qudt.org/vocab/unit/M"
+        }
+      },
+      "observedProperty": {
+        "id": "http://vocab.nerc.ac.uk/standard_name/height_above_mean_sea_level/",
+        "label": {"en": "Height"}
+      }
+    }
+  },
+  "ranges": {
+    "Height": {
+      "type": "NdArray",
+      "dataType": "float",
+      "values": [18.9776]
+    }
+  }
+}

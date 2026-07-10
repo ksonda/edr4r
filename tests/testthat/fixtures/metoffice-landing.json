@@ -1,0 +1,24 @@
+{
+  "title": "Environmental Data Retrevial API concept demonstrator",
+  "description": "Example EDR API (not for operational use)",
+  "links": [
+    {
+      "href": "https://labs.metoffice.gov.uk/edr/api",
+      "rel": "service-desc",
+      "type": "application/vnd.oai.openapi+json;version=3.0",
+      "title": "OpenAPI document"
+    },
+    {
+      "href": "https://labs.metoffice.gov.uk/edr/conformance",
+      "rel": "conformance",
+      "type": "application/json",
+      "title": "Conformance document"
+    },
+    {
+      "href": "https://labs.metoffice.gov.uk/edr/collections",
+      "rel": "data",
+      "type": "application/json",
+      "title": "Collections document"
+    }
+  ]
+}

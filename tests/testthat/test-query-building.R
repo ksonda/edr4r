@@ -59,3 +59,24 @@ test_that("bbox validation rejects bad lengths", {
   expect_error(edr4r:::check_bbox(c(4, 2, 1, 3)), "minimum")
   expect_silent(edr4r:::check_bbox(c(1, 2, 3, 4, 5, 6)))
 })
+
+test_that("collection query paths encode instance ids as one segment", {
+  expect_equal(
+    edr4r:::collection_query_path("model", "cube"),
+    "collections/model/cube"
+  )
+  expect_equal(
+    edr4r:::collection_query_path("model family", "cube", "run ?#&"),
+    paste0(
+      "collections/",
+      utils::URLencode("model family", reserved = TRUE),
+      "/instances/",
+      utils::URLencode("run ?#&", reserved = TRUE),
+      "/cube"
+    )
+  )
+  expect_error(
+    edr4r:::collection_query_path("model", "cube", "run/00"),
+    "instance_id.*must not contain"
+  )
+})

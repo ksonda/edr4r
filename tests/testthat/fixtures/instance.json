@@ -1,0 +1,47 @@
+{
+  "id": "2024070900",
+  "title": "Global model run 2024-07-09 00Z",
+  "description": "A frozen forecast model instance.",
+  "extent": {
+    "spatial": {"bbox": [[-180, -90, 180, 90]]},
+    "temporal": {
+      "interval": [["2024-07-09T00:00:00Z", "2024-07-14T00:00:00Z"]]
+    }
+  },
+  "data_queries": {
+    "position": {
+      "link": {
+        "href": "https://example.test/collections/model/instances/2024070900/position",
+        "variables": {
+          "query_type": "position",
+          "output_formats": ["CoverageJSON"]
+        }
+      }
+    },
+    "cube": {
+      "link": {
+        "href": "https://example.test/collections/model/instances/2024070900/cube",
+        "variables": {
+          "query_type": "cube",
+          "output_formats": ["CoverageJSON", "NetCDF"]
+        }
+      }
+    },
+    "locations": {
+      "link": {
+        "href": "https://example.test/collections/model/instances/2024070900/locations",
+        "variables": {
+          "query_type": "locations",
+          "output_formats": ["GeoJSON"]
+        }
+      }
+    }
+  },
+  "links": [
+    {
+      "href": "https://example.test/collections/model/instances/2024070900",
+      "rel": "self",
+      "type": "application/json"
+    }
+  ]
+}

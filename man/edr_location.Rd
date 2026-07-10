@@ -13,7 +13,8 @@ edr_location(
   z = NULL,
   crs = NULL,
   format = c("covjson", "geojson", "csv", "json"),
-  ...
+  ...,
+  instance_id = NULL
 )
 }
 \arguments{
@@ -41,6 +42,10 @@ on. Sent as a comma-separated \verb{parameter-name=} query.}
 \item{format}{\code{"covjson"} (default), \code{"geojson"}, \code{"csv"}, or \code{"json"}.}
 
 \item{...}{Additional query parameters passed through verbatim.}
+
+\item{instance_id}{Optional instance identifier. When supplied, the request
+is sent beneath \verb{/collections/\{collection_id\}/instances/\{instance_id\}}.
+This keyword-only argument leaves existing positional calls unchanged.}
 }
 \value{
 An \code{edr_response} containing CoverageJSON or GeoJSON, or a tibble

@@ -9,8 +9,10 @@ vignette: >
 
 
 
-`edr4r` is a small, tidy client for any service that speaks
-[OGC API - Environmental Data Retrieval](https://ogcapi.ogc.org/edr/).
+`edr4r` is a small, tidy client for
+[OGC API - Environmental Data Retrieval](https://ogcapi.ogc.org/edr/)
+services with JSON discovery metadata and CoverageJSON, GeoJSON, or CSV query
+responses.
 Most of the real-world use to date has been against in-situ monitoring
 networks -- stream gauges, weather stations, snow telemetry, reservoir
 telemetry -- but the package itself is generic.
@@ -61,14 +63,17 @@ client <- edr_client("https://api.wwdh.internetofwater.app")
 client
 #> <edr_client>
 #>   base_url:   <https://api.wwdh.internetofwater.app>
-#>   user_agent: edr4r/0.1.0 (+https://github.com/ksonda/edr4r)
+#>   user_agent: edr4r/0.1.1.9000 (+https://github.com/ksonda/edr4r)
 #>   timeout:    60s
 #>   max_tries:  3
+#>   retry transport failures: TRUE
+#>   discovery cache: 300s
 ```
 
 The client just stores connection settings (base URL, user agent,
-timeout, retry policy). Pass `verbose = TRUE` to echo every request
-URL, or `headers =` to attach auth tokens.
+timeout, retry policy, and an in-memory discovery cache). Pass
+`verbose = TRUE` to echo every request URL, `headers =` to attach auth tokens,
+or `cache_ttl =` to change the metadata lifetime.
 
 ### Try a second EDR implementation
 
@@ -104,7 +109,7 @@ it separately in a scheduled, non-blocking live smoke check.
 ``` r
 collections <- edr_collections(client)
 collections[, c("id", "title", "data_queries")]
-#> # A tibble: 35 × 3
+#> # A tibble: 37 × 3
 #>    id                 title                                         data_queries
 #>    <chr>              <chr>                                         <list>
 #>  1 rise-edr           USBR Reclamation Information Sharing Environ… <chr [4]>
@@ -117,12 +122,29 @@ collections[, c("id", "title", "data_queries")]
 #>  8 noaa-qpf-day-3     NOAA Weather Prediction Center Quantitative … <NULL>
 #>  9 noaa-qpf-day-4-5   NOAA Weather Prediction Center Quantitative … <NULL>
 #> 10 noaa-qpf-day-6-7   NOAA Weather Prediction Center Quantitative … <NULL>
-#> # ℹ 25 more rows
+#> # ℹ 27 more rows
 ```
 
 The `data_queries` column tells you which EDR query types each
 collection supports (`locations`, `cube`, `area`, ...). Hit a verb
 the server doesn't implement and you get an HTTP error.
+
+For a new endpoint, inspect the richer capability metadata or run safe,
+metadata-only diagnostics before choosing a query:
+
+
+``` r
+caps <- edr_capabilities(client, "rise-edr")
+caps$queries
+
+edr_supports(client, "rise-edr", query = "cube")
+edr_diagnose(client, "rise-edr")
+```
+
+Landing, conformance, collection, instance, and queryables metadata is cached
+inside the client for a bounded period. Pass `refresh = TRUE` to a discovery
+call when you need a fresh server response, or call
+`edr_cache_clear(client)`.
 
 To see the data parameters a collection exposes (the values you can
 pass to `parameter_name =` on the query verbs), use
@@ -306,6 +328,8 @@ edr_save_html(m, "reservoir-southwest.html")
 
 ## See also
 
+- `vignette("compatibility")` -- the supported EDR/encoding subset, verified
+  endpoint matrix, and known limitations.
 - `vignette("usgs-streamgages")` -- a walk-through against the USGS
   waterdata endpoint, which only advertises `locations` (so the
   per-station fallback kicks in).

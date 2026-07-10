@@ -1,0 +1,88 @@
+{
+  "id": "terrain_tiles",
+  "title": "Global digital elevation data",
+  "description": "A global dataset providing bare-earth terrain heights, tiled for easy usage",
+  "extent": {
+    "spatial": {
+      "bbox": [[-180, -89.9, 180, 89.9]]
+    }
+  },
+  "data_queries": {
+    "position": {
+      "link": {
+        "href": "https://labs.metoffice.gov.uk/edr/collections/terrain_tiles/position",
+        "rel": "data",
+        "variables": {
+          "title": "Position query",
+          "query_type": "position",
+          "output_formats": ["CoverageJSON"],
+          "default_output_format": "CoverageJSON",
+          "crs_details": [{"crs": "EPSG:4326"}]
+        }
+      }
+    },
+    "radius": {
+      "link": {
+        "href": "https://labs.metoffice.gov.uk/edr/collections/terrain_tiles/radius",
+        "rel": "data",
+        "variables": {
+          "title": "Radius query",
+          "query_type": "radius",
+          "output_formats": ["CoverageJSON"],
+          "default_output_format": "CoverageJSON",
+          "within_units": ["km", "miles"],
+          "crs_details": [{"crs": "EPSG:4326"}]
+        }
+      }
+    },
+    "area": {
+      "link": {
+        "href": "https://labs.metoffice.gov.uk/edr/collections/terrain_tiles/area",
+        "rel": "data",
+        "variables": {
+          "title": "Area query",
+          "query_type": "area",
+          "output_formats": ["CoverageJSON"],
+          "default_output_format": "CoverageJSON",
+          "crs_details": [{"crs": "EPSG:4326"}]
+        }
+      }
+    },
+    "trajectory": {
+      "link": {
+        "href": "https://labs.metoffice.gov.uk/edr/collections/terrain_tiles/trajectory",
+        "rel": "data",
+        "variables": {
+          "title": "Trajectory query",
+          "query_type": "trajectory",
+          "output_formats": ["CoverageJSON"],
+          "default_output_format": "CoverageJSON",
+          "crs_details": [{"crs": "EPSG:4326"}]
+        }
+      }
+    }
+  },
+  "crs": ["EPSG:4326"],
+  "output_formats": ["CoverageJSON"],
+  "parameter_names": {
+    "Height": {
+      "type": "Parameter",
+      "description": "Height above MSL",
+      "unit": {
+        "label": "m",
+        "symbol": {
+          "value": "m",
+          "type": "https://qudt.org/vocab/unit/M"
+        }
+      },
+      "observedProperty": {
+        "id": "http://vocab.nerc.ac.uk/standard_name/height_above_mean_sea_level/",
+        "label": "Height"
+      },
+      "measurementType": {
+        "method": "instantaneous",
+        "duration": "PT0M"
+      }
+    }
+  }
+}
