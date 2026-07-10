@@ -39,22 +39,30 @@ data analysis with:
 
 ## Installation
 
-Install the released version from CRAN:
+CRAN currently provides the stable `0.1.1` release:
 
 ```r
 install.packages("edr4r")
 ```
 
-Or the development version from GitHub:
+The upcoming `0.2.0` API is available as a GitHub-only release candidate. It
+has not been submitted to CRAN:
 
 ```r
 # install.packages("pak")
+pak::pak("ksonda/edr4r@v0.2.0-rc.1")
+
+# Follow the mutable development branch instead:
 pak::pak("ksonda/edr4r")
 
 # or
 # install.packages("remotes")
-remotes::install_github("ksonda/edr4r")
+remotes::install_github("ksonda/edr4r@v0.2.0-rc.1")
 ```
+
+The release-candidate package intentionally reports development version
+`0.1.1.9000` inside R. The final version will become `0.2.0` only when that
+release is prepared for CRAN.
 
 For local development:
 

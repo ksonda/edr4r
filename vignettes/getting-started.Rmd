@@ -37,20 +37,24 @@ The USGS example lives in its own article,
 
 ## Installation
 
-Install the released version from CRAN:
+CRAN currently provides the stable `0.1.1` release:
 
 
 ``` r
 install.packages("edr4r")
 ```
 
-or the development version from GitHub with
+The upcoming `0.2.0` API is available as a GitHub-only release candidate with
 [pak](https://pak.r-lib.org/):
 
 
 ``` r
-pak::pak("ksonda/edr4r")
+pak::pak("ksonda/edr4r@v0.2.0-rc.1")
 ```
+
+This preview has not been submitted to CRAN and intentionally reports
+development version `0.1.1.9000` inside R. Use `pak::pak("ksonda/edr4r")`
+instead when you want the mutable development branch.
 
 ## 1. Create a client
 

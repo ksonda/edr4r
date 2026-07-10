@@ -1,4 +1,4 @@
-# edr4r (development version)
+# edr4r 0.2.0 (development version)
 
 * Add structured service and collection capability discovery, support checks,
   endpoint diagnostics, and per-client TTL caching for discovery metadata.
