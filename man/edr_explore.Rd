@@ -13,6 +13,7 @@ edr_explore(
   parameter_name = NULL,
   limit = NULL,
   record_limit = NULL,
+  max_requests = 100L,
   file = NULL,
   popup = "plot+csv",
   method = c("auto", "cube", "area", "position", "per-location"),
@@ -48,6 +49,10 @@ to \code{\link[=edr_location]{edr_location()}} in the per-location path. Useful 
 (e.g. USGS waterdata) that cap responses at ~10 records by
 default. Ignored on the cube and area paths.}
 
+\item{max_requests}{Maximum number of per-location data requests permitted
+in one call. Defaults to 100. Set to \code{Inf} only when an intentionally
+unbounded batch is acceptable. Ignored by bulk methods.}
+
 \item{file}{If non-\code{NULL}, write the map to this HTML path via
 \code{\link[=edr_save_html]{edr_save_html()}} and return \code{file} invisibly. Otherwise return
 the \code{leaflet} map.}
@@ -75,11 +80,11 @@ A \code{leaflet} htmlwidget, a \code{ggplot}, a tidy tibble/list when
 \code{output = "data"}, or \code{invisible(file)} when a map is saved.
 }
 \description{
-Convenience wrapper that finds stations via \code{\link[=edr_locations]{edr_locations()}},
-fetches time series with \strong{one} bulk request via \code{\link[=edr_cube]{edr_cube()}} or
-\code{\link[=edr_area]{edr_area()}} when the collection supports it, and hands the lot to
-\code{\link[=edr_map]{edr_map()}} for rendering. Optionally writes the map to a
-selfcontained HTML file.
+Convenience wrapper that plans a supported query, fetches data with
+\strong{one} bulk request via \code{\link[=edr_cube]{edr_cube()}} or \code{\link[=edr_area]{edr_area()}} when possible,
+and hands the result to \code{\link[=edr_map]{edr_map()}} or \code{\link[=edr_plot]{edr_plot()}}. Station locations
+are requested only when the result needs a station map or a per-location
+fallback. Optionally writes a map to a self-contained HTML file.
 }
 \details{
 The default \code{method = "auto"} picks the cheapest route the

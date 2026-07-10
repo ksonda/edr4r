@@ -121,6 +121,62 @@ test_that("edr_position builds a POINT coords param", {
 test_that("edr_radius requires numeric within", {
   expect_error(
     edr_radius(test_client(), "monitoring-locations", coords = c(0, 0), within = "x"),
-    "single numeric"
+    "finite non-negative"
+  )
+  expect_error(
+    edr_radius(test_client(), "monitoring-locations", coords = c(0, 0), within = -1),
+    "non-negative"
+  )
+  expect_error(
+    edr_radius(test_client(), "monitoring-locations", coords = c(0, 0), within = Inf),
+    "finite"
+  )
+})
+
+test_that("all bbox-taking verbs share finite ordered validation", {
+  expect_error(
+    edr_locations(test_client(), "demo", bbox = c(2, 0, 1, 1)),
+    "minimum"
+  )
+  expect_error(
+    edr_items(test_client(), "demo", bbox = c(0, 0, NA, 1)),
+    "finite"
+  )
+})
+
+test_that("edr_corridor requires valid width and height", {
+  cov <- read_fixture("pointseries.covjson")
+  captured <- NULL
+  httr2::local_mocked_responses(function(req) {
+    captured <<- req
+    mock_json_response(cov)
+  })
+
+  edr_corridor(
+    test_client(), "demo",
+    coords = matrix(c(0, 0, 1, 1), ncol = 2, byrow = TRUE),
+    corridor_width = 10,
+    corridor_height = 100,
+    width_units = "km",
+    height_units = "m"
+  )
+  decoded <- utils::URLdecode(captured$url)
+  expect_match(decoded, "corridor-width=10", fixed = TRUE)
+  expect_match(decoded, "corridor-height=100", fixed = TRUE)
+  expect_match(decoded, "height-units=m", fixed = TRUE)
+
+  expect_error(
+    edr_corridor(
+      test_client(), "demo", coords = "LINESTRING(0 0, 1 1)",
+      corridor_width = 0, corridor_height = 10
+    ),
+    "corridor_width.*positive"
+  )
+  expect_error(
+    edr_corridor(
+      test_client(), "demo", coords = "LINESTRING(0 0, 1 1)",
+      corridor_width = 10, corridor_height = NA_real_
+    ),
+    "corridor_height.*positive"
   )
 })

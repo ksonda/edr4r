@@ -36,6 +36,17 @@ mock_text_response <- function(text,
   )
 }
 
+mock_empty_response <- function(status = 204L,
+                                url = "http://test/local") {
+  httr2::response(
+    status_code = status,
+    url         = url,
+    method      = "GET",
+    headers     = list(),
+    body        = raw()
+  )
+}
+
 test_client <- function() {
   edr_client("http://test", max_tries = 1)
 }

@@ -14,12 +14,17 @@ service that exposes stream gauges, weather stations, snow telemetry,
 or reservoir telemetry as EDR collections.
 }
 \details{
-Two example endpoints worth pointing it at:
+Two operational endpoints worth pointing it at:
 \itemize{
 \item \href{https://api.waterdata.usgs.gov/ogcapi/beta/}{USGS waterdata OGC API}
 \item \href{https://api.wwdh.internetofwater.app}{Western Water Datahub}
 (a \href{https://pygeoapi.io}{pygeoapi} deployment)
 }
+
+The \href{https://labs.metoffice.gov.uk/edr/collections?f=html}{Met Office Labs EDR demonstrator}
+is also useful for cross-server compatibility experiments. It is a
+technical demonstrator, not an operational service, so its availability
+and advertised data may change without notice.
 
 A typical session looks like:
 \enumerate{

@@ -50,7 +50,9 @@ If \code{NULL}, tries \code{"name"}, \code{"locationName"}, \code{"title"}, then
 detected id column.}
 
 \item{parameter}{Optional character vector restricting which
-parameters get plotted in each popup.}
+parameters are displayed. On station maps, the filtered rows also
+determine whether a station is marked as having data. On coverage
+maps, only matching rows are included in the widget payload.}
 
 \item{plot_width, plot_height}{Popup chart dimensions in inches.
 Display size in pixels is \code{plot_width * plot_dpi} by

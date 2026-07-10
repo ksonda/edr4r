@@ -36,7 +36,9 @@
 #'   If `NULL`, tries `"name"`, `"locationName"`, `"title"`, then the
 #'   detected id column.
 #' @param parameter Optional character vector restricting which
-#'   parameters get plotted in each popup.
+#'   parameters are displayed. On station maps, the filtered rows also
+#'   determine whether a station is marked as having data. On coverage
+#'   maps, only matching rows are included in the widget payload.
 #' @param plot_width,plot_height Popup chart dimensions in inches.
 #'   Display size in pixels is `plot_width * plot_dpi` by
 #'   `plot_height * plot_dpi`, with a larger minimum size for readable
@@ -107,6 +109,7 @@ edr_map <- function(locations,
     return(coverage_leaflet_map(
       locations,
       mode = resolved_mode,
+      parameter = parameter,
       controls = controls,
       initial = initial,
       grid_opacity = grid_opacity,
@@ -132,12 +135,25 @@ edr_map <- function(locations,
   per_feature_data <- per_feature_split(
     data, ids, location_col, locations, max_match_distance
   )
+  if (!is.null(parameter)) {
+    per_feature_data <- lapply(
+      per_feature_data,
+      function(df) {
+        if (is.null(df)) return(NULL)
+        filter_parameter_rows(df, parameter)
+      }
+    )
+  }
   # When `data` is NULL the matched/unmatched distinction doesn't apply —
   # everyone is drawn as a regular station marker.
   has_data <- if (is.null(data)) {
     rep(TRUE, length(ids))
   } else {
-    !vapply(per_feature_data, is.null, logical(1))
+    vapply(
+      per_feature_data,
+      function(df) !is.null(df) && nrow(df) > 0L,
+      logical(1)
+    )
   }
 
   # Drop data-less stations entirely if the caller doesn't want them.
@@ -164,7 +180,6 @@ edr_map <- function(locations,
       attrs       = if (popup %in% c("table", "all")) as.list(attr_table[i, , drop = FALSE]) else NULL,
       label       = labels[[i]],
       popup_mode  = popup,
-      parameter   = parameter,
       plot_width  = plot_width,
       plot_height = plot_height,
       plot_dpi    = plot_dpi,
@@ -294,15 +309,43 @@ resolve_map_mode <- function(locations, mode) {
   detect_plot_view(data, "auto")
 }
 
+filter_parameter_rows <- function(data, parameter,
+                                  call = rlang::caller_env()) {
+  if (is.null(parameter)) return(data)
+  if (!is.character(parameter) || length(parameter) == 0L ||
+      anyNA(parameter) || any(!nzchar(parameter))) {
+    cli::cli_abort(
+      "{.arg parameter} must be a non-empty character vector without missing values.",
+      call = call
+    )
+  }
+  if (!"parameter" %in% names(data)) {
+    cli::cli_abort(
+      "{.arg parameter} can only be used when mapped data includes a {.field parameter} column.",
+      call = call
+    )
+  }
+  values <- as.character(data$parameter)
+  keep <- !is.na(values) & values %in% parameter
+  data[keep, , drop = FALSE]
+}
+
 coverage_leaflet_map <- function(data,
                                  mode,
                                  controls,
                                  initial,
                                  grid_opacity,
                                  tile_provider,
-                                 legend) {
+                                 legend,
+                                 parameter = NULL) {
   check_installed_for("htmlwidgets", "render interactive coverage maps")
   data <- as_tidy_data(data)
+  data <- filter_parameter_rows(data, parameter)
+  if (nrow(data) == 0L) {
+    cli::cli_abort(
+      "No coverage rows match the requested {.arg parameter}."
+    )
+  }
   if (mode == "time") {
     cli::cli_abort(
       c("Could not infer a coverage map mode from {.arg locations}.",
@@ -494,6 +537,8 @@ popup_chart_renderer_js <- function() {
   }
 
   function edrFiniteNumber(v) {
+    if (v === null || v === undefined ||
+        (typeof v === 'string' && v.trim() === '')) return null;
     var n = Number(v);
     return Number.isFinite(n) ? n : null;
   }
@@ -522,8 +567,8 @@ popup_chart_renderer_js <- function() {
     if (text !== '' && Number.isFinite(parsed)) {
       return {value: parsed, isDate: true, label: text};
     }
-    var num = Number(text);
-    if (Number.isFinite(num)) {
+    var num = edrFiniteNumber(text);
+    if (num !== null) {
       return {value: num, isDate: false, label: text};
     }
     return {value: index, isDate: false, label: text || String(index + 1)};
@@ -787,6 +832,8 @@ function(el, x, payload) {
   }
 
   function finiteNumber(v) {
+    if (v === null || v === undefined ||
+        (typeof v === 'string' && v.trim() === '')) return null;
     var n = Number(v);
     return Number.isFinite(n) ? n : null;
   }
@@ -954,7 +1001,10 @@ function(el, x, payload) {
     Object.keys(groups).forEach(function(key) {
       var groupRows = groups[key];
       var first = groupRows[0];
-      L.circleMarker([Number(first.y), Number(first.x)], {
+      var lat = finiteNumber(first.y);
+      var lng = finiteNumber(first.x);
+      if (lat === null || lng === null) return;
+      L.circleMarker([lat, lng], {
         radius: 7,
         color: '#2c7fb8',
         weight: 1,
@@ -1100,8 +1150,9 @@ per_feature_split <- function(data, ids, location_col, locations,
 }
 
 # Group `df` by its (x, y) coordinates and assign each group to the
-# nearest feature in `locations`. Returns a list aligned to `ids` (NULL
-# where no coverage matched).
+# nearest feature in `locations`. Multiple groups assigned to the same
+# feature are appended in first-observed group order. Returns a list
+# aligned to `ids` (NULL where no coverage matched).
 spatial_split <- function(df, locations, ids, max_match_distance = NULL) {
   geom <- sf::st_geometry(locations)
   if (!all(sf::st_geometry_type(geom) == "POINT")) {
@@ -1113,17 +1164,17 @@ spatial_split <- function(df, locations, ids, max_match_distance = NULL) {
   ok  <- !is.na(df$x) & !is.na(df$y)
   df  <- df[ok, , drop = FALSE]
   key <- paste(df$x, df$y, sep = "_")
-  groups <- split(df, key)
+  group_keys <- unique(key)
 
   out <- rep(list(NULL), length(ids))
-  for (k in names(groups)) {
-    sub <- groups[[k]]
+  for (k in group_keys) {
+    sub <- df[key == k, , drop = FALSE]
     cov_xy <- c(sub$x[[1]], sub$y[[1]])
     d2 <- (feat_xy[, 1] - cov_xy[[1]])^2 + (feat_xy[, 2] - cov_xy[[2]])^2
     i <- which.min(d2)
     if (length(i) == 1L && !is.na(i) &&
         (is.null(max_match_distance) || sqrt(d2[[i]]) <= max_match_distance)) {
-      out[[i]] <- sub
+      out[[i]] <- vctrs::vec_rbind(out[[i]], sub)
     }
   }
   out
@@ -1146,7 +1197,6 @@ build_feature_popup <- function(df,
                                 attrs,
                                 label,
                                 popup_mode,
-                                parameter,
                                 plot_width,
                                 plot_height,
                                 plot_dpi,
@@ -1159,9 +1209,6 @@ build_feature_popup <- function(df,
       plot_width = display_px,
       plot_height = display_height_px
     ))
-  }
-  if (!is.null(parameter)) {
-    df <- df[df$parameter %in% parameter, , drop = FALSE]
   }
   chart_payload <- NULL
   csv_uri  <- NULL

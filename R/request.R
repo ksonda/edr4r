@@ -19,8 +19,9 @@
 #'   bodies into R structures. If `FALSE`, returns the raw `httr2`
 #'   response.
 #'
-#' @return The parsed body (list / tibble / sf) or an `httr2_response`
-#'   when `parse = FALSE`.
+#' @return A parsed list, tibble, or `edr_response` wrapper; an
+#'   `httr2_response` when `parse = FALSE`; or a typed empty result for HTTP
+#'   204 responses.
 #' @export
 edr_request <- function(client,
                         path,
@@ -46,6 +47,7 @@ edr_request <- function(client,
     httr2::req_timeout(client$timeout) |>
     httr2::req_retry(
       max_tries = client$max_tries,
+      retry_on_failure = isTRUE(client$retry_on_failure),
       is_transient = is_transient_edr
     ) |>
     httr2::req_error(body = edr_error_body)
@@ -190,9 +192,21 @@ edr_error_body <- function(resp) {
 }
 
 parse_response <- function(resp, format) {
+  status <- httr2::resp_status(resp)
+  if (status == 204L) {
+    return(empty_parsed_response(format))
+  }
+
   ct <- tryCatch(httr2::resp_content_type(resp), error = function(e) "")
+  if (length(ct) == 0L || is.na(ct)) ct <- ""
 
   if (format == "csv" || grepl("csv", ct, fixed = TRUE)) {
+    if (format == "csv" && nzchar(ct) && grepl("json", ct, fixed = TRUE)) {
+      cli::cli_abort(
+        c("Expected a CSV response, but the server returned {.val {ct}}.",
+          i = "Inspect the response with {.code parse = FALSE} or request a supported server format.")
+      )
+    }
     txt <- httr2::resp_body_string(resp)
     return(read_csv_text(txt))
   }
@@ -221,6 +235,32 @@ parse_response <- function(resp, format) {
     geojson = wrap_geojson(body),
     covjson = wrap_covjson(body),
     body
+  )
+}
+
+empty_parsed_response <- function(format) {
+  mark_empty <- function(x) {
+    class(x) <- unique(c("edr_empty_response", class(x)))
+    x
+  }
+
+  switch(format,
+    geojson = mark_empty(wrap_geojson(list(
+      type = "FeatureCollection",
+      features = list()
+    ))),
+    covjson = mark_empty(wrap_covjson(list(
+      type = "CoverageCollection",
+      parameters = list(),
+      coverages = list()
+    ))),
+    csv = tibble::tibble(),
+    html = "",
+    json = structure(
+      list(status = 204L, format = "json"),
+      class = c("edr_empty_response", "edr_response", "list")
+    ),
+    raw = NULL
   )
 }
 
@@ -262,9 +302,20 @@ wrap_covjson <- function(body) {
 
 #' @export
 format.edr_response <- function(x, ...) {
+  if (inherits(x, "edr_empty_response")) {
+    return(c(
+      cli::format_inline("<edr_response: empty>"),
+      cli::format_inline("  status: 204")
+    ))
+  }
   kind <- if (inherits(x, "edr_geojson")) "GeoJSON" else "CoverageJSON"
-  n <- if (kind == "GeoJSON") length(x$geojson$features %||% list())
-       else length(x$covjson$coverages %||% list())
+  n <- if (kind == "GeoJSON") {
+    if (identical(x$geojson$type, "Feature")) 1L
+    else length(x$geojson$features %||% list())
+  } else {
+    if (identical(x$covjson$type, "Coverage")) 1L
+    else length(x$covjson$coverages %||% list())
+  }
   c(
     cli::format_inline("<edr_response: {kind}>"),
     cli::format_inline("  {if (kind == 'GeoJSON') 'features' else 'coverages'}: {n}")

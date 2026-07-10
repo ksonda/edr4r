@@ -4,9 +4,14 @@ test_that("edr_client constructs and validates", {
   expect_equal(cl$base_url, "http://localhost:5005") # trailing slash trimmed
   expect_match(cl$user_agent, "^edr4r/")
   expect_equal(cl$max_tries, 3)
+  expect_true(cl$retry_on_failure)
 
   expect_error(edr_client(123), "single non-NA string")
   expect_error(edr_client(c("a", "b")), "single non-NA string")
+  expect_error(edr_client("http://test", timeout = 0), "positive number")
+  expect_error(edr_client("http://test", max_tries = 1.5), "positive integer")
+  expect_error(edr_client("http://test", max_tries = 1e20), "positive integer")
+  expect_error(edr_client("http://test", retry_on_failure = NA), "TRUE.*FALSE")
 })
 
 test_that("print method is stable", {

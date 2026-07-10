@@ -32,8 +32,9 @@ bodies into R structures. If \code{FALSE}, returns the raw \code{httr2}
 response.}
 }
 \value{
-The parsed body (list / tibble / sf) or an \code{httr2_response}
-when \code{parse = FALSE}.
+A parsed list, tibble, or \code{edr_response} wrapper; an
+\code{httr2_response} when \code{parse = FALSE}; or a typed empty result for HTTP
+204 responses.
 }
 \description{
 Generally you should not need to call this directly: the high-level

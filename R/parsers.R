@@ -1,10 +1,10 @@
 #' Convert a CoverageJSON response to a tidy tibble
 #'
 #' Flattens a CoverageJSON `Coverage` or `CoverageCollection` into a
-#' long tibble with one row per (coverage, parameter, time-step). Handles
-#' the `Point` and `PointSeries` domain types used by station-based EDR
-#' providers, and falls back to a general N-dimensional unrolling for
-#' `Grid`-like domains.
+#' long tibble with one row per (coverage, parameter, domain position).
+#' Handles primitive, regularly spaced, and composite tuple axes, including
+#' the axes used by `Grid`, `PointSeries`, `MultiPointSeries`, and `Trajectory`
+#' domains. Inline `NdArray` ranges are validated before they are flattened.
 #'
 #' @param x A CoverageJSON object: either an `edr_response` returned by
 #'   [edr_location()] / [edr_area()] / [edr_cube()] (etc.) with
@@ -30,9 +30,17 @@ covjson_to_tibble <- function(x, datetime_as_posix = TRUE) {
   )
 
   params <- cov$parameters %||% list()
+  if (!is.list(params)) {
+    cli::cli_abort("CoverageJSON {.field parameters} must be an object.")
+  }
   if (length(coverages) == 0L) return(empty_covjson_tibble())
 
   per_cov <- purrr::imap(coverages, function(cvg, i) {
+    if (!is.list(cvg)) {
+      cli::cli_abort(
+        "Coverage {i} is external or malformed; only inline Coverage objects are supported."
+      )
+    }
     cid <- coverage_id(cvg, i)
     one_coverage(cvg, params, coverage_id = cid)
   })
@@ -126,21 +134,18 @@ coverage_id <- function(cvg, i) {
 }
 
 one_coverage <- function(cvg, params, coverage_id) {
-  domain <- cvg$domain %||% list()
-  axes   <- domain$axes %||% list()
   ranges <- cvg$ranges %||% list()
   if (length(ranges) == 0L) return(empty_covjson_tibble())
 
-  # Pull scalar/array axis values we care about.
-  axis_vals <- list(
-    x = axis_numeric(axes$x),
-    y = axis_numeric(axes$y),
-    z = axis_numeric(axes$z),
-    t = axis_chr(axes$t)
+  params <- merge_coverage_parameters(
+    params,
+    cvg$parameters %||% list(),
+    coverage_id
   )
+  domain <- normalize_covjson_domain(cvg$domain, coverage_id)
 
   rows <- purrr::imap(ranges, function(rng, pname) {
-    range_to_rows(rng, pname, axes, axis_vals, params, coverage_id)
+    range_to_rows(rng, pname, domain, params, coverage_id)
   })
 
   # Reconcile `value` types across parameter ranges in this coverage.
@@ -166,17 +171,270 @@ one_coverage <- function(cvg, params, coverage_id) {
   out
 }
 
-range_to_rows <- function(rng, pname, axes, axis_vals, params, coverage_id) {
-  values <- null_to_na(rng$values %||% list())
-  axis_names <- unlist(rng$axisNames %||% list(), use.names = FALSE)
+merge_coverage_parameters <- function(parent, child, coverage_id) {
+  if (!is.list(child)) {
+    cli::cli_abort(
+      "Coverage {.val {coverage_id}} has malformed {.field parameters}; expected an object."
+    )
+  }
+  if (length(child) == 0L) return(parent)
+  if (is.null(names(child)) || any(!nzchar(names(child)))) {
+    cli::cli_abort(
+      "Coverage {.val {coverage_id}} has unnamed parameter metadata."
+    )
+  }
+  for (parameter_name in names(child)) {
+    inherited <- parent[[parameter_name]]
+    replacement <- child[[parameter_name]]
+    if (is.list(inherited) && is.list(replacement)) {
+      parent[[parameter_name]] <- utils::modifyList(
+        inherited,
+        replacement,
+        keep.null = TRUE
+      )
+    } else {
+      parent[parameter_name] <- child[parameter_name]
+    }
+  }
+  parent
+}
+
+normalize_covjson_domain <- function(domain, coverage_id) {
+  if (is.character(domain)) {
+    cli::cli_abort(
+      "Coverage {.val {coverage_id}} uses an external domain; external CoverageJSON domains are not supported."
+    )
+  }
+  if (is.null(domain) || !is.list(domain)) {
+    cli::cli_abort(
+      "Coverage {.val {coverage_id}} has no inline CoverageJSON domain."
+    )
+  }
+  if (!is.null(domain$type) && !identical(domain$type, "Domain")) {
+    cli::cli_abort(
+      "Coverage {.val {coverage_id}} has domain type {.val {domain$type}}; expected {.val Domain}."
+    )
+  }
+
+  axes <- domain$axes
+  if (is.null(axes) || !is.list(axes) || length(axes) == 0L ||
+      is.null(names(axes)) || any(!nzchar(names(axes)))) {
+    cli::cli_abort(
+      "Coverage {.val {coverage_id}} domain must contain named axes."
+    )
+  }
+
+  normalized_axes <- lapply(names(axes), function(axis_name) {
+    normalize_covjson_axis(axes[[axis_name]], axis_name, coverage_id)
+  })
+  names(normalized_axes) <- names(axes)
+
+  coordinates <- list()
+  for (axis_name in names(normalized_axes)) {
+    axis <- normalized_axes[[axis_name]]
+    for (coordinate_name in names(axis$coordinates)) {
+      if (!is.null(coordinates[[coordinate_name]])) {
+        cli::cli_abort(
+          "Coverage {.val {coverage_id}} defines coordinate {.val {coordinate_name}} on more than one axis."
+        )
+      }
+      coordinates[[coordinate_name]] <- list(
+        axis = axis_name,
+        values = axis$coordinates[[coordinate_name]]
+      )
+    }
+  }
+
+  list(
+    axes = normalized_axes,
+    coordinates = coordinates,
+    domain_type = domain$domainType %||% NA_character_,
+    referencing = domain$referencing %||% list()
+  )
+}
+
+normalize_covjson_axis <- function(ax, axis_name, coverage_id) {
+  if (!is.list(ax)) {
+    cli::cli_abort(
+      "Axis {.val {axis_name}} in coverage {.val {coverage_id}} must be an inline axis object."
+    )
+  }
+
+  data_type <- ax$dataType %||% "primitive"
+  if (!is.character(data_type) || length(data_type) != 1L || is.na(data_type)) {
+    cli::cli_abort(
+      "Axis {.val {axis_name}} in coverage {.val {coverage_id}} has an invalid {.field dataType}."
+    )
+  }
+
+  has_values <- !is.null(ax$values)
+  regular_members <- c("start", "stop", "num")
+  has_any_regular <- any(vapply(regular_members, function(x) !is.null(ax[[x]]), logical(1)))
+  has_all_regular <- all(vapply(regular_members, function(x) !is.null(ax[[x]]), logical(1)))
+
+  if (has_values && has_any_regular) {
+    cli::cli_abort(
+      "Axis {.val {axis_name}} in coverage {.val {coverage_id}} cannot contain both {.field values} and regular-axis members."
+    )
+  }
+  if (!has_values && !has_all_regular) {
+    cli::cli_abort(
+      "Axis {.val {axis_name}} in coverage {.val {coverage_id}} must contain {.field values} or all of {.field start}, {.field stop}, and {.field num}."
+    )
+  }
+
+  if (identical(data_type, "polygon")) {
+    cli::cli_abort(
+      "Axis {.val {axis_name}} uses polygon values, which cannot be represented by {.fn covjson_to_tibble}."
+    )
+  }
+  if (!data_type %in% c("primitive", "tuple")) {
+    cli::cli_abort(
+      "Axis {.val {axis_name}} in coverage {.val {coverage_id}} has unsupported {.field dataType} {.val {data_type}}."
+    )
+  }
+
+  coordinate_names <- normalize_axis_coordinates(
+    ax$coordinates,
+    default = axis_name,
+    axis_name = axis_name,
+    coverage_id = coverage_id
+  )
+
+  if (identical(data_type, "primitive")) {
+    if (length(coordinate_names) != 1L) {
+      cli::cli_abort(
+        "Primitive axis {.val {axis_name}} in coverage {.val {coverage_id}} must define exactly one coordinate."
+      )
+    }
+    values <- if (has_values) {
+      flatten_axis_values(ax$values, axis_name, coverage_id)
+    } else {
+      materialize_axis_values(ax, axis_name, coverage_id)
+    }
+    return(list(
+      size = length(values),
+      coordinates = stats::setNames(list(values), coordinate_names)
+    ))
+  }
+
+  if (!has_values) {
+    cli::cli_abort(
+      "Tuple axis {.val {axis_name}} in coverage {.val {coverage_id}} must use explicit {.field values}."
+    )
+  }
+  if (is.null(ax$coordinates)) {
+    cli::cli_abort(
+      "Tuple axis {.val {axis_name}} in coverage {.val {coverage_id}} must define {.field coordinates}."
+    )
+  }
+
+  tuple_values <- ax$values
+  if (!is.list(tuple_values) || length(tuple_values) == 0L) {
+    cli::cli_abort(
+      "Tuple axis {.val {axis_name}} in coverage {.val {coverage_id}} must contain a non-empty array of tuples."
+    )
+  }
+  tuple_size <- length(coordinate_names)
+  valid_tuple <- vapply(tuple_values, function(tuple) {
+    if (!is.list(tuple) && !is.atomic(tuple)) return(FALSE)
+    if (length(tuple) != tuple_size) return(FALSE)
+    all(vapply(tuple, is_axis_primitive, logical(1)))
+  }, logical(1))
+  if (any(!valid_tuple)) {
+    bad <- which(!valid_tuple)[[1]]
+    cli::cli_abort(
+      "Tuple {bad} on axis {.val {axis_name}} in coverage {.val {coverage_id}} does not match its {tuple_size} coordinates."
+    )
+  }
+
+  coordinate_values <- lapply(seq_len(tuple_size), function(i) {
+    unlist(lapply(tuple_values, `[[`, i), use.names = FALSE)
+  })
+  names(coordinate_values) <- coordinate_names
+  list(size = length(tuple_values), coordinates = coordinate_values)
+}
+
+normalize_axis_coordinates <- function(x, default, axis_name, coverage_id) {
+  if (is.null(x)) return(default)
+  coordinates <- unlist(x, use.names = FALSE)
+  if (!is.character(coordinates) || length(coordinates) == 0L ||
+      anyNA(coordinates) || any(!nzchar(coordinates)) || anyDuplicated(coordinates)) {
+    cli::cli_abort(
+      "Axis {.val {axis_name}} in coverage {.val {coverage_id}} has invalid {.field coordinates}."
+    )
+  }
+  coordinates
+}
+
+is_axis_primitive <- function(x) {
+  length(x) == 1L && !is.null(x) && !is.list(x) &&
+    (is.character(x) || (is.numeric(x) && !is.logical(x))) && !is.na(x)
+}
+
+flatten_axis_values <- function(values, axis_name, coverage_id) {
+  if (!is.list(values) && !is.atomic(values)) {
+    cli::cli_abort(
+      "Axis {.val {axis_name}} in coverage {.val {coverage_id}} has malformed {.field values}."
+    )
+  }
+  if (length(values) == 0L) {
+    cli::cli_abort(
+      "Axis {.val {axis_name}} in coverage {.val {coverage_id}} must contain at least one value."
+    )
+  }
+  pieces <- if (is.list(values)) values else as.list(values)
+  if (!all(vapply(pieces, is_axis_primitive, logical(1)))) {
+    cli::cli_abort(
+      "Axis {.val {axis_name}} in coverage {.val {coverage_id}} must contain only scalar number or string values."
+    )
+  }
+  unlist(pieces, use.names = FALSE)
+}
+
+materialize_axis_values <- function(ax, axis_name, coverage_id) {
+  read_number <- function(member) {
+    value <- ax[[member]]
+    if (is.list(value)) value <- unlist(value, use.names = FALSE)
+    if (!is.numeric(value) || is.logical(value) || length(value) != 1L ||
+        is.na(value) || !is.finite(value)) {
+      cli::cli_abort(
+        "Regular axis {.val {axis_name}} in coverage {.val {coverage_id}} has invalid {.field {member}}."
+      )
+    }
+    as.numeric(value)
+  }
+
+  start <- read_number("start")
+  stop <- read_number("stop")
+  raw_num <- read_number("num")
+  if (raw_num != floor(raw_num) || raw_num < 1) {
+    cli::cli_abort(
+      "Regular axis {.val {axis_name}} in coverage {.val {coverage_id}} requires {.field num} to be a positive integer."
+    )
+  }
+  n <- as.integer(raw_num)
+  if (n == 1L && !isTRUE(all.equal(start, stop))) {
+    cli::cli_abort(
+      "Regular axis {.val {axis_name}} in coverage {.val {coverage_id}} requires equal {.field start} and {.field stop} when {.field num} is 1."
+    )
+  }
+  if (n == 1L) return(start)
+  seq(start, stop, length.out = n)
+}
+
+range_to_rows <- function(rng, pname, domain, params, coverage_id) {
+  normalized <- normalize_ndarray(rng, pname, domain$axes, coverage_id)
+  values <- normalized$values
+  axis_names <- normalized$axis_names
 
   # Build the coordinate grid aligned to `values` (row-major: last axis
   # varies fastest), for the axes this range actually spans.
   if (length(axis_names) == 0L) {
-    grid <- data.frame(.dummy = seq_along(values))
+    grid <- data.frame(.dummy = 1L)
     grid$.dummy <- NULL
   } else {
-    spanned <- lapply(axis_names, function(a) seq_along(axis_values_for(a, axes)))
+    spanned <- lapply(axis_names, function(a) seq_len(domain$axes[[a]]$size))
     names(spanned) <- axis_names
     # expand.grid varies the first column fastest; reverse so the last
     # axisName (which varies fastest in CovJSON) lines up, then reorder.
@@ -185,27 +443,24 @@ range_to_rows <- function(rng, pname, axes, axis_vals, params, coverage_id) {
     grid <- g[, axis_names, drop = FALSE]
   }
 
-  n <- max(length(values), nrow(grid), 1L)
+  n <- length(values)
 
   # Resolve each output axis to a value vector of length n.
   get_axis <- function(name) {
-    vals <- axis_vals[[name]]
-    if (is.null(vals)) return(rep(NA, n))
-    if (name %in% axis_names) {
-      idx <- grid[[name]]
+    coordinate <- domain$coordinates[[name]]
+    if (is.null(coordinate)) return(rep(NA, n))
+    vals <- coordinate$values
+    coordinate_axis <- coordinate$axis
+    if (coordinate_axis %in% axis_names) {
+      idx <- grid[[coordinate_axis]]
       vals[idx]
-    } else if (length(vals) == 1L) {
-      rep(vals[[1]], n)
-    } else if (length(vals) == n) {
-      vals
     } else {
-      rep(NA, n)
+      rep(vals[[1]], n)
     }
   }
 
-  value <- coerce_values(values, n)
-  value_demoted <- isTRUE(attr(value, "edr_demoted"))
-  attr(value, "edr_demoted") <- NULL
+  value_demoted <- isTRUE(attr(values, "edr_demoted"))
+  attr(values, "edr_demoted") <- NULL
   out <- tibble::tibble(
     coverage_id     = coverage_id,
     parameter       = pname,
@@ -215,7 +470,7 @@ range_to_rows <- function(rng, pname, axes, axis_vals, params, coverage_id) {
     x               = as.numeric(get_axis("x")),
     y               = as.numeric(get_axis("y")),
     z               = as.numeric(get_axis("z")),
-    value           = value
+    value           = values
   )
   if (value_demoted) {
     attr(out, "edr_demoted") <- pname
@@ -223,44 +478,194 @@ range_to_rows <- function(rng, pname, axes, axis_vals, params, coverage_id) {
   out
 }
 
-axis_values_for <- function(name, axes) {
-  ax <- axes[[name]]
-  if (is.null(ax)) return(NA)
-  materialize_axis_values(ax) %||% NA
-}
-
-axis_numeric <- function(ax) {
-  if (is.null(ax)) return(NULL)
-  v <- materialize_axis_values(ax)
-  if (is.null(v)) return(NULL)
-  suppressWarnings(as.numeric(unlist(v, use.names = FALSE)))
-}
-
-axis_chr <- function(ax) {
-  if (is.null(ax)) return(NULL)
-  v <- materialize_axis_values(ax)
-  if (is.null(v)) return(NULL)
-  as.character(unlist(v, use.names = FALSE))
-}
-
-materialize_axis_values <- function(ax) {
-  if (!is.null(ax$values)) return(ax$values)
-
-  if (is.null(ax$start) || is.null(ax$stop) || is.null(ax$num)) {
-    return(NULL)
+normalize_ndarray <- function(rng, pname, axes, coverage_id) {
+  if (is.character(rng)) {
+    cli::cli_abort(
+      "Range {.val {pname}} in coverage {.val {coverage_id}} is external; external CoverageJSON ranges are not supported."
+    )
   }
-  start <- suppressWarnings(as.numeric(ax$start[[1]]))
-  stop <- suppressWarnings(as.numeric(ax$stop[[1]]))
-  n <- suppressWarnings(as.integer(ax$num[[1]]))
-  if (!is.finite(start) || !is.finite(stop) || is.na(n) || n < 1L) {
-    return(NULL)
+  if (!is.list(rng)) {
+    cli::cli_abort(
+      "Range {.val {pname}} in coverage {.val {coverage_id}} must be an inline NdArray object."
+    )
   }
-  if (n == 1L) return(start)
-  seq(start, stop, length.out = n)
+
+  range_type <- rng$type
+  if (identical(range_type, "TiledNdArray")) {
+    cli::cli_abort(
+      "Range {.val {pname}} in coverage {.val {coverage_id}} uses {.val TiledNdArray}, which is not yet supported."
+    )
+  }
+  if (!identical(range_type, "NdArray")) {
+    actual <- range_type %||% "missing"
+    cli::cli_abort(
+      "Range {.val {pname}} in coverage {.val {coverage_id}} has type {.val {actual}}; expected {.val NdArray}."
+    )
+  }
+  if (is.null(rng$values)) {
+    cli::cli_abort(
+      "NdArray range {.val {pname}} in coverage {.val {coverage_id}} has no {.field values}."
+    )
+  }
+
+  values <- flatten_range_values(rng$values, pname, coverage_id)
+  n_values <- length(values)
+
+  shape <- normalize_range_shape(rng$shape, pname, coverage_id)
+  axis_names <- normalize_range_axis_names(rng$axisNames, pname, coverage_id)
+  if (is.null(rng$shape) && length(axis_names) > 0L) {
+    cli::cli_abort(
+      "NdArray range {.val {pname}} in coverage {.val {coverage_id}} has {.field axisNames} but no {.field shape}."
+    )
+  }
+  if (length(shape) > 0L && is.null(rng$axisNames)) {
+    cli::cli_abort(
+      "NdArray range {.val {pname}} in coverage {.val {coverage_id}} has a non-scalar {.field shape} but no {.field axisNames}."
+    )
+  }
+  if (length(shape) != length(axis_names)) {
+    cli::cli_abort(
+      "NdArray range {.val {pname}} in coverage {.val {coverage_id}} has {length(shape)} shape dimensions but {length(axis_names)} axis names."
+    )
+  }
+  expected_values <- prod(as.double(shape))
+  if (expected_values != n_values) {
+    cli::cli_abort(
+      "NdArray range {.val {pname}} in coverage {.val {coverage_id}} shape requires {expected_values} values, not {n_values}."
+    )
+  }
+
+  unknown_axes <- setdiff(axis_names, names(axes))
+  if (length(unknown_axes) > 0L) {
+    cli::cli_abort(
+      "NdArray range {.val {pname}} in coverage {.val {coverage_id}} references unknown domain axes: {.val {unknown_axes}}."
+    )
+  }
+  if (length(axis_names) > 0L) {
+    axis_sizes <- vapply(axis_names, function(x) axes[[x]]$size, integer(1))
+    wrong_size <- which(as.double(shape) != as.double(axis_sizes))
+    if (length(wrong_size) > 0L) {
+      i <- wrong_size[[1]]
+      cli::cli_abort(
+        "NdArray range {.val {pname}} axis {.val {axis_names[[i]]}} has shape {shape[[i]]}, but the domain axis has {axis_sizes[[i]]} values."
+      )
+    }
+  }
+  omitted_axes <- setdiff(names(axes), axis_names)
+  non_scalar_omitted <- omitted_axes[vapply(
+    axes[omitted_axes],
+    function(x) x$size != 1L,
+    logical(1)
+  )]
+  if (length(non_scalar_omitted) > 0L) {
+    cli::cli_abort(
+      "NdArray range {.val {pname}} omits non-scalar domain axes: {.val {non_scalar_omitted}}."
+    )
+  }
+
+  data_type <- rng$dataType
+  if (!is.null(data_type) &&
+      (!is.character(data_type) || length(data_type) != 1L ||
+       is.na(data_type) || !data_type %in% c("float", "integer", "string"))) {
+    cli::cli_abort(
+      "NdArray range {.val {pname}} in coverage {.val {coverage_id}} has invalid {.field dataType}."
+    )
+  }
+
+  list(
+    values = coerce_values(values, n_values, data_type, pname),
+    shape = shape,
+    axis_names = axis_names
+  )
 }
 
-coerce_values <- function(values, n) {
-  if (length(values) == 0L) return(rep(NA_real_, n))
+normalize_range_shape <- function(x, pname, coverage_id) {
+  if (is.null(x)) return(numeric())
+  shape <- unlist(x, use.names = FALSE)
+  if (length(shape) == 0L) return(numeric())
+  if (!is.numeric(shape) || is.logical(shape) || anyNA(shape) ||
+      any(!is.finite(shape)) || any(shape < 1) || any(shape != floor(shape))) {
+    cli::cli_abort(
+      "NdArray range {.val {pname}} in coverage {.val {coverage_id}} has an invalid {.field shape}; dimensions must be positive integers."
+    )
+  }
+  as.double(shape)
+}
+
+normalize_range_axis_names <- function(x, pname, coverage_id) {
+  if (is.null(x)) return(character())
+  axis_names <- unlist(x, use.names = FALSE)
+  if (length(axis_names) == 0L) return(character())
+  if (!is.character(axis_names) || anyNA(axis_names) ||
+      any(!nzchar(axis_names)) || anyDuplicated(axis_names)) {
+    cli::cli_abort(
+      "NdArray range {.val {pname}} in coverage {.val {coverage_id}} has invalid {.field axisNames}."
+    )
+  }
+  axis_names
+}
+
+flatten_range_values <- function(values, pname, coverage_id) {
+  if (!is.list(values) && !is.atomic(values)) {
+    cli::cli_abort(
+      "NdArray range {.val {pname}} in coverage {.val {coverage_id}} has malformed {.field values}."
+    )
+  }
+  if (length(values) == 0L) {
+    cli::cli_abort(
+      "NdArray range {.val {pname}} in coverage {.val {coverage_id}} must contain at least one value."
+    )
+  }
+
+  pieces <- if (is.list(values)) values else as.list(values)
+  kinds <- vapply(pieces, function(value) {
+    if (is.null(value) || (length(value) == 1L && is.na(value))) return("missing")
+    if (length(value) != 1L || is.list(value)) return("invalid")
+    if (is.character(value)) return("string")
+    if (is.numeric(value) && !is.logical(value)) return("number")
+    "invalid"
+  }, character(1))
+  if (any(kinds == "invalid")) {
+    bad <- which(kinds == "invalid")[[1]]
+    cli::cli_abort(
+      "Value {bad} in NdArray range {.val {pname}} is not a scalar number, string, or null."
+    )
+  }
+
+  out <- unlist(lapply(pieces, function(value) {
+    if (is.null(value) || (length(value) == 1L && is.na(value))) NA else value
+  }), use.names = FALSE)
+  attr(out, "edr_value_kinds") <- kinds
+  out
+}
+
+coerce_values <- function(values, n, data_type = NULL, pname = "") {
+  if (length(values) != n) {
+    cli::cli_abort("Internal CoverageJSON value-length mismatch.")
+  }
+  kinds <- attr(values, "edr_value_kinds") %||% rep("missing", n)
+  attr(values, "edr_value_kinds") <- NULL
+
+  if (!is.null(data_type)) {
+    expected_kind <- if (identical(data_type, "string")) "string" else "number"
+    wrong_kind <- kinds != "missing" & kinds != expected_kind
+    if (any(wrong_kind)) {
+      cli::cli_abort(
+        "NdArray range {.val {pname}} declares {.field dataType} {.val {data_type}}, but its values contain {if (expected_kind == 'string') 'numbers' else 'strings'}."
+      )
+    }
+    if (identical(data_type, "string")) return(as.character(values))
+
+    out <- as.numeric(values)
+    if (identical(data_type, "integer") &&
+        any(!is.na(out) & out != floor(out))) {
+      cli::cli_abort(
+        "NdArray range {.val {pname}} declares integer data but contains non-integer values."
+      )
+    }
+    return(out)
+  }
+
   num <- suppressWarnings(as.numeric(values))
   present <- !is.na(values)
   parsed <- !is.na(num)
@@ -271,14 +676,6 @@ coerce_values <- function(values, n) {
     return(out)
   }
   num
-}
-
-null_to_na <- function(values) {
-  if (is.list(values)) {
-    values <- lapply(values, function(v) if (is.null(v) || length(v) == 0L) NA else v)
-    return(unlist(values, use.names = FALSE))
-  }
-  values
 }
 
 param_label <- function(params, pname) {
@@ -311,23 +708,61 @@ localized <- function(x) {
 
 parse_datetime <- function(x) {
   if (!is.character(x)) return(x)
-  fmts <- c(
-    "%Y-%m-%dT%H:%M:%OSZ", "%Y-%m-%dT%H:%M:%SZ",
-    "%Y-%m-%dT%H:%M:%OS",  "%Y-%m-%dT%H:%M:%S",
-    "%Y-%m-%d"
-  )
-  # We pick the first format that parses any non-NA element, then apply it
-  # to the whole vector. ASSUMPTION: every value on a single time axis
-  # uses the same format -- this matches the CoverageJSON spec (a time
-  # axis has a single `dataType`). If a server ever mixes formats in one
-  # axis, values that don't match the chosen format silently become NA;
-  # the caller can detect that via `is.na()` and disable parsing with
-  # `datetime_as_posix = FALSE`.
-  for (f in fmts) {
-    p <- suppressWarnings(as.POSIXct(x, format = f, tz = "UTC"))
-    if (!all(is.na(p) | is.na(x))) return(p)
+  if (length(x) == 0L || all(is.na(x))) return(x)
+
+  parsed <- rep(NA_real_, length(x))
+  present <- !is.na(x)
+  for (i in which(present)) {
+    value <- x[[i]]
+    result <- NA_real_
+
+    # RFC 3339 timestamps. Normalize `Z` and colon-bearing offsets before
+    # passing them to base R's portable `%z` parser.
+    if (grepl(
+      "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:?\\d{2})$",
+      value,
+      perl = TRUE
+    )) {
+      normalized <- sub("Z$", "+0000", value)
+      normalized <- sub("([+-]\\d{2}):(\\d{2})$", "\\1\\2", normalized)
+      result <- suppressWarnings(as.numeric(as.POSIXct(
+        normalized,
+        format = "%Y-%m-%dT%H:%M:%OS%z",
+        tz = "UTC"
+      )))
+    } else if (grepl(
+      "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?$",
+      value,
+      perl = TRUE
+    )) {
+      # Keep compatibility with servers that omit an offset by treating
+      # such timestamps as UTC, as the old parser did.
+      result <- suppressWarnings(as.numeric(as.POSIXct(
+        value,
+        format = "%Y-%m-%dT%H:%M:%OS",
+        tz = "UTC"
+      )))
+    } else if (grepl("^\\d{4}-\\d{2}-\\d{2}$", value)) {
+      result <- suppressWarnings(as.numeric(as.POSIXct(
+        value,
+        format = "%Y-%m-%d",
+        tz = "UTC"
+      )))
+    }
+    parsed[[i]] <- result
   }
-  x
+
+  failed <- present & is.na(parsed)
+  if (any(failed)) {
+    bad <- unique(x[failed])
+    cli::cli_warn(c(
+      "Could not parse every datetime value; keeping the datetime column as character.",
+      "x" = "Unparsed value{?s}: {.val {bad}}"
+    ))
+    return(x)
+  }
+
+  as.POSIXct(parsed, origin = "1970-01-01", tz = "UTC")
 }
 
 empty_covjson_tibble <- function() {

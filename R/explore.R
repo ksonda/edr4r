@@ -1,10 +1,10 @@
 #' One-shot fetch + plot + map for a collection
 #'
-#' Convenience wrapper that finds stations via [edr_locations()],
-#' fetches time series with **one** bulk request via [edr_cube()] or
-#' [edr_area()] when the collection supports it, and hands the lot to
-#' [edr_map()] for rendering. Optionally writes the map to a
-#' selfcontained HTML file.
+#' Convenience wrapper that plans a supported query, fetches data with
+#' **one** bulk request via [edr_cube()] or [edr_area()] when possible,
+#' and hands the result to [edr_map()] or [edr_plot()]. Station locations
+#' are requested only when the result needs a station map or a per-location
+#' fallback. Optionally writes a map to a self-contained HTML file.
 #'
 #' The default `method = "auto"` picks the cheapest route the
 #' collection advertises in its `data_queries`:
@@ -41,6 +41,9 @@
 #'   to [edr_location()] in the per-location path. Useful for servers
 #'   (e.g. USGS waterdata) that cap responses at ~10 records by
 #'   default. Ignored on the cube and area paths.
+#' @param max_requests Maximum number of per-location data requests permitted
+#'   in one call. Defaults to 100. Set to `Inf` only when an intentionally
+#'   unbounded batch is acceptable. Ignored by bulk methods.
 #' @param file If non-`NULL`, write the map to this HTML path via
 #'   [edr_save_html()] and return `file` invisibly. Otherwise return
 #'   the `leaflet` map.
@@ -82,6 +85,7 @@ edr_explore <- function(client,
                         parameter_name = NULL,
                         limit          = NULL,
                         record_limit   = NULL,
+                        max_requests   = 100L,
                         file           = NULL,
                         popup          = "plot+csv",
                         method         = c("auto", "cube", "area", "position", "per-location"),
@@ -95,30 +99,50 @@ edr_explore <- function(client,
   output <- match.arg(output)
   plot_view <- match.arg(plot_view)
 
-  locations <- fetch_explore_locations(
-    client, collection_id,
-    bbox = bbox, limit = limit, output = output
-  )
+  if (!is.null(file) && output %in% c("plot", "data")) {
+    cli::cli_abort(
+      "{.arg file} is only supported when {.fn edr_explore} returns a map."
+    )
+  }
+  check_max_requests(max_requests)
+
   method <- resolve_explore_method(client, collection_id, method, bbox, coords)
+  # Fetch data first whenever the query already has enough spatial input.
+  # This lets gridded/profile results return without probing an optional
+  # /locations endpoint. Station locations are loaded lazily below only if
+  # the parsed result actually needs a station map.
+  needs_locations <- explore_needs_locations(method, bbox)
+  locations <- if (needs_locations) {
+    fetch_explore_locations(
+      client, collection_id,
+      bbox = bbox, limit = limit,
+      required = method == "per-location" ||
+        (method == "cube" && is.null(bbox))
+    )
+  } else {
+    NULL
+  }
 
   data <- fetch_explore_data(
     method, client, collection_id,
     bbox = bbox, coords = coords, locations = locations,
     datetime = datetime, parameter_name = parameter_name,
-    record_limit = record_limit, quiet = quiet
+    record_limit = record_limit, max_requests = max_requests, quiet = quiet
   )
 
   if (output == "data") return(data)
 
   if (output == "plot") {
-    if (!is.null(file)) {
-      cli::cli_abort(
-        "{.arg file} is only supported when {.fn edr_explore} returns a map."
-      )
+    plot_data <- explore_plot_data(data)
+    plot_group <- if (".location_id" %in% names(plot_data)) {
+      ".location_id"
+    } else {
+      "coverage_id"
     }
     return(edr_plot(
-      explore_plot_data(data),
+      plot_data,
       parameter = parameter_name,
+      group = plot_group,
       view = plot_view
     ))
   }
@@ -136,6 +160,14 @@ edr_explore <- function(client,
       return(invisible(file))
     }
     return(m)
+  }
+
+  if (is.null(locations)) {
+    locations <- fetch_explore_locations(
+      client, collection_id,
+      bbox = bbox, limit = limit,
+      required = FALSE
+    )
   }
 
   if (is.null(locations)) {
@@ -167,11 +199,19 @@ edr_explore <- function(client,
 # user intent into account.
 resolve_explore_method <- function(client, collection_id, method, bbox, coords) {
   if (method != "auto") return(method)
-  cols <- tryCatch(edr_collections(client), error = function(e) NULL)
-  dq <- if (!is.null(cols)) {
-    hit <- cols$data_queries[cols$id == collection_id]
-    if (length(hit) == 1L) hit[[1]] else character(0)
-  } else character(0)
+  cols <- tryCatch(
+    edr_collections(client),
+    error = function(e) {
+      cli::cli_abort(
+        c("Could not discover query capabilities for collection {.val {collection_id}}.",
+          i = "Automatic fallback was stopped before issuing per-location requests.",
+          i = "Choose {.arg method} explicitly only if the endpoint's capabilities are known."),
+        parent = e
+      )
+    }
+  )
+  hit <- cols$data_queries[cols$id == collection_id]
+  dq <- if (length(hit) == 1L) hit[[1]] else character(0)
   if (!is.null(coords) && coords_looks_point(coords) && "position" %in% dq) {
     return("position")
   }
@@ -180,9 +220,20 @@ resolve_explore_method <- function(client, collection_id, method, bbox, coords) 
   "per-location"
 }
 
-fetch_explore_locations <- function(client, collection_id, bbox, limit, output) {
-  if (output == "plot") return(NULL)
+explore_needs_locations <- function(method, bbox) {
+  method == "per-location" ||
+    (method == "cube" && is.null(bbox))
+}
+
+fetch_explore_locations <- function(client, collection_id, bbox, limit,
+                                    required = FALSE) {
   if (!rlang::is_installed("sf")) {
+    if (required) {
+      cli::cli_abort(
+        c("The {.pkg sf} package is required to enumerate locations for this exploration method.",
+          i = "Install it or choose a bulk method with explicit spatial input.")
+      )
+    }
     return(NULL)
   }
   locations <- tryCatch(
@@ -190,6 +241,12 @@ fetch_explore_locations <- function(client, collection_id, bbox, limit, output) 
     error = function(e) e
   )
   if (inherits(locations, "error")) {
+    if (required) {
+      cli::cli_abort(
+        "Failed to retrieve locations for collection {.val {collection_id}}.",
+        parent = locations
+      )
+    }
     return(NULL)
   }
   if (!inherits(locations, "sf")) {
@@ -207,7 +264,7 @@ fetch_explore_locations <- function(client, collection_id, bbox, limit, output) 
 fetch_explore_data <- function(method, client, collection_id,
                                bbox, coords, locations,
                                datetime, parameter_name,
-                               record_limit, quiet) {
+                               record_limit, max_requests, quiet) {
   switch(method,
     cube = {
       bb <- bbox %||% {
@@ -254,7 +311,7 @@ fetch_explore_data <- function(method, client, collection_id,
       if (is.null(locations)) {
         cli::cli_abort(
           c("Per-location exploration requires a spatial locations endpoint.",
-            i = "Supply {.arg bbox} / {.arg coords} with a bulk method, or use {.code output = \"plot\"}.")
+            i = "Use a collection with locations, or supply spatial input for a supported bulk method.")
         )
       }
       ids <- detect_id_column(sf::st_drop_geometry(locations), id_col = NULL)
@@ -263,6 +320,7 @@ fetch_explore_data <- function(method, client, collection_id,
         datetime       = datetime,
         parameter_name = parameter_name,
         record_limit   = record_limit,
+        max_requests   = max_requests,
         quiet          = quiet
       )
     }
@@ -299,6 +357,12 @@ explore_plot_data <- function(data) {
     if (length(pieces) == 0L) {
       cli::cli_abort("No fetched station data is available to plot.")
     }
+    ids <- names(pieces)
+    if (is.null(ids)) ids <- as.character(seq_along(pieces))
+    pieces <- Map(function(piece, id) {
+      piece$.location_id <- rep(as.character(id), nrow(piece))
+      piece
+    }, pieces, ids)
     return(vctrs::vec_rbind(!!!pieces))
   }
   data
@@ -314,8 +378,22 @@ sf_bbox_vec <- function(x) {
 # progress bar for larger batches.
 fetch_per_station <- function(client, collection_id, ids,
                               datetime, parameter_name,
-                              record_limit = NULL, quiet = FALSE) {
+                              record_limit = NULL,
+                              max_requests = Inf,
+                              quiet = FALSE) {
   n <- length(ids)
+  check_max_requests(max_requests)
+  if (is.finite(max_requests) && n > max_requests) {
+    cli::cli_abort(c(
+      "Per-location exploration would issue {n} data requests, exceeding {.arg max_requests} = {max_requests}.",
+      i = "Reduce {.arg limit}, use a bulk query, or explicitly raise {.arg max_requests}."
+    ))
+  }
+  if (!quiet && n > 1L) {
+    cli::cli_inform(
+      "Using per-location exploration: {n} data request{?s}."
+    )
+  }
   if (!quiet && n > 5L) {
     cli::cli_progress_bar(
       "Fetching time series",
@@ -349,6 +427,18 @@ fetch_per_station <- function(client, collection_id, ids,
   }
   warn_fetch_failures(failures, n)
   out
+}
+
+check_max_requests <- function(x, call = rlang::caller_env()) {
+  if (!is.numeric(x) || length(x) != 1L || is.na(x) || x <= 0 ||
+      (!is.infinite(x) &&
+       (x > .Machine$integer.max || x %% 1 != 0))) {
+    cli::cli_abort(
+      "{.arg max_requests} must be a positive integer or {.code Inf}.",
+      call = call
+    )
+  }
+  invisible(x)
 }
 
 warn_fetch_failures <- function(failures, n) {

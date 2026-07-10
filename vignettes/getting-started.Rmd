@@ -20,6 +20,12 @@ Two example endpoints you can point it at right now:
 - [USGS waterdata OGC API](https://api.waterdata.usgs.gov/ogcapi/beta/)
 - [Western Water Datahub](https://api.wwdh.internetofwater.app)
 
+The [Met Office Labs EDR demonstrator](https://labs.metoffice.gov.uk/edr/collections?f=html)
+is another useful endpoint for cross-server experiments. It is a
+**technical demonstrator, not an operational service**: its availability,
+collections, and response details may change without notice, so it should not
+be used as a production dependency.
+
 This vignette uses the Western Water Datahub's `rise-edr` collection as
 one real endpoint for demonstrating the core `edr4r` workflow. WWDH
 dataset notes, raw HTTP walkthroughs, and presentation material live in
@@ -63,6 +69,32 @@ client
 The client just stores connection settings (base URL, user agent,
 timeout, retry policy). Pass `verbose = TRUE` to echo every request
 URL, or `headers =` to attach auth tokens.
+
+### Try a second EDR implementation
+
+A small terrain lookup is a low-cost way to exercise the non-operational Met
+Office demonstrator without downloading forecast data:
+
+
+``` r
+met_client <- edr_client(
+  "https://labs.metoffice.gov.uk/edr",
+  timeout = 10,
+  max_tries = 1
+)
+
+terrain <- edr_position(
+  met_client,
+  "terrain_tiles",
+  coords = c(-0.1276, 51.5072),
+  parameter_name = "Height"
+)
+covjson_to_tibble(terrain)
+```
+
+Because the endpoint is explicitly experimental, this request is not run
+when the vignette is built or during `R CMD check`. The repository exercises
+it separately in a scheduled, non-blocking live smoke check.
 
 ## 2. Discover collections and parameters
 

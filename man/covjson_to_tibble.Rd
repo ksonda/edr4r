@@ -21,8 +21,8 @@ Columns that are absent from the source are filled with \code{NA}.
 }
 \description{
 Flattens a CoverageJSON \code{Coverage} or \code{CoverageCollection} into a
-long tibble with one row per (coverage, parameter, time-step). Handles
-the \code{Point} and \code{PointSeries} domain types used by station-based EDR
-providers, and falls back to a general N-dimensional unrolling for
-\code{Grid}-like domains.
+long tibble with one row per (coverage, parameter, domain position).
+Handles primitive, regularly spaced, and composite tuple axes, including
+the axes used by \code{Grid}, \code{PointSeries}, \code{MultiPointSeries}, and \code{Trajectory}
+domains. Inline \code{NdArray} ranges are validated before they are flattened.
 }

@@ -33,9 +33,13 @@ on. Sent as a comma-separated \verb{parameter-name=} query.}
 
 \item{crs}{Optional CRS URI for the response.}
 
-\item{format}{\code{"covjson"} (default), \code{"geojson"}, \code{"csv"}, or \code{"json"}.}
+\item{format}{\code{"covjson"} (default) or \code{"json"}.}
 
 \item{...}{Additional query parameters passed through verbatim.}
+}
+\value{
+An \code{edr_response} containing the server's CoverageJSON response.
+Convert it with \code{\link[=covjson_to_tibble]{covjson_to_tibble()}}.
 }
 \description{
 Calls \code{GET /collections/{collection_id}/cube} with a bounding box.
