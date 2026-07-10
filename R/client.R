@@ -22,6 +22,10 @@
 #'   failures such as connection resets and transient DNS / TLS errors. EDR
 #'   requests made by this package are read-only GET requests, so retrying
 #'   them is safe.
+#' @param cache_ttl Number of seconds to retain discovery responses in this
+#'   client's in-memory cache. Defaults to 300 (five minutes). Use `0` to
+#'   disable caching or `Inf` to retain metadata until [edr_cache_clear()] is
+#'   called. Data-query responses are never cached.
 #' @param headers Named character vector of extra headers attached to
 #'   every request (e.g. `c(Authorization = "Bearer ...")`).
 #' @param verbose If `TRUE`, prints request URLs to the console as they
@@ -38,6 +42,7 @@ edr_client <- function(base_url,
                        timeout = 60,
                        max_tries = 3,
                        retry_on_failure = TRUE,
+                       cache_ttl = 300,
                        headers = NULL,
                        verbose = FALSE) {
   if (!is.character(base_url) || length(base_url) != 1L || is.na(base_url)) {
@@ -58,6 +63,12 @@ edr_client <- function(base_url,
       is.na(retry_on_failure)) {
     cli::cli_abort("{.arg retry_on_failure} must be {.code TRUE} or {.code FALSE}.")
   }
+  if (!is.numeric(cache_ttl) || length(cache_ttl) != 1L ||
+      is.na(cache_ttl) || cache_ttl < 0) {
+    cli::cli_abort(
+      "{.arg cache_ttl} must be a single non-negative number or {.code Inf}."
+    )
+  }
 
   if (is.null(user_agent)) {
     ver <- tryCatch(
@@ -77,6 +88,8 @@ edr_client <- function(base_url,
       timeout    = timeout,
       max_tries  = as.integer(max_tries),
       retry_on_failure = retry_on_failure,
+      cache_ttl  = cache_ttl,
+      cache       = new.env(parent = emptyenv()),
       headers    = headers,
       verbose    = isTRUE(verbose)
     ),
@@ -92,7 +105,8 @@ format.edr_client <- function(x, ...) {
     cli::format_inline("  user_agent: {x$user_agent}"),
     cli::format_inline("  timeout:    {x$timeout}s"),
     cli::format_inline("  max_tries:  {x$max_tries}"),
-    cli::format_inline("  retry transport failures: {x$retry_on_failure}")
+    cli::format_inline("  retry transport failures: {x$retry_on_failure}"),
+    cli::format_inline("  discovery cache TTL: {x$cache_ttl}s")
   )
 }
 
