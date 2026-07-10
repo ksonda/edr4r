@@ -27,6 +27,9 @@ For cross-server experiments, the
 is another useful endpoint. It is a **technical demonstrator, not an
 operational service**: availability, collections, and response details can
 change without notice, so do not build production workflows around it.
+The cross-endpoint Lake Mead vignette shows its 2015 population grid alongside
+USGS river discharge and Western Water Datahub reservoir storage without
+mixing their provenance or units.
 
 The goal is to take the tedious parts of EDR off your hands — URL
 construction, comma-separated parameter lists, WKT coordinate encoding,
@@ -62,7 +65,9 @@ remotes::install_github("ksonda/edr4r@v0.2.0-rc.1")
 
 The release-candidate package intentionally reports development version
 `0.1.1.9000` inside R. The final version will become `0.2.0` only when that
-release is prepared for CRAN.
+release is prepared for CRAN. The mutable default branch may also contain
+post-candidate `0.3.0` development and currently reports `0.2.0.9000`; use the
+tag when you need the frozen `0.2.0-rc.1` code.
 
 For local development:
 
@@ -154,15 +159,26 @@ run_locations <- edr_locations(
 
 ### Find stations
 
-`edr_locations()` with no filters returns the full station list as
-GeoJSON. If you have [`sf`](https://r-spatial.github.io/sf/) installed,
-it gets promoted to an `sf` object automatically:
+`edr_locations()` returns one server response by default. If the response is
+GeoJSON and [`sf`](https://r-spatial.github.io/sf/) is installed, it is
+promoted to an `sf` object automatically. For a complete result from a server
+that advertises `rel = "next"`, opt into bounded pagination:
 
 ```r
-locs <- edr_locations(client, "monitoring-locations")
+locs <- edr_locations(
+  client, "monitoring-locations",
+  limit = 500,              # server page size
+  paginate = TRUE,
+  max_pages = 20,
+  max_features = 10000
+)
 locs                            # sf POINTs with station attributes
 plot(sf::st_geometry(locs))
 ```
+
+Pagination follows the server's next URL as an opaque cursor or offset. It
+stops with a typed error if a page/feature cap is reached while another page
+still exists, so a bounded result is never presented as complete.
 
 ### Pull a time series for one station
 
@@ -186,6 +202,30 @@ df
 #> 1 08313000    discharge   Discharge        ft3/s 2020-01-01 00:00:00 -109.  37.0    NA   240
 #> ...
 ```
+
+### Pull several station time series safely
+
+When you already have station IDs, `edr_location_batch()` makes one bounded,
+sequential `edr_location()` request per ID and keeps request provenance and
+failures visible:
+
+```r
+pull <- edr_location_batch(
+  client, "daily-values",
+  location_id    = locs$id[1:10],
+  datetime       = "2020-01-01/2020-12-31",
+  parameter_name = "discharge",
+  max_requests   = 10,
+  on_error       = "collect"
+)
+
+pull$data                  # .request_id and .location_id identify every row
+pull$errors                # typed, empty tibble when every request succeeded
+pull$requests              # success / empty / error status for every ID
+```
+
+The helper deliberately does not discover stations or parallelize requests;
+the full request count is known and validated before network activity.
 
 ### Spatial filters — bbox and polygon
 
@@ -336,6 +376,7 @@ service_description <- edr_request(
 | `edr_queryables()` | `/collections/{id}/queryables` |
 | `edr_instances()` / `edr_instance()` | `/collections/{id}/instances[/{instance}]` |
 | `edr_locations()` / `edr_location()` | `/collections/{id}/locations[/{loc}]` |
+| `edr_location_batch()` | bounded sequential requests to explicit location IDs |
 | `edr_items()` / `edr_item()` | `/collections/{id}/items[/{item}]` |
 | `edr_position()` | `/collections/{id}/position` |
 | `edr_area()` | `/collections/{id}/area` |

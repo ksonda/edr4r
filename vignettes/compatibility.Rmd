@@ -25,7 +25,8 @@ mistaken for a guarantee that every `edr4r` workflow will work unchanged.
 | CSV | Limited | Parsed by the low-level client and supported directly by location queries |
 | NetCDF, GeoTIFF, GRIB and other native encodings | Download only | Use `edr_request(..., parse = FALSE)` with the server's advertised `f` value; no native R conversion yet |
 | External CoverageJSON domains/ranges and `TiledNdArray` | Not supported | Rejected explicitly rather than partially or silently parsed |
-| Pagination/link following | Not yet supported | A single locations/items response is returned |
+| Pagination/link following | Supported subset | Opt-in for GeoJSON FeatureCollections from `edr_locations()` / `edr_items()`; bounded by finite page and feature caps |
+| Multi-location retrieval | Supported subset | Explicit IDs through sequential `edr_location_batch()`; CoverageJSON and CSV only, with a finite request cap |
 | HTTP 202/308 asynchronous polling | Not yet supported | HTTP 204 empty responses are supported |
 | POST queries and EDR Part 2 Pub/Sub | Out of current scope | The package is a synchronous, read-only client |
 
@@ -45,6 +46,23 @@ CoverageJSON query verbs return an `edr_response`; convert it explicitly with
 `covjson_to_tibble()`. GeoJSON collection verbs return `sf` when `sf` is
 installed and otherwise retain an `edr_response`. CSV responses return a
 tibble. HTTP 204 produces a typed empty result rather than a parser failure.
+For numeric CoverageJSON ranges, values serialized as JSON strings are
+coerced only when every non-missing string is finite and safely representable;
+actual text, overflow/underflow, and unsafe declared integers remain explicit
+parser errors.
+
+`edr_location_batch()` returns an `edr_location_batch` object with three
+stable tibbles: `requests` (one status row per input ID), `data` (row-bound
+CoverageJSON/CSV data with `.request_id` and `.location_id` provenance), and
+`errors` (preserved conditions when `on_error = "collect"`). It is sequential
+in this release so the normal client retry policy remains authoritative.
+
+Pagination is deliberately opt-in. The client follows only the
+server-advertised body link with `rel = "next"`, treats its cursor/offset as
+opaque, and requires the continuation to remain on the original request's
+service origin. Reaching `max_pages` or `max_features` while another page
+exists is a typed error, not a silently partial result. `edr_explore()` does
+not enable collection-wide pagination automatically.
 
 Local argument and parser failures are raised before issuing unsafe follow-up
 requests. HTTP failures retain their `httr2_http_*` status classes and include
@@ -81,13 +99,14 @@ clear that client's metadata with `edr_cache_clear(client)`.
 ## Verified endpoints
 
 The table records direct compatibility checks, not a permanent availability
-promise. Server metadata was last inspected on 2026-07-09.
+promise. Server metadata and pagination behavior were last inspected on
+2026-07-10.
 
 | Endpoint | Role | Advertised query types observed | edr4r coverage |
 |---|---|---|---|
-| [USGS waterdata](https://api.waterdata.usgs.gov/ogcapi/beta/) | Operational U.S. streamgage service | `locations` | Collection/location discovery, station time series, CoverageJSON parsing, per-location exploration |
-| [Western Water Datahub](https://api.wwdh.internetofwater.app) | Operational multi-network pygeoapi deployment | `locations`, `items`, `position`, `area`, `cube` | Discovery, parameters, station and bulk queries, plotting and mapping |
-| [Met Office Labs](https://labs.metoffice.gov.uk/edr/collections?f=html) | Non-operational technical demonstrator | `locations`, `items`, `instances`, `position`, `area`, `cube`, `radius`, `trajectory` | Cross-implementation metadata, instances, query-specific formats, and small terrain CoverageJSON fixtures |
+| [USGS waterdata](https://api.waterdata.usgs.gov/ogcapi/beta/) | Operational U.S. streamgage service | `locations` | Collection/location discovery, opaque cursor pagination, station/batch time series, CoverageJSON parsing, per-location exploration |
+| [Western Water Datahub](https://api.wwdh.internetofwater.app) | Operational multi-network pygeoapi deployment | `locations`, `items`, `position`, `area`, `cube` | Discovery, parameters, offset pagination for items, station and bulk queries, plotting and mapping |
+| [Met Office Labs](https://labs.metoffice.gov.uk/edr/collections?f=html) | Non-operational technical demonstrator | `locations`, `items`, `instances`, `position`, `area`, `cube`, `radius`, `trajectory` | Cross-implementation metadata, instances, query-specific formats, terrain point coverage, and an explicit-CRS population grid |
 
 The Met Office service describes itself as an example rather than an
 operational API. It is useful for interoperability testing because its
@@ -101,9 +120,16 @@ deterministic and offline. Met Office fixtures retain the response shapes
 needed for capability, instance, and single-Coverage parsing tests while
 omitting large payloads and verbose WKT definitions.
 
-A separate scheduled/manual workflow performs a tiny, non-blocking live
-probe. An outage there does not fail package CI; it is evidence of
-interoperability drift to investigate.
+Frozen cursor- and offset-shaped pages exercise both pagination styles without
+relying on live service state. Security and edge-case tests also cover relative
+links, cycles, malformed/multiple next links, cross-origin continuations, and
+page or feature caps.
+
+A separate scheduled/manual workflow performs tiny, non-blocking live probes:
+bounded USGS cursor pagination and station batching, bounded WWDH offset
+pagination, plus the Met Office capability, terrain, and population-grid
+checks. An endpoint outage does not fail package CI; it is evidence of
+availability or interoperability drift to investigate.
 
 ## What "supports EDR" means here
 

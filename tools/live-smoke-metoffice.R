@@ -110,11 +110,49 @@ if (!any(is.finite(terrain_data$value))) {
   stop("The terrain response contained no finite height value.", call. = FALSE)
 }
 
+message("Checking a bounded population-density grid ...")
+population_capabilities <- edr_capabilities(client, "global_pop_density")
+if (!edr_supports(
+  population_capabilities,
+  query = "area",
+  format = "CoverageJSON"
+)) {
+  stop("global_pop_density no longer advertises area as CoverageJSON.",
+       call. = FALSE)
+}
+
+population_ring <- rbind(
+  c(-115.20, 36.12),
+  c(-115.10, 36.12),
+  c(-115.10, 36.22),
+  c(-115.20, 36.22)
+)
+population <- edr_area(
+  client,
+  "global_pop_density",
+  coords = population_ring,
+  parameter_name = "Pop_Density",
+  crs = "EPSG:4326"
+)
+population_data <- covjson_to_tibble(population)
+
+if (!identical(population$covjson$domain$domainType, "Grid")) {
+  stop("The population area response is no longer a Grid coverage.",
+       call. = FALSE)
+}
+if (nrow(population_data) < 1L ||
+    !"Pop_Density" %in% population_data$parameter ||
+    !any(is.finite(population_data$value))) {
+  stop("The population area response contained no finite density grid.",
+       call. = FALSE)
+}
+
 message(
   "Met Office Labs smoke check passed: ", nrow(collections),
   " collections; forecast instance ", run_id,
   " with ", run_location_count, " locations",
   "; terrain height = ",
   format(terrain_data$value[which(is.finite(terrain_data$value))[1L]], digits = 6),
-  " ", terrain_data$unit[which(is.finite(terrain_data$value))[1L]], "."
+  " ", terrain_data$unit[which(is.finite(terrain_data$value))[1L]],
+  "; population grid rows = ", nrow(population_data), "."
 )

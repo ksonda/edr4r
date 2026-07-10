@@ -431,38 +431,36 @@ fetch_per_station <- function(client, collection_id, ids,
       "Using per-location exploration: {n} data request{?s}."
     )
   }
-  if (!quiet && n > 5L) {
-    cli::cli_progress_bar(
-      "Fetching time series",
-      total = n, .envir = parent.frame()
-    )
-    on.exit(cli::cli_progress_done(.envir = parent.frame()), add = TRUE)
-  }
-  out <- vector("list", n)
+  query <- common_query(datetime = datetime)
+  plan <- tibble::tibble(
+    request_id = seq_len(n),
+    location_id = as.character(ids),
+    datetime = rep(batch_datetime_label(query$datetime), n),
+    status = rep("pending", n),
+    n_rows = rep(NA_integer_, n)
+  )
+  dots <- list()
+  if (!is.null(record_limit)) dots$limit <- record_limit
+
+  executed <- run_location_batch_plan(
+    client = client,
+    collection_id = collection_id,
+    plan = plan,
+    datetime = datetime,
+    parameter_name = parameter_name,
+    z = NULL,
+    crs = NULL,
+    format = "covjson",
+    dots = dots,
+    on_error = "collect",
+    progress = !quiet && n > 5L,
+    instance_id = instance_id
+  )
+
+  out <- executed$results
   names(out) <- as.character(ids)
-  failures <- list()
-  for (i in seq_along(ids)) {
-    result <- tryCatch(
-      {
-        args <- list(
-          client, collection_id,
-          location_id    = ids[[i]],
-          datetime       = datetime,
-          parameter_name = parameter_name,
-          instance_id    = instance_id
-        )
-        if (!is.null(record_limit)) args$limit <- record_limit
-        resp <- do.call(edr_location, args)
-        covjson_to_tibble(resp)
-      },
-      error = function(e) {
-        failures[[as.character(ids[[i]])]] <<- conditionMessage(e)
-        NULL
-      }
-    )
-    out[i] <- list(result)
-    if (!quiet && n > 5L) cli::cli_progress_update(.envir = parent.frame())
-  }
+  failures <- as.list(executed$errors$message)
+  names(failures) <- executed$errors$location_id
   warn_fetch_failures(failures, n)
   out
 }

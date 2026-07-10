@@ -311,6 +311,66 @@ test_that("declared string ranges preserve numeric-looking identifiers", {
   expect_equal(tb$value, c("00123", "1e3", NA_character_))
 })
 
+test_that("declared numeric ranges accept safely representable numeric strings", {
+  make_coverage <- function(data_type, values) {
+    list(
+      type = "Coverage",
+      domain = list(
+        domainType = "PointSeries",
+        axes = list(
+          x = list(values = list(0)),
+          y = list(values = list(0)),
+          t = list(values = as.list(sprintf(
+            "2024-01-%02dT00:00:00Z", seq_along(values)
+          )))
+        )
+      ),
+      ranges = list(
+        reading = list(
+          type = "NdArray",
+          dataType = data_type,
+          axisNames = list("t"),
+          shape = list(length(values)),
+          values = values
+        )
+      )
+    )
+  }
+
+  expect_silent(
+    numeric <- covjson_to_tibble(
+      make_coverage("float", list("1.5", "2e1", NULL))
+    )
+  )
+  expect_type(numeric$value, "double")
+  expect_equal(numeric$value, c(1.5, 20, NA_real_))
+
+  expect_silent(
+    integer <- covjson_to_tibble(
+      make_coverage("integer", list("1", "2.0"))
+    )
+  )
+  expect_equal(integer$value, c(1, 2))
+  expect_error(
+    covjson_to_tibble(make_coverage("float", list("1.5", "flagged"))),
+    "declares.*float.*strings.*not valid numbers"
+  )
+  expect_error(
+    covjson_to_tibble(make_coverage("float", list("1e999"))),
+    "declares.*float.*strings.*not valid numbers"
+  )
+  expect_error(
+    covjson_to_tibble(make_coverage("float", list("1e-400"))),
+    "cannot be represented safely"
+  )
+  expect_error(
+    covjson_to_tibble(
+      make_coverage("integer", list("9007199254740993"))
+    ),
+    "cannot be represented safely"
+  )
+})
+
 test_that("coverage-level parameter metadata augments and overrides collection metadata", {
   scalar_range <- function(value) {
     list(type = "NdArray", dataType = "float", values = list(value))
