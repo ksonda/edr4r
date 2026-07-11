@@ -12,6 +12,11 @@
   window provenance, and optional exact boundary-row deduplication. Requests
   remain sequential so the existing retry and throttling policy stays in
   control.
+* Add opt-in checkpoint/resume support for `edr_location_batch()`. Parsed
+  successful and empty responses are installed atomically per request, so an
+  interrupted bounded pull can reuse terminal windows while retrying only
+  unresolved work. Checkpoints are locked, plan-fingerprinted, and reject
+  incompatible or corrupt state before network activity.
 * Reuse the batch execution engine inside per-location `edr_explore()` while
   preserving its existing output and summary-warning contract.
 * Accept finite, safely representable numeric strings in CoverageJSON ranges

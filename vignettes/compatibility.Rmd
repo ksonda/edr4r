@@ -26,7 +26,7 @@ mistaken for a guarantee that every `edr4r` workflow will work unchanged.
 | NetCDF, GeoTIFF, GRIB and other native encodings | Download only | Use `edr_request(..., parse = FALSE)` with the server's advertised `f` value; no native R conversion yet |
 | External CoverageJSON domains/ranges and `TiledNdArray` | Not supported | Rejected explicitly rather than partially or silently parsed |
 | Pagination/link following | Supported subset | Opt-in for GeoJSON FeatureCollections from `edr_locations()` / `edr_items()`; bounded by finite page and feature caps |
-| Multi-location retrieval | Supported subset | Explicit IDs through sequential `edr_location_batch()`; optional bounded calendar windows, exact cross-window deduplication, CoverageJSON/CSV, and a finite expanded-plan cap |
+| Multi-location retrieval | Supported subset | Explicit IDs through sequential `edr_location_batch()`; optional bounded calendar windows, exact cross-window deduplication, checkpoint/resume, CoverageJSON/CSV, and a finite expanded-plan cap |
 | HTTP 202/308 asynchronous polling | Not yet supported | HTTP 204 empty responses are supported |
 | POST queries and EDR Part 2 Pub/Sub | Out of current scope | The package is a synchronous, read-only client |
 
@@ -62,6 +62,18 @@ counts. Timestamp bounds are normalized to UTC before calendar arithmetic and
 may contain up to six fractional-second digits; values that R cannot represent
 without loss are rejected before requests begin. It is sequential in this
 release so the normal client retry policy remains authoritative.
+
+Checkpointing is opt-in and preserves only terminal successful or empty parsed
+responses. An interrupted or failed request has no terminal file and is retried
+on the next explicit `resume = TRUE` call. Each checkpoint is locked while in
+use and fingerprinted against the effective endpoint, ordered location/window
+plan, format, and query arguments. A mismatch or corrupt result aborts before
+network activity. Headers, full query URLs, and error conditions are not stored;
+the parsed observation data is stored and should be protected accordingly.
+Checkpointed clients require an absolute HTTP(S) base URL without an embedded
+query, fragment, username, or password. Rotating credentials belong in client
+headers; the caller remains responsible for resuming under the same logical
+authorization context.
 
 Pagination is deliberately opt-in. The client follows only the
 server-advertised body link with `rel = "next"`, treats its cursor/offset as

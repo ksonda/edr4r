@@ -16,6 +16,8 @@ edr_location_batch(
   ...,
   chunk = NULL,
   deduplicate = TRUE,
+  checkpoint = NULL,
+  resume = FALSE,
   max_requests = 100L,
   on_error = c("stop", "collect"),
   progress = interactive(),
@@ -58,6 +60,16 @@ request. Duplicates within one response, differing observations, and
 rows from different locations are preserved. Ignored when \code{chunk} is
 \code{NULL}.}
 
+\item{checkpoint}{Optional directory used to persist each terminal
+successful or empty response. A new or empty directory is initialized
+after the complete request plan has passed validation. Checkpoints store
+parsed response data, but not client headers, query URLs, or errors.}
+
+\item{resume}{If \code{TRUE}, reuse terminal responses in an existing compatible
+\code{checkpoint} and request only unresolved rows. If the directory does not
+yet exist, it is initialized, which supports rerunnable scripts. An
+existing checkpoint requires \code{resume = TRUE}. Defaults to \code{FALSE}.}
+
 \item{max_requests}{Finite positive integer limiting the number of logical
 \code{\link[=edr_location]{edr_location()}} calls in the complete plan. Transport-level retries do
 not increase this count. Defaults to 100.}
@@ -92,4 +104,14 @@ fan-out.
 \code{\link[=covjson_to_tibble]{covjson_to_tibble()}}. CSV responses are already parsed as tibbles by
 \code{\link[=edr_location]{edr_location()}}. Successful rows are combined with \code{.request_id} and
 \code{.location_id} provenance columns.
+
+Checkpoint requests remain sequential. Result files are written atomically
+after parsing and before a request is marked complete in memory. Errors are
+deliberately not terminal: a later call with \code{resume = TRUE} retries them
+under the client's normal retry policy. A checkpoint may contain the
+endpoint's returned observations, so protect it like any other local data
+extract and resume it under the same logical authorization context.
+Checkpointed clients must use an absolute HTTP(S) base URL without an
+embedded query, fragment, username, or password; rotating credentials
+belong in \code{client} headers and are not written to the checkpoint.
 }

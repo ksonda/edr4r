@@ -36,6 +36,14 @@
 #'   request. Duplicates within one response, differing observations, and
 #'   rows from different locations are preserved. Ignored when `chunk` is
 #'   `NULL`.
+#' @param checkpoint Optional directory used to persist each terminal
+#'   successful or empty response. A new or empty directory is initialized
+#'   after the complete request plan has passed validation. Checkpoints store
+#'   parsed response data, but not client headers, query URLs, or errors.
+#' @param resume If `TRUE`, reuse terminal responses in an existing compatible
+#'   `checkpoint` and request only unresolved rows. If the directory does not
+#'   yet exist, it is initialized, which supports rerunnable scripts. An
+#'   existing checkpoint requires `resume = TRUE`. Defaults to `FALSE`.
 #' @param max_requests Finite positive integer limiting the number of logical
 #'   [edr_location()] calls in the complete plan. Transport-level retries do
 #'   not increase this count. Defaults to 100.
@@ -52,6 +60,17 @@
 #'   raw responses before cross-window deduplication; `data`, a combined data
 #'   tibble; and `errors`, a typed tibble of collected conditions. The object
 #'   also records `collection_id`, `instance_id`, and `format`.
+#'
+#' @details
+#' Checkpoint requests remain sequential. Result files are written atomically
+#' after parsing and before a request is marked complete in memory. Errors are
+#' deliberately not terminal: a later call with `resume = TRUE` retries them
+#' under the client's normal retry policy. A checkpoint may contain the
+#' endpoint's returned observations, so protect it like any other local data
+#' extract and resume it under the same logical authorization context.
+#' Checkpointed clients must use an absolute HTTP(S) base URL without an
+#' embedded query, fragment, username, or password; rotating credentials
+#' belong in `client` headers and are not written to the checkpoint.
 #' @export
 edr_location_batch <- function(client,
                                collection_id,
@@ -64,6 +83,8 @@ edr_location_batch <- function(client,
                                ...,
                                chunk = NULL,
                                deduplicate = TRUE,
+                               checkpoint = NULL,
+                               resume = FALSE,
                                max_requests = 100L,
                                on_error = c("stop", "collect"),
                                progress = interactive(),
@@ -75,6 +96,7 @@ edr_location_batch <- function(client,
   check_batch_flag(deduplicate, "deduplicate")
   check_batch_max_requests(max_requests)
   check_batch_datetime_missing(datetime)
+  check_batch_checkpoint_args(checkpoint, resume)
 
   location_id <- check_batch_location_ids(location_id)
   n_locations <- length(location_id)
@@ -132,6 +154,37 @@ edr_location_batch <- function(client,
     n_rows = rep(NA_integer_, n_requests)
   )
 
+  checkpoint_state <- NULL
+  initial_results <- NULL
+  if (!is.null(checkpoint)) {
+    urls <- batch_checkpoint_plan_urls(
+      client = client,
+      collection_id = collection_id,
+      plan = plan,
+      parameter_name = parameter_name,
+      z = z,
+      crs = crs,
+      format = format,
+      dots = dots,
+      instance_id = instance_id
+    )
+    fingerprint <- batch_checkpoint_fingerprint(urls, format)
+    checkpoint_state <- batch_checkpoint_open(
+      path = checkpoint,
+      resume = resume,
+      fingerprint = fingerprint,
+      plan = plan,
+      client = client,
+      collection_id = collection_id,
+      instance_id = instance_id,
+      format = format
+    )
+    on.exit(batch_checkpoint_close(checkpoint_state), add = TRUE)
+    restored <- batch_checkpoint_restore(checkpoint_state, plan)
+    plan <- restored$plan
+    initial_results <- restored$results
+  }
+
   executed <- run_location_batch_plan(
     client = client,
     collection_id = collection_id,
@@ -143,7 +196,9 @@ edr_location_batch <- function(client,
     dots = dots,
     on_error = on_error,
     progress = progress,
-    instance_id = instance_id
+    instance_id = instance_id,
+    initial_results = initial_results,
+    checkpoint = checkpoint_state
   )
 
   structure(
@@ -174,45 +229,49 @@ run_location_batch_plan <- function(client,
                                     dots,
                                     on_error,
                                     progress,
-                                    instance_id) {
+                                    instance_id,
+                                    initial_results = NULL,
+                                    checkpoint = NULL) {
   n_requests <- nrow(plan)
-  results <- vector("list", n_requests)
+  results <- if (is.null(initial_results)) {
+    vector("list", n_requests)
+  } else {
+    initial_results
+  }
   error_rows <- vector("list", n_requests)
+  todo <- which(plan$status == "pending")
 
   progress_env <- environment()
-  show_progress <- isTRUE(progress) && n_requests > 1L
+  show_progress <- isTRUE(progress) && length(todo) > 1L
   if (show_progress) {
     cli::cli_progress_bar(
       "Fetching location data",
-      total = n_requests,
+      total = length(todo),
       .envir = progress_env
     )
     on.exit(cli::cli_progress_done(.envir = progress_env), add = TRUE)
   }
 
-  for (i in seq_len(n_requests)) {
-    request_datetime <- plan$datetime[[i]]
-    if (length(request_datetime) == 0L || is.na(request_datetime)) {
-      request_datetime <- NULL
-    }
-    args <- c(
-      list(
-        client = client,
-        collection_id = collection_id,
-        location_id = plan$location_id[[i]],
-        datetime = request_datetime,
-        parameter_name = parameter_name,
-        z = z,
-        crs = crs,
-        format = format
-      ),
-      dots,
-      list(instance_id = instance_id)
+  for (i in todo) {
+    spec <- batch_location_request_spec(
+      client = client,
+      collection_id = collection_id,
+      location_id = plan$location_id[[i]],
+      datetime = plan$datetime[[i]],
+      parameter_name = parameter_name,
+      z = z,
+      crs = crs,
+      format = format,
+      dots = dots,
+      instance_id = instance_id
     )
 
     outcome <- tryCatch(
       {
-        response <- do.call(edr_location, args)
+        response <- parse_response(
+          perform_edr_request(spec$request, verbose = client$verbose),
+          format = format
+        )
         data <- if (identical(format, "covjson")) {
           covjson_to_tibble(response)
         } else {
@@ -251,9 +310,18 @@ run_location_batch_plan <- function(client,
       next
     }
 
+    status <- if (nrow(outcome) == 0L) "empty" else "success"
+    if (!is.null(checkpoint)) {
+      batch_checkpoint_write_result(
+        checkpoint,
+        request_id = plan$request_id[[i]],
+        status = status,
+        data = outcome
+      )
+    }
     results[[i]] <- outcome
     plan$n_rows[[i]] <- nrow(outcome)
-    plan$status[[i]] <- if (nrow(outcome) == 0L) "empty" else "success"
+    plan$status[[i]] <- status
   }
 
   errors <- error_rows[!vapply(error_rows, is.null, logical(1))]
@@ -264,6 +332,45 @@ run_location_batch_plan <- function(client,
   }
 
   list(requests = plan, results = results, errors = errors)
+}
+
+batch_location_request_spec <- function(client,
+                                        collection_id,
+                                        location_id,
+                                        datetime,
+                                        parameter_name,
+                                        z,
+                                        crs,
+                                        format,
+                                        dots,
+                                        instance_id) {
+  if (length(datetime) == 0L || is.na(datetime)) datetime <- NULL
+  query <- do.call(
+    common_query,
+    c(
+      list(
+        datetime = datetime,
+        parameter_name = parameter_name,
+        z = z,
+        crs = crs
+      ),
+      dots
+    )
+  )
+  path <- paste0(
+    collection_query_path(collection_id, "locations", instance_id),
+    "/",
+    check_path_id(location_id, "location_id")
+  )
+  request <- build_edr_http_request(client, path, query, format)
+  list(
+    path = path,
+    query = query,
+    request = request,
+    url = request$url,
+    format = format,
+    accept = accept_header(format)
+  )
 }
 
 bind_location_batch_data <- function(results, requests, format,
