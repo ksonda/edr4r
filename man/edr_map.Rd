@@ -25,7 +25,8 @@ edr_map(
   mode = c("auto", "stations", "grid", "profile"),
   controls = TRUE,
   initial = list(),
-  grid_opacity = 0.75
+  grid_opacity = 0.75,
+  grid_transform = c("identity", "sqrt", "log1p")
 )
 }
 \arguments{
@@ -101,6 +102,10 @@ and \code{z} for grids).}
 \code{list(parameter = "temperature", datetime = "2024-01-01", z = 0)}.}
 
 \item{grid_opacity}{Fill opacity for gridded coverage cells.}
+
+\item{grid_transform}{Colour transform for grid values: \code{"identity"}
+(default), \code{"sqrt"}, or \code{"log1p"}. The legend continues to report
+values on the original scale.}
 }
 \value{
 A \code{leaflet} htmlwidget. Pass it to \code{\link[=edr_save_html]{edr_save_html()}} to

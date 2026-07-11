@@ -319,6 +319,20 @@ profile <- covjson_to_tibble(profile_resp)
 edr_map(profile)
 ```
 
+Coverage and station layers can share one widget. Start with the coverage map,
+then add independently styled station groups with their normal chart/CSV
+popups:
+
+```r
+m <- edr_map(grid, grid_transform = "sqrt")
+m <- edr_add_stations(
+  m, stations,
+  data = data_list,
+  popup = "plot+csv",
+  group = "USGS"
+)
+```
+
 `edr_explore()` uses the same behavior for bulk coverage queries. Use
 `output = "plot"` when you want a ggplot instead of the interactive map:
 

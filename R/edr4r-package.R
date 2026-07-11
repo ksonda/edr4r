@@ -31,6 +31,8 @@
 #'    collections can be inspected with [edr_instances()].
 #' 4. Flatten the response with [covjson_to_tibble()] (for CoverageJSON)
 #'    or [geojson_to_sf()] (for GeoJSON).
+#' 5. Plot or map it with [edr_plot()] / [edr_map()], and compose station
+#'    observations over coverage maps with [edr_add_stations()].
 #'
 #' For everything the high-level verbs don't cover, [edr_request()] is
 #' the raw escape hatch.
