@@ -67,6 +67,266 @@ test_that("edr_location_batch returns ordered, provenance-rich data", {
   expect_output(print(result), "instance:.*run 00")
 })
 
+test_that("time chunks expand the bounded plan and remove boundary duplicates", {
+  calls <- 0L
+  urls <- character()
+  httr2::local_mocked_responses(function(req) {
+    calls <<- calls + 1L
+    urls <<- c(urls, utils::URLdecode(req$url))
+    text <- if (calls %% 2L == 1L) {
+      paste0(
+        "parameter,datetime,value\n",
+        "flow,2024-01-01,1\n",
+        "flow,2024-01-02,2\n",
+        "temperature,2024-01-02,10\n"
+      )
+    } else {
+      paste0(
+        "parameter,datetime,value\n",
+        "flow,2024-01-02,2\n",
+        "temperature,2024-01-02,10\n",
+        "flow,2024-01-03,3\n"
+      )
+    }
+    mock_text_response(text, content_type = "text/csv")
+  })
+
+  result <- edr_location_batch(
+    test_client(), "demo", c("station-a", "station-b"),
+    datetime = "2024-01-01/2024-01-03",
+    format = "csv",
+    chunk = "1 day",
+    max_requests = 4L,
+    progress = FALSE
+  )
+
+  expect_equal(calls, 4L)
+  expect_equal(
+    result$requests,
+    tibble::tibble(
+      request_id = 1:4,
+      location_id = rep(c("station-a", "station-b"), each = 2L),
+      datetime = rep(c(
+        "2024-01-01/2024-01-02",
+        "2024-01-02/2024-01-03"
+      ), 2L),
+      status = rep("success", 4L),
+      n_rows = rep(3L, 4L)
+    )
+  )
+  expect_equal(nrow(result$data), 8L)
+  expect_equal(
+    result$data$.location_id,
+    rep(c("station-a", "station-b"), each = 4L)
+  )
+  expect_equal(
+    result$data$datetime,
+    rep(c("2024-01-01", "2024-01-02", "2024-01-02", "2024-01-03"), 2L)
+  )
+  expect_equal(result$data$.request_id, c(1L, 1L, 1L, 2L, 3L, 3L, 3L, 4L))
+  expect_true(grepl(
+    "datetime=2024-01-01/2024-01-02", urls[[1]], fixed = TRUE
+  ))
+  expect_true(grepl(
+    "datetime=2024-01-02/2024-01-03", urls[[2]], fixed = TRUE
+  ))
+  expect_match(urls[[3]], "/station-b?", fixed = TRUE)
+
+  raw <- edr_location_batch(
+    test_client(), "demo", c("station-a", "station-b"),
+    datetime = "2024-01-01/2024-01-03",
+    format = "csv",
+    chunk = "1 day",
+    deduplicate = FALSE,
+    max_requests = 4L,
+    progress = FALSE
+  )
+  expect_equal(nrow(raw$data), 12L)
+})
+
+test_that("CoverageJSON chunks deduplicate typed boundary observations", {
+  make_coverage <- function(times, discharge, gage_height) {
+    coverage <- read_fixture("pointseries.covjson")
+    item <- coverage$coverages[[1L]]
+    item$domain$axes$t$values <- as.list(times)
+    item$ranges$discharge$shape <- list(length(times))
+    item$ranges$discharge$values <- as.list(discharge)
+    item$ranges$gage_height$shape <- list(length(times))
+    item$ranges$gage_height$values <- as.list(gage_height)
+    coverage$coverages[[1L]] <- item
+    coverage
+  }
+
+  responses <- list(
+    make_coverage(
+      c("2020-01-01T00:00:00Z", "2020-01-02T00:00:00Z"),
+      c(100, 101), c(5, 6)
+    ),
+    make_coverage(
+      c("2020-01-02T00:00:00Z", "2020-01-03T00:00:00Z"),
+      c(101, 102), c(6, 7)
+    )
+  )
+  calls <- 0L
+  httr2::local_mocked_responses(function(req) {
+    calls <<- calls + 1L
+    mock_json_response(responses[[calls]])
+  })
+
+  result <- edr_location_batch(
+    test_client(), "demo", "08313000",
+    datetime = "2020-01-01/2020-01-03",
+    chunk = "1 day",
+    max_requests = 2L,
+    progress = FALSE
+  )
+
+  expect_equal(result$requests$n_rows, c(4L, 4L))
+  expect_equal(nrow(result$data), 6L)
+  boundary <- as.POSIXct("2020-01-02", tz = "UTC")
+  expect_equal(sum(result$data$datetime == boundary), 2L)
+  expect_true(all(result$data$.request_id[result$data$datetime == boundary] == 1L))
+})
+
+test_that("calendar chunks clamp end-of-month boundaries to the anchor day", {
+  expect_equal(
+    edr4r:::batch_datetime_windows(
+      c("2024-01-01", "2024-01-03"), "1 day", max_windows = 10L
+    ),
+    edr4r:::batch_datetime_windows(
+      "2024-01-01/2024-01-03", "1 day", max_windows = 10L
+    )
+  )
+
+  expect_equal(
+    edr4r:::batch_datetime_windows(
+      "2024-01-31/2024-05-01", "1 month", max_windows = 10L
+    ),
+    c(
+      "2024-01-31/2024-02-29",
+      "2024-02-29/2024-03-31",
+      "2024-03-31/2024-04-30",
+      "2024-04-30/2024-05-01"
+    )
+  )
+
+  expect_equal(
+    edr4r:::batch_datetime_windows(
+      "2024-01-01T00:00:00-05:00/2024-01-04T00:00:00-05:00",
+      "1 day",
+      max_windows = 10L
+    ),
+    c(
+      "2024-01-01T05:00:00Z/2024-01-02T05:00:00Z",
+      "2024-01-02T05:00:00Z/2024-01-03T05:00:00Z",
+      "2024-01-03T05:00:00Z/2024-01-04T05:00:00Z"
+    )
+  )
+
+  expect_equal(
+    edr4r:::batch_datetime_windows(
+      "2024-02-29/2028-03-01", "1 year", max_windows = 10L
+    ),
+    c(
+      "2024-02-29/2025-02-28",
+      "2025-02-28/2026-02-28",
+      "2026-02-28/2027-02-28",
+      "2027-02-28/2028-02-29",
+      "2028-02-29/2028-03-01"
+    )
+  )
+
+  expect_equal(
+    edr4r:::batch_datetime_windows(
+      "2022-07-12T00:00Z/2022-07-14T00:00Z",
+      "  1 DAY  ",
+      max_windows = 10L
+    ),
+    c(
+      "2022-07-12T00:00:00Z/2022-07-13T00:00:00Z",
+      "2022-07-13T00:00:00Z/2022-07-14T00:00:00Z"
+    )
+  )
+
+  expect_equal(
+    edr4r:::batch_datetime_windows(
+      "2024-01-01T00:00:00.1Z/2024-01-02T00:00:00.1Z",
+      "1 day",
+      max_windows = 2L
+    ),
+    "2024-01-01T00:00:00.1Z/2024-01-02T00:00:00.1Z"
+  )
+  expect_equal(
+    edr4r:::batch_datetime_windows(
+      "2024-01-01T00:00:00.000001Z/2024-01-02T00:00:00.000001Z",
+      "1 day",
+      max_windows = 2L
+    ),
+    "2024-01-01T00:00:00.000001Z/2024-01-02T00:00:00.000001Z"
+  )
+  expect_equal(
+    edr4r:::batch_datetime_windows(
+      "2024-01-01/2025-01-01",
+      "2147483647 years",
+      max_windows = 2L
+    ),
+    "2024-01-01/2025-01-01"
+  )
+})
+
+test_that("window deduplication is cross-request and station scoped", {
+  data <- tibble::tibble(
+    .request_id = c(1L, 1L, 1L, 2L, 2L, 3L),
+    .location_id = c("a", "a", "a", "a", "a", "b"),
+    parameter = "flow",
+    datetime = c(
+      "2024-01-01", "2024-01-02", "2024-01-02",
+      "2024-01-02", "2024-01-02", "2024-01-02"
+    ),
+    value = c(1, 2, 2, 2, 99, 2)
+  )
+
+  result <- edr4r:::deduplicate_batch_window_rows(data)
+
+  # Both identical rows from request 1 remain. Request 2 loses only the
+  # exact row seen earlier; its changed value remains. Location b is distinct.
+  expect_equal(result$.request_id, c(1L, 1L, 1L, 2L, 3L))
+  expect_equal(result$value, c(1, 2, 2, 99, 2))
+})
+
+test_that("chunk errors retain request ids that identify their windows", {
+  calls <- 0L
+  httr2::local_mocked_responses(function(req) {
+    calls <<- calls + 1L
+    if (calls == 2L) {
+      return(mock_json_response(
+        list(description = "window unavailable"), status = 503L
+      ))
+    }
+    mock_text_response(
+      paste0("datetime,value\n2024-01-0", calls, ",", calls, "\n"),
+      content_type = "text/csv"
+    )
+  })
+
+  result <- edr_location_batch(
+    test_client(), "demo", "station",
+    datetime = "2024-01-01/2024-01-04",
+    format = "csv",
+    chunk = "1 day",
+    max_requests = 3L,
+    on_error = "collect",
+    progress = FALSE
+  )
+
+  expect_equal(result$requests$status, c("success", "error", "success"))
+  expect_equal(result$errors$request_id, 2L)
+  expect_equal(
+    result$requests$datetime[result$errors$request_id],
+    "2024-01-02/2024-01-03"
+  )
+})
+
 test_that("batch validation finishes before network activity", {
   calls <- 0L
   httr2::local_mocked_responses(function(req) {
@@ -84,6 +344,78 @@ test_that("batch validation finishes before network activity", {
   expect_error(
     edr_location_batch(client, "demo", c("a", "b"), max_requests = 1L, progress = FALSE),
     "exceeding.*max_requests"
+  )
+  expect_error(
+    edr_location_batch(
+      client, "demo", c("a", "b"),
+      datetime = "2024-01-01/2024-01-03",
+      chunk = "1 day", max_requests = 3L, progress = FALSE
+    ),
+    "exceeding.*max_requests"
+  )
+  expect_error(
+    edr_location_batch(client, "demo", "a", chunk = "1 day", progress = FALSE),
+    "bounded.*datetime"
+  )
+  expect_error(
+    edr_location_batch(
+      client, "demo", "a", datetime = NA_character_, progress = FALSE
+    ),
+    "datetime.*missing"
+  )
+  expect_error(
+    edr_location_batch(
+      client, "demo", "a", datetime = "2024-01-01/..",
+      chunk = "1 day", progress = FALSE
+    ),
+    "bounded.*datetime"
+  )
+  expect_error(
+    edr_location_batch(
+      client, "demo", "a", datetime = "2024-01-01",
+      chunk = "1 day", progress = FALSE
+    ),
+    "bounded.*datetime"
+  )
+  expect_error(
+    edr_location_batch(
+      client, "demo", "a", datetime = "2024-01-03/2024-01-01",
+      chunk = "1 day", progress = FALSE
+    ),
+    "start.*before.*end"
+  )
+  for (bad_datetime in c(
+    "2024-02-30/2024-03-02",
+    "2024-01-01T25:00:00Z/2024-01-02T00:00:00Z",
+    "2024-01-01T00:00:60Z/2024-01-02T00:00:00Z",
+    "2024-01-01T00:00:00.1234567Z/2024-01-02T00:00:00.1234567Z",
+    "2250-01-01T00:00:00.000001Z/2250-01-02T00:00:00.000001Z",
+    "2250-01-01T00:00:00.2Z/2250-01-02T00:00:00.000000Z",
+    "2024-01-01/2024-01-02/2024-01-03"
+  )) {
+    expect_error(
+      edr_location_batch(
+        client, "demo", "a", datetime = bad_datetime,
+        chunk = "1 day", progress = FALSE
+      ),
+      "datetime|parse|bounded"
+    )
+  }
+  for (bad_chunk in list("", "monthly", "0 days", "1.5 days", "1 hour", 1)) {
+    expect_error(
+      edr_location_batch(
+        client, "demo", "a", datetime = "2024-01-01/2024-01-03",
+        chunk = bad_chunk, progress = FALSE
+      ),
+      "chunk"
+    )
+  }
+  expect_error(
+    edr_location_batch(
+      client, "demo", "a", datetime = "2024-01-01/2024-01-03",
+      chunk = "1 day", deduplicate = NA, progress = FALSE
+    ),
+    "deduplicate.*TRUE.*FALSE"
   )
   for (cap in list(Inf, 0, -1, 1.5, NA_real_, 1e20)) {
     expect_error(
@@ -282,7 +614,9 @@ test_that("reserved provenance columns become per-request parser failures", {
 
 test_that("batch controls and instance_id are keyword-only", {
   formal_names <- names(formals(edr_location_batch))
-  for (argument in c("max_requests", "on_error", "progress", "instance_id")) {
+  for (argument in c(
+    "chunk", "deduplicate", "max_requests", "on_error", "progress", "instance_id"
+  )) {
     expect_gt(match(argument, formal_names), match("...", formal_names))
   }
 })

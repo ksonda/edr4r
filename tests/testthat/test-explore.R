@@ -353,6 +353,36 @@ test_that("per-station fetches warn when stations fail", {
   expect_null(res[[2]])
 })
 
+test_that("per-station fetches preserve datetime and omit missing query values", {
+  coverage <- read_fixture("pointseries.covjson")
+  urls <- character()
+  httr2::local_mocked_responses(function(req) {
+    urls <<- c(urls, utils::URLdecode(req$url))
+    mock_json_response(coverage)
+  })
+
+  edr4r:::fetch_per_station(
+    test_client(), "demo", "dated",
+    datetime = "2020-01-01/2020-01-03",
+    parameter_name = NULL,
+    quiet = TRUE
+  )
+  edr4r:::fetch_per_station(
+    test_client(), "demo", "undated",
+    datetime = NULL,
+    parameter_name = NULL,
+    quiet = TRUE
+  )
+
+  expect_match(
+    urls[[1L]],
+    "datetime=2020-01-01/2020-01-03",
+    fixed = TRUE
+  )
+  expect_false(grepl("datetime=", urls[[2L]], fixed = TRUE))
+  expect_false(grepl("datetime=NA", urls[[2L]], fixed = TRUE))
+})
+
 test_that("edr_explore can return a plot for gridded cube data", {
   skip_if_not_installed("ggplot2")
   call_n <- 0L
