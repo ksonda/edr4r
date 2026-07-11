@@ -245,6 +245,38 @@ The helper deliberately does not discover stations or parallelize
 requests; the full request count is known and validated before network
 activity.
 
+For a server that honors bounded `datetime` intervals, split a long pull
+into calendar windows with `chunk`. The request cap applies to the
+complete station-by-window plan, so ten stations over twelve monthly
+windows requires a cap of at least 120:
+
+``` r
+
+wwdh <- edr_client("https://api.wwdh.internetofwater.app")
+
+monthly_pull <- edr_location_batch(
+  wwdh, "rise-edr",
+  location_id    = "3514",
+  datetime       = "2023-01-01/2024-01-01",
+  parameter_name = "3",
+  chunk           = "1 month",
+  max_requests    = 12,
+  on_error        = "collect"
+)
+```
+
+Adjacent windows share their boundary because EDR intervals are closed
+and server inclusivity varies. By default, exact observations repeated
+across windows for the same station are retained only from the earliest
+request; `deduplicate = FALSE` preserves the raw responses.
+`requests$n_rows` records the pre-deduplication row count for each
+request.
+
+The USGS beta location endpoint currently ignores `datetime` and returns
+its latest records. Chunking is therefore useful only for endpoints that
+honor the requested interval; it is not a workaround for retrieving USGS
+history.
+
 ### Spatial filters — bbox and polygon
 
 To grab everything inside a rectangle, use

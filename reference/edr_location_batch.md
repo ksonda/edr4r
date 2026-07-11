@@ -1,11 +1,12 @@
 # Fetch data for multiple EDR locations
 
-Runs one
+Runs one or more
 [`edr_location()`](https://ksonda.github.io/edr4r/reference/edr_location.md)
-request for each explicitly supplied location id. Requests are made
-sequentially and in input order. The complete request plan is validated
-before any network activity, and `max_requests` provides a finite guard
-against accidental fan-out.
+requests for each explicitly supplied location id. When `chunk` is
+supplied, a bounded datetime interval is split into contiguous closed
+windows and the complete station-by-window plan is validated before any
+network activity. Requests remain sequential and in input order, and
+`max_requests` guards the expanded plan against accidental fan-out.
 
 ## Usage
 
@@ -20,6 +21,8 @@ edr_location_batch(
   crs = NULL,
   format = c("covjson", "csv"),
   ...,
+  chunk = NULL,
+  deduplicate = TRUE,
   max_requests = 100L,
   on_error = c("stop", "collect"),
   progress = interactive(),
@@ -44,7 +47,11 @@ edr_location_batch(
 
 - datetime:
 
-  Optional ISO-8601 instant or interval shared by every request.
+  Optional ISO-8601 instant or interval. With `chunk = NULL`, it is
+  shared by every request; otherwise the bounded interval is split into
+  per-request windows. Timestamp bounds are normalized to UTC before
+  calendar arithmetic; up to six fractional-second digits are accepted
+  when R can preserve them without loss.
 
 - parameter_name:
 
@@ -68,10 +75,26 @@ edr_location_batch(
   [`edr_location()`](https://ksonda.github.io/edr4r/reference/edr_location.md)
   request, such as `limit`.
 
+- chunk:
+
+  Optional positive-integer calendar interval such as `"1 day"`,
+  `"2 weeks"`, `"1 month"`, or `"1 year"`. Requires a bounded `datetime`
+  interval. Month/year boundaries use anchored calendar arithmetic, so a
+  January 31 start advances to February 28/29 and then March 31.
+
+- deduplicate:
+
+  If `TRUE` (default), exact rows repeated by different time windows for
+  the same location are retained only from the earliest request.
+  Duplicates within one response, differing observations, and rows from
+  different locations are preserved. Ignored when `chunk` is `NULL`.
+
 - max_requests:
 
-  Finite positive integer limiting the number of HTTP requests. Defaults
-  to 100.
+  Finite positive integer limiting the number of logical
+  [`edr_location()`](https://ksonda.github.io/edr4r/reference/edr_location.md)
+  calls in the complete plan. Transport-level retries do not increase
+  this count. Defaults to 100.
 
 - on_error:
 
@@ -93,7 +116,8 @@ edr_location_batch(
 ## Value
 
 An object of class `edr_location_batch` and `edr_batch`. It contains
-`requests`, a typed request-status tibble; `data`, a combined data
+`requests`, a typed request-status tibble whose `n_rows` values describe
+raw responses before cross-window deduplication; `data`, a combined data
 tibble; and `errors`, a typed tibble of collected conditions. The object
 also records `collection_id`, `instance_id`, and `format`.
 

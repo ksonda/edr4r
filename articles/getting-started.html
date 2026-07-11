@@ -295,7 +295,8 @@ finite sequential loop with visible provenance and failures:</p>
 <span>  location_id    <span class="op">=</span> <span class="va">selected_ids</span>,</span>
 <span>  datetime       <span class="op">=</span> <span class="st">"2023-01-01/2023-06-30"</span>,</span>
 <span>  parameter_name <span class="op">=</span> <span class="st">"3"</span>,</span>
-<span>  max_requests   <span class="op">=</span> <span class="fl">5</span>,</span>
+<span>  chunk           <span class="op">=</span> <span class="st">"1 month"</span>,</span>
+<span>  max_requests   <span class="op">=</span> <span class="fl">30</span>,</span>
 <span>  on_error       <span class="op">=</span> <span class="st">"collect"</span>,</span>
 <span>  progress       <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
@@ -304,9 +305,12 @@ finite sequential loop with visible provenance and failures:</p>
 <span><span class="va">batch</span><span class="op">$</span><span class="va">data</span></span>
 <span><span class="va">batch</span><span class="op">$</span><span class="va">errors</span></span></code></pre></div>
 <p>The request count and every location ID are validated before the
-first HTTP call. In this WWDH workflow, <code>cube</code> remains
-preferable when all stations in a spatial extent are wanted in one
-request.</p>
+first HTTP call. Here the complete plan is five stations by six monthly
+windows. Adjacent closed windows may repeat a boundary observation; the
+combined data keeps the earliest exact copy while
+<code>batch$requests</code> retains each raw row count. In this WWDH
+workflow, <code>cube</code> remains preferable when all stations in a
+spatial extent are wanted in one request.</p>
 </div>
 </div>
 <div class="section level2">

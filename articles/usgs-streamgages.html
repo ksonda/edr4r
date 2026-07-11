@@ -275,6 +275,10 @@ parallelizing anything:</p>
 <span><span class="va">all_streamflow</span><span class="op">$</span><span class="va">requests</span></span>
 <span><span class="va">all_streamflow</span><span class="op">$</span><span class="va">data</span></span>
 <span><span class="va">all_streamflow</span><span class="op">$</span><span class="va">errors</span></span></code></pre></div>
+<p>USGS beta currently ignores <code>datetime</code> on these individual
+location queries and returns the latest records. Do not add
+<code>chunk</code> here expecting historical windows: chunking is
+intended for EDR implementations that honor the requested interval.</p>
 </div>
 <div class="section level2">
 <h2 id="map-every-gauge-with-per-station-popups">4. Map every gauge with per-station popups<a class="anchor" aria-label="anchor" href="#map-every-gauge-with-per-station-popups"></a>

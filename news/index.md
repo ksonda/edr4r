@@ -14,6 +14,12 @@
   for safe, finite, sequential multi-station pulls with stable
   request/data/error tables, explicit station provenance, and
   stop-or-collect failure handling.
+- Add bounded calendar time-window planning to
+  [`edr_location_batch()`](https://ksonda.github.io/edr4r/reference/edr_location_batch.md)
+  with station-by-window request caps, month-end/leap-year handling,
+  normalized window provenance, and optional exact boundary-row
+  deduplication. Requests remain sequential so the existing retry and
+  throttling policy stays in control.
 - Reuse the batch execution engine inside per-location
   [`edr_explore()`](https://ksonda.github.io/edr4r/reference/edr_explore.md)
   while preserving its existing output and summary-warning contract.

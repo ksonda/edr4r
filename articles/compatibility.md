@@ -20,7 +20,7 @@ unchanged.
 | NetCDF, GeoTIFF, GRIB and other native encodings | Download only | Use `edr_request(..., parse = FALSE)` with the server’s advertised `f` value; no native R conversion yet |
 | External CoverageJSON domains/ranges and `TiledNdArray` | Not supported | Rejected explicitly rather than partially or silently parsed |
 | Pagination/link following | Supported subset | Opt-in for GeoJSON FeatureCollections from [`edr_locations()`](https://ksonda.github.io/edr4r/reference/edr_locations.md) / [`edr_items()`](https://ksonda.github.io/edr4r/reference/edr_items.md); bounded by finite page and feature caps |
-| Multi-location retrieval | Supported subset | Explicit IDs through sequential [`edr_location_batch()`](https://ksonda.github.io/edr4r/reference/edr_location_batch.md); CoverageJSON and CSV only, with a finite request cap |
+| Multi-location retrieval | Supported subset | Explicit IDs through sequential [`edr_location_batch()`](https://ksonda.github.io/edr4r/reference/edr_location_batch.md); optional bounded calendar windows, exact cross-window deduplication, CoverageJSON/CSV, and a finite expanded-plan cap |
 | HTTP 202/308 asynchronous polling | Not yet supported | HTTP 204 empty responses are supported |
 | POST queries and EDR Part 2 Pub/Sub | Out of current scope | The package is a synchronous, read-only client |
 
@@ -53,11 +53,17 @@ integers remain explicit parser errors.
 
 [`edr_location_batch()`](https://ksonda.github.io/edr4r/reference/edr_location_batch.md)
 returns an `edr_location_batch` object with three stable tibbles:
-`requests` (one status row per input ID), `data` (row-bound
-CoverageJSON/CSV data with `.request_id` and `.location_id` provenance),
-and `errors` (preserved conditions when `on_error = "collect"`). It is
-sequential in this release so the normal client retry policy remains
-authoritative.
+`requests` (one status row per planned location/window query), `data`
+(row-bound CoverageJSON/CSV data with `.request_id` and `.location_id`
+provenance), and `errors` (preserved conditions when
+`on_error = "collect"`). Optional day/week/month/year chunks require a
+finite closed interval. Adjacent windows share their boundary; exact
+rows repeated across windows for the same location are removed by
+default, while `requests$n_rows` retains raw response counts. Timestamp
+bounds are normalized to UTC before calendar arithmetic and may contain
+up to six fractional-second digits; values that R cannot represent
+without loss are rejected before requests begin. It is sequential in
+this release so the normal client retry policy remains authoritative.
 
 Pagination is deliberately opt-in. The client follows only the
 server-advertised body link with `rel = "next"`, treats its
@@ -111,7 +117,7 @@ inspected on 2026-07-10.
 
 | Endpoint | Role | Advertised query types observed | edr4r coverage |
 |----|----|----|----|
-| [USGS waterdata](https://api.waterdata.usgs.gov/ogcapi/beta/) | Operational U.S. streamgage service | `locations` | Collection/location discovery, opaque cursor pagination, station/batch time series, CoverageJSON parsing, per-location exploration |
+| [USGS waterdata](https://api.waterdata.usgs.gov/ogcapi/beta/) | Operational U.S. streamgage service | `locations` | Collection/location discovery, opaque cursor pagination, latest-record station/batch time series, CoverageJSON parsing, per-location exploration; location queries currently ignore `datetime` |
 | [Western Water Datahub](https://api.wwdh.internetofwater.app) | Operational multi-network pygeoapi deployment | `locations`, `items`, `position`, `area`, `cube` | Discovery, parameters, offset pagination for items, station and bulk queries, plotting and mapping |
 | [Met Office Labs](https://labs.metoffice.gov.uk/edr/collections?f=html) | Non-operational technical demonstrator | `locations`, `items`, `instances`, `position`, `area`, `cube`, `radius`, `trajectory` | Cross-implementation metadata, instances, query-specific formats, terrain point coverage, and an explicit-CRS population grid |
 

@@ -153,7 +153,8 @@ finite page and feature caps</td>
 <td>Multi-location retrieval</td>
 <td>Supported subset</td>
 <td>Explicit IDs through sequential <code><a href="../reference/edr_location_batch.html">edr_location_batch()</a></code>;
-CoverageJSON and CSV only, with a finite request cap</td>
+optional bounded calendar windows, exact cross-window deduplication,
+CoverageJSON/CSV, and a finite expanded-plan cap</td>
 </tr>
 <tr class="odd">
 <td>HTTP 202/308 asynchronous polling</td>
@@ -191,10 +192,17 @@ safely representable; actual text, overflow/underflow, and unsafe
 declared integers remain explicit parser errors.</p>
 <p><code><a href="../reference/edr_location_batch.html">edr_location_batch()</a></code> returns an
 <code>edr_location_batch</code> object with three stable tibbles:
-<code>requests</code> (one status row per input ID), <code>data</code>
-(row-bound CoverageJSON/CSV data with <code>.request_id</code> and
-<code>.location_id</code> provenance), and <code>errors</code>
-(preserved conditions when <code>on_error = "collect"</code>). It is
+<code>requests</code> (one status row per planned location/window
+query), <code>data</code> (row-bound CoverageJSON/CSV data with
+<code>.request_id</code> and <code>.location_id</code> provenance), and
+<code>errors</code> (preserved conditions when
+<code>on_error = "collect"</code>). Optional day/week/month/year chunks
+require a finite closed interval. Adjacent windows share their boundary;
+exact rows repeated across windows for the same location are removed by
+default, while <code>requests$n_rows</code> retains raw response counts.
+Timestamp bounds are normalized to UTC before calendar arithmetic and
+may contain up to six fractional-second digits; values that R cannot
+represent without loss are rejected before requests begin. It is
 sequential in this release so the normal client retry policy remains
 authoritative.</p>
 <p>Pagination is deliberately opt-in. The client follows only the
@@ -263,8 +271,10 @@ waterdata</a></td>
 <td>Operational U.S. streamgage service</td>
 <td><code>locations</code></td>
 <td>Collection/location discovery, opaque cursor pagination,
-station/batch time series, CoverageJSON parsing, per-location
-exploration</td>
+latest-record station/batch time series, CoverageJSON parsing,
+per-location exploration; location queries currently ignore
+<code>datetime</code>
+</td>
 </tr>
 <tr class="even">
 <td><a href="https://api.wwdh.internetofwater.app" class="external-link">Western Water

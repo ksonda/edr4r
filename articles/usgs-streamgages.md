@@ -208,6 +208,11 @@ all_streamflow$data
 all_streamflow$errors
 ```
 
+USGS beta currently ignores `datetime` on these individual location
+queries and returns the latest records. Do not add `chunk` here
+expecting historical windows: chunking is intended for EDR
+implementations that honor the requested interval.
+
 ## 4. Map every gauge with per-station popups
 
 [`edr_explore()`](https://ksonda.github.io/edr4r/reference/edr_explore.md)
