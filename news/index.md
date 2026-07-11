@@ -20,6 +20,13 @@
   normalized window provenance, and optional exact boundary-row
   deduplication. Requests remain sequential so the existing retry and
   throttling policy stays in control.
+- Add opt-in checkpoint/resume support for
+  [`edr_location_batch()`](https://ksonda.github.io/edr4r/reference/edr_location_batch.md).
+  Parsed successful and empty responses are installed atomically per
+  request, so an interrupted bounded pull can reuse terminal windows
+  while retrying only unresolved work. Checkpoints are locked,
+  plan-fingerprinted, and reject incompatible or corrupt state before
+  network activity.
 - Reuse the batch execution engine inside per-location
   [`edr_explore()`](https://ksonda.github.io/edr4r/reference/edr_explore.md)
   while preserving its existing output and summary-warning contract.

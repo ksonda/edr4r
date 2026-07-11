@@ -23,6 +23,8 @@ edr_location_batch(
   ...,
   chunk = NULL,
   deduplicate = TRUE,
+  checkpoint = NULL,
+  resume = FALSE,
   max_requests = 100L,
   on_error = c("stop", "collect"),
   progress = interactive(),
@@ -89,6 +91,20 @@ edr_location_batch(
   Duplicates within one response, differing observations, and rows from
   different locations are preserved. Ignored when `chunk` is `NULL`.
 
+- checkpoint:
+
+  Optional directory used to persist each terminal successful or empty
+  response. A new or empty directory is initialized after the complete
+  request plan has passed validation. Checkpoints store parsed response
+  data, but not client headers, query URLs, or errors.
+
+- resume:
+
+  If `TRUE`, reuse terminal responses in an existing compatible
+  `checkpoint` and request only unresolved rows. If the directory does
+  not yet exist, it is initialized, which supports rerunnable scripts.
+  An existing checkpoint requires `resume = TRUE`. Defaults to `FALSE`.
+
 - max_requests:
 
   Finite positive integer limiting the number of logical
@@ -129,3 +145,14 @@ CSV responses are already parsed as tibbles by
 [`edr_location()`](https://ksonda.github.io/edr4r/reference/edr_location.md).
 Successful rows are combined with `.request_id` and `.location_id`
 provenance columns.
+
+Checkpoint requests remain sequential. Result files are written
+atomically after parsing and before a request is marked complete in
+memory. Errors are deliberately not terminal: a later call with
+`resume = TRUE` retries them under the client's normal retry policy. A
+checkpoint may contain the endpoint's returned observations, so protect
+it like any other local data extract and resume it under the same
+logical authorization context. Checkpointed clients must use an absolute
+HTTP(S) base URL without an embedded query, fragment, username, or
+password; rotating credentials belong in `client` headers and are not
+written to the checkpoint.

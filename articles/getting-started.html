@@ -296,6 +296,8 @@ finite sequential loop with visible provenance and failures:</p>
 <span>  datetime       <span class="op">=</span> <span class="st">"2023-01-01/2023-06-30"</span>,</span>
 <span>  parameter_name <span class="op">=</span> <span class="st">"3"</span>,</span>
 <span>  chunk           <span class="op">=</span> <span class="st">"1 month"</span>,</span>
+<span>  checkpoint      <span class="op">=</span> <span class="st">"wwdh-monthly-checkpoint"</span>,</span>
+<span>  resume          <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  max_requests   <span class="op">=</span> <span class="fl">30</span>,</span>
 <span>  on_error       <span class="op">=</span> <span class="st">"collect"</span>,</span>
 <span>  progress       <span class="op">=</span> <span class="cn">FALSE</span></span>
@@ -308,9 +310,13 @@ finite sequential loop with visible provenance and failures:</p>
 first HTTP call. Here the complete plan is five stations by six monthly
 windows. Adjacent closed windows may repeat a boundary observation; the
 combined data keeps the earliest exact copy while
-<code>batch$requests</code> retains each raw row count. In this WWDH
-workflow, <code>cube</code> remains preferable when all stations in a
-spatial extent are wanted in one request.</p>
+<code>batch$requests</code> retains each raw row count. In this example,
+the first call initializes the checkpoint and later identical calls
+reuse successful or empty windows while retrying unresolved ones. The
+checkpoint contains parsed observations and can be removed when the pull
+is no longer needed. In this WWDH workflow, <code>cube</code> remains
+preferable when all stations in a spatial extent are wanted in one
+request.</p>
 </div>
 </div>
 <div class="section level2">

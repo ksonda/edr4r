@@ -260,6 +260,8 @@ monthly_pull <- edr_location_batch(
   datetime       = "2023-01-01/2024-01-01",
   parameter_name = "3",
   chunk           = "1 month",
+  checkpoint      = "lake-mead-2023-checkpoint",
+  resume          = TRUE,
   max_requests    = 12,
   on_error        = "collect"
 )
@@ -271,6 +273,14 @@ across windows for the same station are retained only from the earliest
 request; `deduplicate = FALSE` preserves the raw responses.
 `requests$n_rows` records the pre-deduplication row count for each
 request.
+
+`resume = TRUE` initializes a missing checkpoint on the first run. Later
+runs with the same effective request plan load successful and empty
+windows from disk and retry only unresolved work. The expanded plan
+still has to satisfy `max_requests` before the checkpoint is opened.
+Checkpoints contain parsed observations, but do not store client
+headers, query URLs, or error conditions; protect the directory like any
+other local data extract.
 
 The USGS beta location endpoint currently ignores `datetime` and returns
 its latest records. Chunking is therefore useful only for endpoints that

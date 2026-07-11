@@ -154,7 +154,7 @@ finite page and feature caps</td>
 <td>Supported subset</td>
 <td>Explicit IDs through sequential <code><a href="../reference/edr_location_batch.html">edr_location_batch()</a></code>;
 optional bounded calendar windows, exact cross-window deduplication,
-CoverageJSON/CSV, and a finite expanded-plan cap</td>
+checkpoint/resume, CoverageJSON/CSV, and a finite expanded-plan cap</td>
 </tr>
 <tr class="odd">
 <td>HTTP 202/308 asynchronous polling</td>
@@ -205,6 +205,18 @@ may contain up to six fractional-second digits; values that R cannot
 represent without loss are rejected before requests begin. It is
 sequential in this release so the normal client retry policy remains
 authoritative.</p>
+<p>Checkpointing is opt-in and preserves only terminal successful or
+empty parsed responses. An interrupted or failed request has no terminal
+file and is retried on the next explicit <code>resume = TRUE</code>
+call. Each checkpoint is locked while in use and fingerprinted against
+the effective endpoint, ordered location/window plan, format, and query
+arguments. A mismatch or corrupt result aborts before network activity.
+Headers, full query URLs, and error conditions are not stored; the
+parsed observation data is stored and should be protected accordingly.
+Checkpointed clients require an absolute HTTP(S) base URL without an
+embedded query, fragment, username, or password. Rotating credentials
+belong in client headers; the caller remains responsible for resuming
+under the same logical authorization context.</p>
 <p>Pagination is deliberately opt-in. The client follows only the
 server-advertised body link with <code>rel = "next"</code>, treats its
 cursor/offset as opaque, and requires the continuation to remain on the
