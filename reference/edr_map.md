@@ -33,7 +33,8 @@ edr_map(
   mode = c("auto", "stations", "grid", "profile"),
   controls = TRUE,
   initial = list(),
-  grid_opacity = 0.75
+  grid_opacity = 0.75,
+  grid_transform = c("identity", "sqrt", "log1p")
 )
 ```
 
@@ -148,6 +149,12 @@ edr_map(
 - grid_opacity:
 
   Fill opacity for gridded coverage cells.
+
+- grid_transform:
+
+  Colour transform for grid values: `"identity"` (default), `"sqrt"`, or
+  `"log1p"`. The legend continues to report values on the original
+  scale.
 
 ## Value
 

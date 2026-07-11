@@ -5,12 +5,12 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Cross-endpoint water context: Lake Mead • edr4r</title>
+<title>Layering EDR data: Lake Mead • edr4r</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Cross-endpoint water context: Lake Mead">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Layering EDR data: Lake Mead">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -35,7 +35,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/getting-started.html">Getting started with edr4r</a></li>
     <li><a class="dropdown-item" href="../articles/compatibility.html">EDR compatibility and supported scope</a></li>
-    <li><a class="dropdown-item" href="../articles/cross-endpoint-water-context.html">Cross-endpoint water context: Lake Mead</a></li>
+    <li><a class="dropdown-item" href="../articles/cross-endpoint-water-context.html">Layering EDR data: Lake Mead</a></li>
     <li><a class="dropdown-item" href="../articles/usgs-streamgages.html">USGS streamgages: bounded discovery and mapping</a></li>
   </ul>
 </li>
@@ -59,7 +59,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>Cross-endpoint water context: Lake Mead</h1>
+      <h1>Layering EDR data: Lake Mead</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/main/vignettes/cross-endpoint-water-context.Rmd" class="external-link"><code>vignettes/cross-endpoint-water-context.Rmd</code></a></small>
@@ -68,31 +68,24 @@
 
     
     
-<p>An EDR workflow becomes more useful when coverages from different
-services can share an analysis without pretending they have the same
-shape. This example uses one Lake Mead/Las Vegas study area and three
-live implementations:</p>
+<p>This example layers data from three EDR implementations in one
+Leaflet map:</p>
 <ul>
-<li>the Met Office Labs <code>global_pop_density</code> collection,
-queried as an <code>area</code> grid;</li>
-<li>the USGS waterdata <code>daily-edr</code> collection, queried at the
-Colorado River gauge below Hoover Dam; and</li>
-<li>the Western Water Datahub (WWDH) <code>rise-edr</code> collection,
-queried with a <code>cube</code> that contains Lake Mead reservoir
-storage.</li>
+<li>a 2015 population-density <code>Grid</code> from the Met Office Labs
+demonstrator;</li>
+<li>two USGS daily-value <code>PointSeries</code>; and</li>
+<li>USBR Lake Mead reservoir storage exposed through the Western Water
+Datahub (WWDH) as a <code>CoverageCollection</code>.</li>
 </ul>
-<p>Together they exercise a CoverageJSON <code>Grid</code>, a single
-<code>PointSeries</code>, and a <code>CoverageCollection</code> of
-temporal point data. The spatial layer supplies human context, while the
-two water layers remain separate series with their own parameters and
-units.</p>
-<p>The displayed results were retrieved on 2026-07-10 and precomputed
-from the live endpoints. Package builds therefore stay deterministic and
-offline. The Met Office Labs service is a <strong>technical
-demonstrator, not an operational dependency</strong>; its collections
-and behavior can change without notice.</p>
+<p>The population grid is the background layer. USGS and USBR stations
+sit above it as separate toggleable groups, and each station popup
+contains an interactive time-series chart and CSV download. The
+displayed data were precomputed from the live endpoints on 2026-07-10,
+so building the package does not issue EDR requests. Met Office Labs is
+a technical demonstrator and may change independently of
+<code>edr4r</code>.</p>
 <div class="section level2">
-<h2 id="use-one-bounded-study-area">1. Use one bounded study area<a class="anchor" aria-label="anchor" href="#use-one-bounded-study-area"></a>
+<h2 id="connect-to-the-three-services">1. Connect to the three services<a class="anchor" aria-label="anchor" href="#connect-to-the-three-services"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/ksonda/edr4r" class="external-link">edr4r</a></span><span class="op">)</span></span>
@@ -118,21 +111,17 @@ and behavior can change without notice.</p>
 <span></span>
 <span><span class="va">study_bbox</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">115.30</span>, <span class="fl">35.75</span>, <span class="op">-</span><span class="fl">114.55</span>, <span class="fl">36.30</span><span class="op">)</span></span>
 <span><span class="co">#                    minx   miny     maxx   maxy</span></span></code></pre></div>
-<p>The box includes Las Vegas, Hoover Dam, and the western part of Lake
-Mead. It is intentionally small: the population request produces only a
-few thousand grid cells, and the WWDH cube contains one matching
-reservoir coverage.</p>
-<p>Capability discovery should guide the verb choice. The three
-collections do not advertise an identical surface:</p>
+<p>The box covers Las Vegas, Hoover Dam, and the western part of Lake
+Mead. Each collection advertises a different useful query path:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">capability_check</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  endpoint <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Met Office Labs"</span>, <span class="st">"USGS waterdata"</span>, <span class="st">"WWDH"</span><span class="op">)</span>,</span>
 <span>  collection <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"global_pop_density"</span>, <span class="st">"daily-edr"</span>, <span class="st">"rise-edr"</span><span class="op">)</span>,</span>
-<span>  query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"area"</span>, <span class="st">"locations"</span>, <span class="st">"cube"</span><span class="op">)</span>,</span>
+<span>  query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"area"</span>, <span class="st">"locations"</span>, <span class="st">"locations"</span><span class="op">)</span>,</span>
 <span>  supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>    <span class="fu"><a href="../reference/edr_supports.html">edr_supports</a></span><span class="op">(</span><span class="va">met</span>, <span class="st">"global_pop_density"</span>, query <span class="op">=</span> <span class="st">"area"</span><span class="op">)</span>,</span>
 <span>    <span class="fu"><a href="../reference/edr_supports.html">edr_supports</a></span><span class="op">(</span><span class="va">usgs</span>, <span class="st">"daily-edr"</span>, query <span class="op">=</span> <span class="st">"locations"</span><span class="op">)</span>,</span>
-<span>    <span class="fu"><a href="../reference/edr_supports.html">edr_supports</a></span><span class="op">(</span><span class="va">wwdh</span>, <span class="st">"rise-edr"</span>, query <span class="op">=</span> <span class="st">"cube"</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="../reference/edr_supports.html">edr_supports</a></span><span class="op">(</span><span class="va">wwdh</span>, <span class="st">"rise-edr"</span>, query <span class="op">=</span> <span class="st">"locations"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -160,25 +149,18 @@ collections do not advertise an identical surface:</p>
 <tr class="odd">
 <td align="left">WWDH</td>
 <td align="left">rise-edr</td>
-<td align="left">cube</td>
+<td align="left">locations</td>
 <td align="left">TRUE</td>
 </tr>
 </tbody>
 </table>
-<p><code>daily-edr</code> advertises only the EDR <code>locations</code>
-query, whose individual location path is what
-<code><a href="../reference/edr_location.html">edr_location()</a></code> calls. WWDH can use <code>cube</code> for a
-spatially bounded bulk query, while the population collection advertises
-<code>area</code> and is a static layer with no temporal extent.</p>
 </div>
 <div class="section level2">
-<h2 id="retrieve-three-coverage-shapes">2. Retrieve three coverage shapes<a class="anchor" aria-label="anchor" href="#retrieve-three-coverage-shapes"></a>
+<h2 id="retrieve-the-population-grid">2. Retrieve the population grid<a class="anchor" aria-label="anchor" href="#retrieve-the-population-grid"></a>
 </h2>
-<p>The Met Office collection describes 2015 global population density.
-Convert the bounding box to a polygon and pass the CRS explicitly. The
-demonstrator currently rejects this query without
-<code>crs = "EPSG:4326"</code>, even though that CRS appears in its
-collection metadata.</p>
+<p>The population collection requires an explicit CRS on its
+<code>area</code> query. The four-row matrix is closed into a WKT
+polygon by <code><a href="../reference/edr_area.html">edr_area()</a></code>.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">population_ring</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">study_bbox</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, <span class="va">study_bbox</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span>,</span>
@@ -196,64 +178,138 @@ collection metadata.</p>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">population</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">population_response</span><span class="op">)</span></span>
+<span><span class="va">population</span><span class="op">$</span><span class="va">parameter_code</span> <span class="op">&lt;-</span> <span class="va">population</span><span class="op">$</span><span class="va">parameter</span></span>
+<span><span class="va">population</span><span class="op">$</span><span class="va">parameter</span> <span class="op">&lt;-</span> <span class="st">"2015 population density"</span></span>
+<span><span class="va">population</span><span class="op">$</span><span class="va">unit</span> <span class="op">&lt;-</span> <span class="st">"people/km2"</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">population</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0L</span>,</span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"x"</span>, <span class="st">"y"</span>, <span class="st">"value"</span><span class="op">)</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">population</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/any.html" class="external-link">any</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/is.finite.html" class="external-link">is.finite</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">value</span><span class="op">)</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>For USGS, request 31 daily discharge records from gauge
-<code>USGS-09421500</code>, Colorado River below Hoover Dam. The
-endpoint currently does not honor a <code>datetime</code> filter on an
-individual location, so the example derives the matching WWDH interval
-from the timestamps USGS actually returns.</p>
+<p>The result is a regular 90 by 66 grid with 5,940 cells.
+<code><a href="../reference/edr_map.html">edr_map()</a></code> handles the cell bounds, palette, legend, and map
+extent directly from the tidy rows.</p>
+</div>
+<div class="section level2">
+<h2 id="retrieve-the-station-series">3. Retrieve the station series<a class="anchor" aria-label="anchor" href="#retrieve-the-station-series"></a>
+</h2>
+<p>Two USGS gauges provide a stage series below Hoover Dam and a
+discharge series on Las Vegas Wash. USGS currently ignores
+<code>datetime</code> on individual location requests, so the example
+asks for 31 records and uses the dates actually returned.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">flow_response</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_location.html">edr_location</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">usgs_index</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_locations.html">edr_locations</a></span><span class="op">(</span></span>
+<span>  <span class="va">usgs</span>,</span>
+<span>  <span class="st">"daily-edr"</span>,</span>
+<span>  bbox <span class="op">=</span> <span class="va">study_bbox</span>,</span>
+<span>  limit <span class="op">=</span> <span class="fl">100</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">selected_usgs_ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"USGS-09421500"</span>, <span class="st">"USGS-09419800"</span><span class="op">)</span></span>
+<span><span class="va">usgs_sites</span> <span class="op">&lt;-</span> <span class="va">usgs_index</span><span class="op">[</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/match.html" class="external-link">match</a></span><span class="op">(</span><span class="va">selected_usgs_ids</span>, <span class="va">usgs_index</span><span class="op">$</span><span class="va">id</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"monitoring_location_name"</span>, <span class="st">"geometry"</span><span class="op">)</span></span>
+<span><span class="op">]</span></span>
+<span></span>
+<span><span class="va">hoover_response</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_location.html">edr_location</a></span><span class="op">(</span></span>
 <span>  <span class="va">usgs</span>,</span>
 <span>  <span class="st">"daily-edr"</span>,</span>
 <span>  location_id <span class="op">=</span> <span class="st">"USGS-09421500"</span>,</span>
-<span>  parameter_name <span class="op">=</span> <span class="st">"00060"</span>,  <span class="co"># discharge, ft3/s</span></span>
+<span>  parameter_name <span class="op">=</span> <span class="st">"00065"</span>,</span>
 <span>  limit <span class="op">=</span> <span class="fl">31</span></span>
 <span><span class="op">)</span></span>
+<span><span class="va">hoover_stage</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">hoover_response</span><span class="op">)</span></span>
+<span><span class="va">hoover_stage</span> <span class="op">&lt;-</span> <span class="va">hoover_stage</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">hoover_stage</span><span class="op">$</span><span class="va">datetime</span><span class="op">)</span>, <span class="op">]</span></span>
+<span><span class="va">hoover_stage</span><span class="op">$</span><span class="va">parameter_code</span> <span class="op">&lt;-</span> <span class="va">hoover_stage</span><span class="op">$</span><span class="va">parameter</span></span>
+<span><span class="va">hoover_stage</span><span class="op">$</span><span class="va">parameter</span> <span class="op">&lt;-</span> <span class="st">"Gage height"</span></span>
+<span><span class="va">hoover_stage</span><span class="op">$</span><span class="va">coverage_id</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"usgs:"</span>, <span class="va">hoover_stage</span><span class="op">$</span><span class="va">coverage_id</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">flow</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">flow_response</span><span class="op">)</span></span>
-<span><span class="va">flow</span> <span class="op">&lt;-</span> <span class="va">flow</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">flow</span><span class="op">$</span><span class="va">datetime</span><span class="op">)</span>, <span class="op">]</span></span>
-<span><span class="va">flow</span><span class="op">$</span><span class="va">coverage_id</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"usgs:"</span>, <span class="va">flow</span><span class="op">$</span><span class="va">coverage_id</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">flow</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0L</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"coverage_id"</span>, <span class="st">"datetime"</span>, <span class="st">"x"</span>, <span class="st">"y"</span>, <span class="st">"value"</span><span class="op">)</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">flow</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">flow</span><span class="op">$</span><span class="va">coverage_id</span><span class="op">)</span><span class="op">)</span> <span class="op">==</span> <span class="fl">1L</span></span>
+<span><span class="va">wash_response</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_location.html">edr_location</a></span><span class="op">(</span></span>
+<span>  <span class="va">usgs</span>,</span>
+<span>  <span class="st">"daily-edr"</span>,</span>
+<span>  location_id <span class="op">=</span> <span class="st">"USGS-09419800"</span>,</span>
+<span>  parameter_name <span class="op">=</span> <span class="st">"00060"</span>,</span>
+<span>  limit <span class="op">=</span> <span class="fl">31</span></span>
 <span><span class="op">)</span></span>
+<span><span class="va">wash_flow</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">wash_response</span><span class="op">)</span></span>
+<span><span class="va">wash_flow</span> <span class="op">&lt;-</span> <span class="va">wash_flow</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">wash_flow</span><span class="op">$</span><span class="va">datetime</span><span class="op">)</span>, <span class="op">]</span></span>
+<span><span class="va">wash_flow</span><span class="op">$</span><span class="va">parameter_code</span> <span class="op">&lt;-</span> <span class="va">wash_flow</span><span class="op">$</span><span class="va">parameter</span></span>
+<span><span class="va">wash_flow</span><span class="op">$</span><span class="va">parameter</span> <span class="op">&lt;-</span> <span class="st">"Discharge"</span></span>
+<span><span class="va">wash_flow</span><span class="op">$</span><span class="va">coverage_id</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"usgs:"</span>, <span class="va">wash_flow</span><span class="op">$</span><span class="va">coverage_id</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">flow_dates</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="va">flow</span><span class="op">$</span><span class="va">datetime</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span></span>
-<span><span class="va">water_interval</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">flow_dates</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">flow_dates</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1</span>,</span>
+<span><span class="va">water_dates</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sets.html" class="external-link">intersect</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="va">hoover_stage</span><span class="op">$</span><span class="va">datetime</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="va">wash_flow</span><span class="op">$</span><span class="va">datetime</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">water_dates</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0L</span><span class="op">)</span></span></code></pre></div>
+<p>WWDH treats the interval end as exclusive, so adding one day includes
+the last USGS date. Location <code>3514</code> is the USBR/RISE Lake
+Mead storage series.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">water_interval</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">water_dates</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">water_dates</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1</span>,</span>
 <span>  sep <span class="op">=</span> <span class="st">"/"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">storage_response</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_cube.html">edr_cube</a></span><span class="op">(</span></span>
+<span><span class="va">storage_response</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_location.html">edr_location</a></span><span class="op">(</span></span>
 <span>  <span class="va">wwdh</span>,</span>
 <span>  <span class="st">"rise-edr"</span>,</span>
-<span>  bbox <span class="op">=</span> <span class="va">study_bbox</span>,</span>
+<span>  location_id <span class="op">=</span> <span class="st">"3514"</span>,</span>
 <span>  datetime <span class="op">=</span> <span class="va">water_interval</span>,</span>
-<span>  parameter_name <span class="op">=</span> <span class="st">"3"</span>       <span class="co"># daily reservoir storage, acre-feet</span></span>
+<span>  parameter_name <span class="op">=</span> <span class="st">"3"</span></span>
 <span><span class="op">)</span></span>
-<span></span>
 <span><span class="va">storage</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">storage_response</span><span class="op">)</span></span>
 <span><span class="va">storage</span> <span class="op">&lt;-</span> <span class="va">storage</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">storage</span><span class="op">$</span><span class="va">datetime</span><span class="op">)</span>, <span class="op">]</span></span>
+<span><span class="va">storage</span> <span class="op">&lt;-</span> <span class="va">storage</span><span class="op">[</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="va">storage</span><span class="op">$</span><span class="va">datetime</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">water_dates</span>,</span>
+<span><span class="op">]</span></span>
+<span><span class="va">storage</span><span class="op">$</span><span class="va">parameter_code</span> <span class="op">&lt;-</span> <span class="va">storage</span><span class="op">$</span><span class="va">parameter</span></span>
+<span><span class="va">storage</span><span class="op">$</span><span class="va">parameter</span> <span class="op">&lt;-</span> <span class="st">"Reservoir storage"</span></span>
 <span><span class="va">storage</span><span class="op">$</span><span class="va">coverage_id</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"wwdh:"</span>, <span class="va">storage</span><span class="op">$</span><span class="va">coverage_id</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">hoover_stage</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0L</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">wash_flow</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0L</span>,</span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">storage</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0L</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"coverage_id"</span>, <span class="st">"datetime"</span>, <span class="st">"x"</span>, <span class="st">"y"</span>, <span class="st">"value"</span><span class="op">)</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">storage</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">storage</span><span class="op">$</span><span class="va">coverage_id</span><span class="op">)</span><span class="op">)</span> <span class="op">==</span> <span class="fl">1L</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">hoover_stage</span>, <span class="va">wash_flow</span>, <span class="va">storage</span><span class="op">)</span>,</span>
+<span>    <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"datetime"</span>, <span class="st">"value"</span>, <span class="st">"unit"</span><span class="op">)</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span>  <span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>The responses are all CoverageJSON, but they are not the same
-container or domain. Looking at this before row-binding is an important
-interoperability check:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<p>The WWDH location index currently ignores spatial/page limits, so the
+USBR marker is constructed from the coordinates already carried by the
+returned coverage instead of downloading the full index.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">usbr_site</span> <span class="op">&lt;-</span> <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_as_sf.html" class="external-link">st_as_sf</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>    id <span class="op">=</span> <span class="st">"USBR-RISE-3514"</span>,</span>
+<span>    monitoring_location_name <span class="op">=</span></span>
+<span>      <span class="st">"Lake Mead Hoover Dam and Powerplant (USBR via WWDH/RISE)"</span>,</span>
+<span>    longitude <span class="op">=</span> <span class="va">storage</span><span class="op">$</span><span class="va">x</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>,</span>
+<span>    latitude <span class="op">=</span> <span class="va">storage</span><span class="op">$</span><span class="va">y</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  coords <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"longitude"</span>, <span class="st">"latitude"</span><span class="op">)</span>,</span>
+<span>  crs <span class="op">=</span> <span class="fl">4326</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">usgs_popup_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  <span class="st">"USGS-09421500"</span> <span class="op">=</span> <span class="va">hoover_stage</span>,</span>
+<span>  <span class="st">"USGS-09419800"</span> <span class="op">=</span> <span class="va">wash_flow</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">usbr_popup_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  <span class="st">"USBR-RISE-3514"</span> <span class="op">=</span> <span class="va">storage</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="inspect-the-coverage-shapes">4. Inspect the coverage shapes<a class="anchor" aria-label="anchor" href="#inspect-the-coverage-shapes"></a>
+</h2>
+<p>The map combines one gridded coverage with three temporal point
+coverages. The container and domain metadata come directly from the
+responses:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">coverage_signature</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">source</span>, <span class="va">response</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">body</span> <span class="op">&lt;-</span> <span class="va">response</span><span class="op">$</span><span class="va">covjson</span></span>
 <span>  <span class="va">coverages</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">body</span><span class="op">$</span><span class="va">type</span>, <span class="st">"CoverageCollection"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
@@ -290,8 +346,9 @@ interoperability check:</p>
 <span></span>
 <span><span class="va">signatures</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
 <span>  <span class="fu">coverage_signature</span><span class="op">(</span><span class="st">"Met Office population"</span>, <span class="va">population_response</span><span class="op">)</span>,</span>
-<span>  <span class="fu">coverage_signature</span><span class="op">(</span><span class="st">"USGS discharge"</span>, <span class="va">flow_response</span><span class="op">)</span>,</span>
-<span>  <span class="fu">coverage_signature</span><span class="op">(</span><span class="st">"WWDH storage"</span>, <span class="va">storage_response</span><span class="op">)</span></span>
+<span>  <span class="fu">coverage_signature</span><span class="op">(</span><span class="st">"USGS Hoover stage"</span>, <span class="va">hoover_response</span><span class="op">)</span>,</span>
+<span>  <span class="fu">coverage_signature</span><span class="op">(</span><span class="st">"USGS Las Vegas Wash"</span>, <span class="va">wash_response</span><span class="op">)</span>,</span>
+<span>  <span class="fu">coverage_signature</span><span class="op">(</span><span class="st">"WWDH / USBR storage"</span>, <span class="va">storage_response</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="va">signatures</span><span class="op">)</span></span></code></pre></div>
@@ -319,14 +376,21 @@ interoperability check:</p>
 <td align="right">1</td>
 </tr>
 <tr class="even">
-<td align="left">USGS discharge</td>
+<td align="left">USGS Hoover stage</td>
 <td align="left">Coverage</td>
 <td align="left">PointSeries</td>
 <td align="left">t, x, y</td>
 <td align="right">1</td>
 </tr>
 <tr class="odd">
-<td align="left">WWDH storage</td>
+<td align="left">USGS Las Vegas Wash</td>
+<td align="left">Coverage</td>
+<td align="left">PointSeries</td>
+<td align="left">t, x, y</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">WWDH / USBR storage</td>
 <td align="left">CoverageCollection</td>
 <td align="left">PointSeries</td>
 <td align="left">x, y, t</td>
@@ -334,46 +398,44 @@ interoperability check:</p>
 </tr>
 </tbody>
 </table>
-<p>USGS declares <code>domainType</code> inside its domain object, while
-the WWDH child coverage declares the same concept beside the domain
-object. Both expose the <code>x</code>, <code>y</code>, and
-<code>t</code> axes needed for <code><a href="../reference/covjson_to_tibble.html">covjson_to_tibble()</a></code> to
-materialize the temporal rows. The parser does not require every server
-to serialize equivalent coverages identically.</p>
-<p>The tidy results make their sizes, time ranges, and units easy to
-compare without discarding provenance:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">snapshot</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  source <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Met Office population"</span>, <span class="st">"USGS discharge"</span>, <span class="st">"WWDH storage"</span><span class="op">)</span>,</span>
-<span>  rows <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">population</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">flow</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">storage</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  layer <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    <span class="st">"Met Office population"</span>,</span>
+<span>    <span class="st">"USGS Hoover stage"</span>,</span>
+<span>    <span class="st">"USGS Las Vegas Wash"</span>,</span>
+<span>    <span class="st">"WWDH / USBR storage"</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  rows <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">population</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">hoover_stage</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">wash_flow</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">storage</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
 <span>  start <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>    <span class="st">"static 2015"</span>,</span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">flow</span><span class="op">$</span><span class="va">datetime</span><span class="op">)</span>, <span class="st">"%Y-%m-%d"</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">hoover_stage</span><span class="op">$</span><span class="va">datetime</span><span class="op">)</span>, <span class="st">"%Y-%m-%d"</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">wash_flow</span><span class="op">$</span><span class="va">datetime</span><span class="op">)</span>, <span class="st">"%Y-%m-%d"</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span>,</span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">storage</span><span class="op">$</span><span class="va">datetime</span><span class="op">)</span>, <span class="st">"%Y-%m-%d"</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  end <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>    <span class="st">"static 2015"</span>,</span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">flow</span><span class="op">$</span><span class="va">datetime</span><span class="op">)</span>, <span class="st">"%Y-%m-%d"</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">hoover_stage</span><span class="op">$</span><span class="va">datetime</span><span class="op">)</span>, <span class="st">"%Y-%m-%d"</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">wash_flow</span><span class="op">$</span><span class="va">datetime</span><span class="op">)</span>, <span class="st">"%Y-%m-%d"</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span>,</span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">storage</span><span class="op">$</span><span class="va">datetime</span><span class="op">)</span>, <span class="st">"%Y-%m-%d"</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  unit <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>    <span class="st">"people per km2 (collection metadata)"</span>,</span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">flow</span><span class="op">$</span><span class="va">unit</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>    <span class="st">"people/km2"</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">hoover_stage</span><span class="op">$</span><span class="va">unit</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">wash_flow</span><span class="op">$</span><span class="va">unit</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">storage</span><span class="op">$</span><span class="va">unit</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="va">snapshot</span><span class="op">)</span></span></code></pre></div>
 <table class="table">
-<colgroup>
-<col width="25%">
-<col width="5%">
-<col width="13%">
-<col width="13%">
-<col width="42%">
-</colgroup>
 <thead><tr class="header">
-<th align="left">source</th>
+<th align="left">layer</th>
 <th align="right">rows</th>
 <th align="left">start</th>
 <th align="left">end</th>
@@ -385,177 +447,118 @@ compare without discarding provenance:</p>
 <td align="right">5940</td>
 <td align="left">static 2015</td>
 <td align="left">static 2015</td>
-<td align="left">people per km2 (collection metadata)</td>
+<td align="left">people/km2</td>
 </tr>
 <tr class="even">
-<td align="left">USGS discharge</td>
+<td align="left">USGS Hoover stage</td>
 <td align="right">31</td>
-<td align="left">2026-01-06</td>
-<td align="left">2026-02-05</td>
-<td align="left">ft3/s</td>
+<td align="left">2026-06-09</td>
+<td align="left">2026-07-09</td>
+<td align="left">ft</td>
 </tr>
 <tr class="odd">
-<td align="left">WWDH storage</td>
+<td align="left">USGS Las Vegas Wash</td>
 <td align="right">31</td>
-<td align="left">2026-01-06</td>
-<td align="left">2026-02-05</td>
+<td align="left">2026-06-09</td>
+<td align="left">2026-07-09</td>
+<td align="left">ft3/s</td>
+</tr>
+<tr class="even">
+<td align="left">WWDH / USBR storage</td>
+<td align="right">31</td>
+<td align="left">2026-06-09</td>
+<td align="left">2026-07-09</td>
 <td align="left">af</td>
 </tr>
 </tbody>
 </table>
 </div>
 <div class="section level2">
-<h2 id="put-the-grid-and-monitoring-sites-on-one-map">3. Put the grid and monitoring sites on one map<a class="anchor" aria-label="anchor" href="#put-the-grid-and-monitoring-sites-on-one-map"></a>
+<h2 id="build-the-layered-interactive-map">5. Build the layered interactive map<a class="anchor" aria-label="anchor" href="#build-the-layered-interactive-map"></a>
 </h2>
-<p>The population coverage is already a tidy
-<code>x</code>/<code>y</code> grid. The water coverages carry their
-station coordinates on every row, so one row per series is enough for an
-overlay.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">sites</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>    source <span class="op">=</span> <span class="st">"WWDH reservoir storage"</span>,</span>
-<span>    x <span class="op">=</span> <span class="va">storage</span><span class="op">$</span><span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
-<span>    y <span class="op">=</span> <span class="va">storage</span><span class="op">$</span><span class="va">y</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>    source <span class="op">=</span> <span class="st">"USGS river gauge"</span>,</span>
-<span>    x <span class="op">=</span> <span class="va">flow</span><span class="op">$</span><span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
-<span>    y <span class="op">=</span> <span class="va">flow</span><span class="op">$</span><span class="va">y</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span></span>
-<span>  <span class="op">)</span></span>
+<p><code><a href="../reference/edr_map.html">edr_map()</a></code> creates the population grid.
+<code><a href="../reference/edr_add_stations.html">edr_add_stations()</a></code> reuses the station matching and popup
+machinery from <code><a href="../reference/edr_map.html">edr_map()</a></code> to add independently styled source
+groups. Coverage cells live in a lower Leaflet pane, so the station
+markers stay visible and clickable above the raster.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">lake_mead_map</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_map.html">edr_map</a></span><span class="op">(</span></span>
+<span>  <span class="va">population</span>,</span>
+<span>  mode <span class="op">=</span> <span class="st">"grid"</span>,</span>
+<span>  controls <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  grid_opacity <span class="op">=</span> <span class="fl">0.58</span>,</span>
+<span>  grid_transform <span class="op">=</span> <span class="st">"sqrt"</span>,</span>
+<span>  tile_provider <span class="op">=</span> <span class="st">"CartoDB.Positron"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">population</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">y</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_tile.html" class="external-link">geom_raster</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">value</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span></span>
-<span>    data <span class="op">=</span> <span class="va">sites</span>,</span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">y</span>, colour <span class="op">=</span> <span class="va">source</span>, shape <span class="op">=</span> <span class="va">source</span>, size <span class="op">=</span> <span class="va">source</span><span class="op">)</span>,</span>
-<span>    inherit.aes <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_viridis.html" class="external-link">scale_fill_viridis_c</a></span><span class="op">(</span></span>
-<span>    trans <span class="op">=</span> <span class="st">"sqrt"</span>,</span>
-<span>    na.value <span class="op">=</span> <span class="st">"transparent"</span>,</span>
-<span>    name <span class="op">=</span> <span class="st">"2015 population\nper km2"</span>,</span>
-<span>    breaks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">2500</span>, <span class="fl">5000</span>, <span class="fl">7500</span><span class="op">)</span>,</span>
-<span>    labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"0"</span>, <span class="st">"2.5k"</span>, <span class="st">"5k"</span>, <span class="st">"7.5k"</span><span class="op">)</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_colour_manual</a></span><span class="op">(</span></span>
-<span>    values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>      <span class="st">"USGS river gauge"</span> <span class="op">=</span> <span class="st">"#D55E00"</span>,</span>
-<span>      <span class="st">"WWDH reservoir storage"</span> <span class="op">=</span> <span class="st">"#0072B2"</span></span>
-<span>    <span class="op">)</span>,</span>
-<span>    name <span class="op">=</span> <span class="cn">NULL</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_shape_manual</a></span><span class="op">(</span></span>
-<span>    values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>      <span class="st">"USGS river gauge"</span> <span class="op">=</span> <span class="fl">17</span>,</span>
-<span>      <span class="st">"WWDH reservoir storage"</span> <span class="op">=</span> <span class="fl">16</span></span>
-<span>    <span class="op">)</span>,</span>
-<span>    name <span class="op">=</span> <span class="cn">NULL</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_size_manual</a></span><span class="op">(</span></span>
-<span>    values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>      <span class="st">"USGS river gauge"</span> <span class="op">=</span> <span class="fl">3</span>,</span>
-<span>      <span class="st">"WWDH reservoir storage"</span> <span class="op">=</span> <span class="fl">5</span></span>
-<span>    <span class="op">)</span>,</span>
-<span>    guide <span class="op">=</span> <span class="st">"none"</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/coord_map.html" class="external-link">coord_quickmap</a></span><span class="op">(</span></span>
-<span>    xlim <span class="op">=</span> <span class="va">study_bbox</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span><span class="op">]</span>,</span>
-<span>    ylim <span class="op">=</span> <span class="va">study_bbox</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">4</span><span class="op">)</span><span class="op">]</span>,</span>
-<span>    expand <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
-<span>    title <span class="op">=</span> <span class="st">"One spatial frame, three EDR services"</span>,</span>
-<span>    subtitle <span class="op">=</span> <span class="st">"Met Office population grid with USGS and WWDH water sites"</span>,</span>
-<span>    x <span class="op">=</span> <span class="st">"Longitude"</span>,</span>
-<span>    y <span class="op">=</span> <span class="st">"Latitude"</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span>base_size <span class="op">=</span> <span class="fl">11</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"bottom"</span><span class="op">)</span></span></code></pre></div>
-<div class="figure">
-<img src="cross-endpoint-water-context-figs/population-water-map-1.png" alt="Population-density grid around Las Vegas and Lake Mead with nested symbols for colocated USGS and WWDH monitoring points" width="100%"><p class="caption">
-plot of chunk population-water-map
-</p>
-</div>
-<p>This is contextual rather than causal: the grid is a 2015
-population-density estimate, while the water series are a later
-operational snapshot. It shows where monitoring sits relative to the Las
-Vegas population center; it does not claim that the layers are
-temporally matched. The two water coordinates are colocated at this map
-scale, so the smaller USGS triangle is drawn over the larger WWDH
-circle.</p>
-</div>
-<div class="section level2">
-<h2 id="compare-the-water-series-without-mixing-units">4. Compare the water series without mixing units<a class="anchor" aria-label="anchor" href="#compare-the-water-series-without-mixing-units"></a>
-</h2>
-<p>Both temporal coverages share the same tidy column contract, so they
-can be row-bound after adding source labels. Their values should not
-share one y scale: discharge and reservoir storage measure different
-things in different units. Faceting keeps that distinction visible.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">flow</span><span class="op">$</span><span class="va">source</span> <span class="op">&lt;-</span> <span class="st">"USGS waterdata"</span></span>
-<span><span class="va">flow</span><span class="op">$</span><span class="va">panel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"Colorado River discharge ("</span>, <span class="va">flow</span><span class="op">$</span><span class="va">unit</span>, <span class="st">")"</span><span class="op">)</span></span>
+<span><span class="va">lake_mead_map</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_add_stations.html">edr_add_stations</a></span><span class="op">(</span></span>
+<span>  <span class="va">lake_mead_map</span>,</span>
+<span>  <span class="va">usbr_site</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">usbr_popup_data</span>,</span>
+<span>  popup <span class="op">=</span> <span class="st">"plot+csv"</span>,</span>
+<span>  id_col <span class="op">=</span> <span class="st">"id"</span>,</span>
+<span>  label_col <span class="op">=</span> <span class="st">"monitoring_location_name"</span>,</span>
+<span>  group <span class="op">=</span> <span class="st">"USBR / WWDH"</span>,</span>
+<span>  matched_color <span class="op">=</span> <span class="st">"#0072B2"</span>,</span>
+<span>  marker_radius <span class="op">=</span> <span class="fl">9</span>,</span>
+<span>  legend <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">storage</span><span class="op">$</span><span class="va">source</span> <span class="op">&lt;-</span> <span class="st">"Western Water Datahub"</span></span>
-<span><span class="va">storage</span><span class="op">$</span><span class="va">panel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"Lake Mead storage ("</span>, <span class="va">storage</span><span class="op">$</span><span class="va">unit</span>, <span class="st">")"</span><span class="op">)</span></span>
+<span><span class="va">lake_mead_map</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_add_stations.html">edr_add_stations</a></span><span class="op">(</span></span>
+<span>  <span class="va">lake_mead_map</span>,</span>
+<span>  <span class="va">usgs_sites</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">usgs_popup_data</span>,</span>
+<span>  popup <span class="op">=</span> <span class="st">"plot+csv"</span>,</span>
+<span>  id_col <span class="op">=</span> <span class="st">"id"</span>,</span>
+<span>  label_col <span class="op">=</span> <span class="st">"monitoring_location_name"</span>,</span>
+<span>  group <span class="op">=</span> <span class="st">"USGS"</span>,</span>
+<span>  matched_color <span class="op">=</span> <span class="st">"#D55E00"</span>,</span>
+<span>  marker_radius <span class="op">=</span> <span class="fl">6</span>,</span>
+<span>  legend <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">water</span> <span class="op">&lt;-</span> <span class="fu">vctrs</span><span class="fu">::</span><span class="fu"><a href="https://vctrs.r-lib.org/reference/vec_bind.html" class="external-link">vec_rbind</a></span><span class="op">(</span><span class="va">flow</span>, <span class="va">storage</span><span class="op">)</span></span>
+<span><span class="va">lake_mead_map</span> <span class="op">&lt;-</span> <span class="fu">leaflet</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/leaflet/reference/addLayersControl.html" class="external-link">addLayersControl</a></span><span class="op">(</span></span>
+<span>  <span class="va">lake_mead_map</span>,</span>
+<span>  overlayGroups <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"USGS"</span>, <span class="st">"USBR / WWDH"</span><span class="op">)</span>,</span>
+<span>  options <span class="op">=</span> <span class="fu">leaflet</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/leaflet/reference/addLayersControl.html" class="external-link">layersControlOptions</a></span><span class="op">(</span>collapsed <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">water</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">datetime</span>, y <span class="op">=</span> <span class="va">value</span>, colour <span class="op">=</span> <span class="va">source</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>linewidth <span class="op">=</span> <span class="fl">0.7</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">panel</span>, scales <span class="op">=</span> <span class="st">"free_y"</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_colour_manual</a></span><span class="op">(</span></span>
-<span>    values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>      <span class="st">"USGS waterdata"</span> <span class="op">=</span> <span class="st">"#D55E00"</span>,</span>
-<span>      <span class="st">"Western Water Datahub"</span> <span class="op">=</span> <span class="st">"#0072B2"</span></span>
-<span>    <span class="op">)</span>,</span>
-<span>    name <span class="op">=</span> <span class="cn">NULL</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
-<span>    title <span class="op">=</span> <span class="st">"Water observations from two EDR implementations"</span>,</span>
-<span>    x <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>    y <span class="op">=</span> <span class="cn">NULL</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span>base_size <span class="op">=</span> <span class="fl">11</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"bottom"</span><span class="op">)</span></span></code></pre></div>
-<div class="figure">
-<img src="cross-endpoint-water-context-figs/water-series-1.png" alt="Faceted daily USGS river discharge and WWDH Lake Mead reservoir storage time series" width="100%"><p class="caption">
-plot of chunk water-series
-</p>
-</div>
-</div>
-<div class="section level2">
-<h2 id="what-this-pattern-buys-you">What this pattern buys you<a class="anchor" aria-label="anchor" href="#what-this-pattern-buys-you"></a>
-</h2>
-<p>The common layer is the tidy output contract, not a claim that all
-EDR responses are interchangeable:</p>
-<ul>
-<li>inspect advertised capabilities before choosing a verb;</li>
-<li>keep bounding boxes, record counts, and time windows finite;</li>
-<li>preserve <code>source</code>, <code>parameter</code>, and
-<code>unit</code> before combining rows;</li>
-<li>map grid and point coordinates together, but facet unlike
-measurements;</li>
-<li>expect endpoint-specific details such as a required explicit CRS or
-an ignored datetime filter; and</li>
-<li>keep live demonstrators out of mandatory package checks.</li>
-</ul>
-<p>Each response can still be sent to <code><a href="../reference/edr_plot.html">edr_plot()</a></code>. The
-population grid can also go directly to <code><a href="../reference/edr_map.html">edr_map()</a></code>, while
-time-series coverage needs a location layer for station mapping.
-Converting to tibbles is what makes the cross-endpoint composition
-explicit and lets ordinary R plotting code combine only the parts that
-are genuinely compatible.</p>
-<p>The repository retains this article’s executable source as
-<code>vignettes/cross-endpoint-water-context.Rmd.orig</code>.
-Maintainers can refresh the baked outputs deliberately with:</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>Rscript vignettes<span class="sc">/</span>precompute.R</span></code></pre></div>
-<p>Do that only when the three endpoints are reachable, then inspect the
-changed tables and figures before committing them. The executable source
-deliberately fails rather than baking an empty grid, an empty time
-series, or a changed multi-site WWDH result without review.</p>
+<span><span class="va">lake_mead_map</span> <span class="op">&lt;-</span> <span class="fu">leaflet</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/leaflet/reference/map-layers.html" class="external-link">addControl</a></span><span class="op">(</span></span>
+<span>  <span class="va">lake_mead_map</span>,</span>
+<span>  html <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span></span>
+<span>    <span class="st">"&lt;div style='background:rgba(255,255,255,.92);padding:7px;"</span>,</span>
+<span>    <span class="st">"border-radius:4px;font:12px system-ui,sans-serif'&gt;"</span>,</span>
+<span>    <span class="st">"&lt;strong&gt;Water stations&lt;/strong&gt;&lt;br&gt;Click a marker for its time series"</span>,</span>
+<span>    <span class="st">"&lt;/div&gt;"</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  position <span class="op">=</span> <span class="st">"bottomleft"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span></span>
+<span>  <span class="st">"cross-endpoint-water-context-full"</span>,</span>
+<span>  showWarnings <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  recursive <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/edr_save_html.html">edr_save_html</a></span><span class="op">(</span></span>
+<span>  <span class="va">lake_mead_map</span>,</span>
+<span>  <span class="st">"cross-endpoint-water-context-full/lake-mead-map.html"</span>,</span>
+<span>  selfcontained <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The website build renders the interactive widget below. The package
+vignette uses a static preview of the same precomputed layers.</p>
+<iframe src="cross-endpoint-water-context-full/lake-mead-map.html" title="Interactive Lake Mead EDR layer map" loading="lazy" width="100%" height="650" style="border:1px solid #ddd;border-radius:4px">
+</iframe>
+<p>The larger blue USBR/WWDH marker and the smaller orange USGS marker
+near Hoover Dam overlap at the initial extent. Use the layer control or
+zoom in to open each popup. The Las Vegas Wash gauge is farther
+west.</p>
+<p>The same widget can be written anywhere with:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/edr_save_html.html">edr_save_html</a></span><span class="op">(</span><span class="va">lake_mead_map</span>, <span class="st">"lake-mead-edr-layers.html"</span><span class="op">)</span></span></code></pre></div>
+<p>The executable source for this article is retained at
+<code>vignettes/cross-endpoint-water-context.Rmd.orig</code>. Refresh
+the baked data, static preview, and site widget deliberately with:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>Rscript vignettes<span class="sc">/</span>precompute.R</span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

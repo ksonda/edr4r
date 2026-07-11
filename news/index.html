@@ -20,7 +20,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started.html">Getting started with edr4r</a></li>
     <li><a class="dropdown-item" href="../articles/compatibility.html">EDR compatibility and supported scope</a></li>
-    <li><a class="dropdown-item" href="../articles/cross-endpoint-water-context.html">Cross-endpoint water context: Lake Mead</a></li>
+    <li><a class="dropdown-item" href="../articles/cross-endpoint-water-context.html">Layering EDR data: Lake Mead</a></li>
     <li><a class="dropdown-item" href="../articles/usgs-streamgages.html">USGS streamgages: bounded discovery and mapping</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -45,7 +45,8 @@
 <li>Add <code><a href="../reference/edr_location_batch.html">edr_location_batch()</a></code> for safe, finite, sequential multi-station pulls with stable request/data/error tables, explicit station provenance, and stop-or-collect failure handling.</li>
 <li>Reuse the batch execution engine inside per-location <code><a href="../reference/edr_explore.html">edr_explore()</a></code> while preserving its existing output and summary-warning contract.</li>
 <li>Accept finite, safely representable numeric strings in CoverageJSON ranges that declare a numeric <code>dataType</code>, as currently emitted by USGS waterdata, while rejecting text, overflow/underflow, and unsafe declared integers.</li>
-<li>Add a precomputed cross-endpoint Lake Mead vignette combining a Met Office population <code>Grid</code>, a USGS discharge <code>PointSeries</code>, and a WWDH <code>CoverageCollection</code>, with an executable source retained for deliberate live refreshes.</li>
+<li>Add <code><a href="../reference/edr_add_stations.html">edr_add_stations()</a></code> for composing one or more independently styled station groups over an existing coverage map, reusing interactive chart and CSV popups. Coverage layers now render in a lower Leaflet pane, grid legends identify the active parameter/unit, and grid colour scales support identity, square-root, and <code>log1p</code> transforms.</li>
+<li>Upgrade the cross-endpoint Lake Mead vignette to a precomputed interactive map: a Met Office population <code>Grid</code> beneath toggleable USGS and USBR/WWDH station groups with time-series popups. The full widget is deployed only on the pkgdown site; package builds retain a small static fallback.</li>
 <li>Remove a precomputed base64 map from the USGS vignette, reducing that source file by about 1 MB while retaining the runnable interactive-map example.</li>
 </ul></div>
     <div class="section level2">

@@ -84,6 +84,8 @@ Plot time series, map stations with popups, save to standalone HTML.
   Plot an EDR response as a ggplot
 - [`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md) :
   Map EDR locations or coverage data
+- [`edr_add_stations()`](https://ksonda.github.io/edr4r/reference/edr_add_stations.md)
+  : Add station layers to an EDR map
 - [`edr_save_html()`](https://ksonda.github.io/edr4r/reference/edr_save_html.md)
   : Save a map to a standalone HTML file
 - [`edr_explore()`](https://ksonda.github.io/edr4r/reference/edr_explore.md)

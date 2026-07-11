@@ -32,7 +32,7 @@ or reservoir telemetry as EDR collections."></head><body>
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started.html">Getting started with edr4r</a></li>
     <li><a class="dropdown-item" href="../articles/compatibility.html">EDR compatibility and supported scope</a></li>
-    <li><a class="dropdown-item" href="../articles/cross-endpoint-water-context.html">Cross-endpoint water context: Lake Mead</a></li>
+    <li><a class="dropdown-item" href="../articles/cross-endpoint-water-context.html">Layering EDR data: Lake Mead</a></li>
     <li><a class="dropdown-item" href="../articles/usgs-streamgages.html">USGS streamgages: bounded discovery and mapping</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -82,6 +82,8 @@ station sets with <code><a href="edr_location_batch.html">edr_location_batch()</
 collections can be inspected with <code><a href="edr_instances.html">edr_instances()</a></code>.</p></li>
 <li><p>Flatten the response with <code><a href="covjson_to_tibble.html">covjson_to_tibble()</a></code> (for CoverageJSON)
 or <code><a href="geojson_to_sf.html">geojson_to_sf()</a></code> (for GeoJSON).</p></li>
+<li><p>Plot or map it with <code><a href="edr_plot.html">edr_plot()</a></code> / <code><a href="edr_map.html">edr_map()</a></code>, and compose station
+observations over coverage maps with <code><a href="edr_add_stations.html">edr_add_stations()</a></code>.</p></li>
 </ol><p>For everything the high-level verbs don't cover, <code><a href="edr_request.html">edr_request()</a></code> is
 the raw escape hatch.</p>
     </div>

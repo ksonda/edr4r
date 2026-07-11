@@ -58,6 +58,13 @@ A typical session looks like:
     [`geojson_to_sf()`](https://ksonda.github.io/edr4r/reference/geojson_to_sf.md)
     (for GeoJSON).
 
+5.  Plot or map it with
+    [`edr_plot()`](https://ksonda.github.io/edr4r/reference/edr_plot.md)
+    /
+    [`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md),
+    and compose station observations over coverage maps with
+    [`edr_add_stations()`](https://ksonda.github.io/edr4r/reference/edr_add_stations.md).
+
 For everything the high-level verbs don't cover,
 [`edr_request()`](https://ksonda.github.io/edr4r/reference/edr_request.md)
 is the raw escape hatch.

@@ -1,29 +1,22 @@
-# Cross-endpoint water context: Lake Mead
+# Layering EDR data: Lake Mead
 
-An EDR workflow becomes more useful when coverages from different
-services can share an analysis without pretending they have the same
-shape. This example uses one Lake Mead/Las Vegas study area and three
-live implementations:
+This example layers data from three EDR implementations in one Leaflet
+map:
 
-- the Met Office Labs `global_pop_density` collection, queried as an
-  `area` grid;
-- the USGS waterdata `daily-edr` collection, queried at the Colorado
-  River gauge below Hoover Dam; and
-- the Western Water Datahub (WWDH) `rise-edr` collection, queried with a
-  `cube` that contains Lake Mead reservoir storage.
+- a 2015 population-density `Grid` from the Met Office Labs
+  demonstrator;
+- two USGS daily-value `PointSeries`; and
+- USBR Lake Mead reservoir storage exposed through the Western Water
+  Datahub (WWDH) as a `CoverageCollection`.
 
-Together they exercise a CoverageJSON `Grid`, a single `PointSeries`,
-and a `CoverageCollection` of temporal point data. The spatial layer
-supplies human context, while the two water layers remain separate
-series with their own parameters and units.
+The population grid is the background layer. USGS and USBR stations sit
+above it as separate toggleable groups, and each station popup contains
+an interactive time-series chart and CSV download. The displayed data
+were precomputed from the live endpoints on 2026-07-10, so building the
+package does not issue EDR requests. Met Office Labs is a technical
+demonstrator and may change independently of `edr4r`.
 
-The displayed results were retrieved on 2026-07-10 and precomputed from
-the live endpoints. Package builds therefore stay deterministic and
-offline. The Met Office Labs service is a **technical demonstrator, not
-an operational dependency**; its collections and behavior can change
-without notice.
-
-## 1. Use one bounded study area
+## 1. Connect to the three services
 
 ``` r
 
@@ -52,24 +45,19 @@ study_bbox <- c(-115.30, 35.75, -114.55, 36.30)
 #                    minx   miny     maxx   maxy
 ```
 
-The box includes Las Vegas, Hoover Dam, and the western part of Lake
-Mead. It is intentionally small: the population request produces only a
-few thousand grid cells, and the WWDH cube contains one matching
-reservoir coverage.
-
-Capability discovery should guide the verb choice. The three collections
-do not advertise an identical surface:
+The box covers Las Vegas, Hoover Dam, and the western part of Lake Mead.
+Each collection advertises a different useful query path:
 
 ``` r
 
 capability_check <- data.frame(
   endpoint = c("Met Office Labs", "USGS waterdata", "WWDH"),
   collection = c("global_pop_density", "daily-edr", "rise-edr"),
-  query = c("area", "locations", "cube"),
+  query = c("area", "locations", "locations"),
   supported = c(
     edr_supports(met, "global_pop_density", query = "area"),
     edr_supports(usgs, "daily-edr", query = "locations"),
-    edr_supports(wwdh, "rise-edr", query = "cube")
+    edr_supports(wwdh, "rise-edr", query = "locations")
   )
 )
 
@@ -80,21 +68,13 @@ knitr::kable(capability_check)
 |:----------------|:-------------------|:----------|:----------|
 | Met Office Labs | global_pop_density | area      | TRUE      |
 | USGS waterdata  | daily-edr          | locations | TRUE      |
-| WWDH            | rise-edr           | cube      | TRUE      |
+| WWDH            | rise-edr           | locations | TRUE      |
 
-`daily-edr` advertises only the EDR `locations` query, whose individual
-location path is what
-[`edr_location()`](https://ksonda.github.io/edr4r/reference/edr_location.md)
-calls. WWDH can use `cube` for a spatially bounded bulk query, while the
-population collection advertises `area` and is a static layer with no
-temporal extent.
+## 2. Retrieve the population grid
 
-## 2. Retrieve three coverage shapes
-
-The Met Office collection describes 2015 global population density.
-Convert the bounding box to a polygon and pass the CRS explicitly. The
-demonstrator currently rejects this query without `crs = "EPSG:4326"`,
-even though that CRS appears in its collection metadata.
+The population collection requires an explicit CRS on its `area` query.
+The four-row matrix is closed into a WKT polygon by
+[`edr_area()`](https://ksonda.github.io/edr4r/reference/edr_area.md).
 
 ``` r
 
@@ -114,6 +94,9 @@ population_response <- edr_area(
 )
 
 population <- covjson_to_tibble(population_response)
+population$parameter_code <- population$parameter
+population$parameter <- "2015 population density"
+population$unit <- "people/km2"
 
 stopifnot(
   nrow(population) > 0L,
@@ -122,60 +105,138 @@ stopifnot(
 )
 ```
 
-For USGS, request 31 daily discharge records from gauge `USGS-09421500`,
-Colorado River below Hoover Dam. The endpoint currently does not honor a
-`datetime` filter on an individual location, so the example derives the
-matching WWDH interval from the timestamps USGS actually returns.
+The result is a regular 90 by 66 grid with 5,940 cells.
+[`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md)
+handles the cell bounds, palette, legend, and map extent directly from
+the tidy rows.
+
+## 3. Retrieve the station series
+
+Two USGS gauges provide a stage series below Hoover Dam and a discharge
+series on Las Vegas Wash. USGS currently ignores `datetime` on
+individual location requests, so the example asks for 31 records and
+uses the dates actually returned.
 
 ``` r
 
-flow_response <- edr_location(
+usgs_index <- edr_locations(
+  usgs,
+  "daily-edr",
+  bbox = study_bbox,
+  limit = 100
+)
+
+selected_usgs_ids <- c("USGS-09421500", "USGS-09419800")
+usgs_sites <- usgs_index[
+  match(selected_usgs_ids, usgs_index$id),
+  c("id", "monitoring_location_name", "geometry")
+]
+
+hoover_response <- edr_location(
   usgs,
   "daily-edr",
   location_id = "USGS-09421500",
-  parameter_name = "00060",  # discharge, ft3/s
+  parameter_name = "00065",
   limit = 31
 )
+hoover_stage <- covjson_to_tibble(hoover_response)
+hoover_stage <- hoover_stage[order(hoover_stage$datetime), ]
+hoover_stage$parameter_code <- hoover_stage$parameter
+hoover_stage$parameter <- "Gage height"
+hoover_stage$coverage_id <- paste0("usgs:", hoover_stage$coverage_id)
 
-flow <- covjson_to_tibble(flow_response)
-flow <- flow[order(flow$datetime), ]
-flow$coverage_id <- paste0("usgs:", flow$coverage_id)
-
-stopifnot(
-  nrow(flow) > 0L,
-  all(c("coverage_id", "datetime", "x", "y", "value") %in% names(flow)),
-  length(unique(flow$coverage_id)) == 1L
+wash_response <- edr_location(
+  usgs,
+  "daily-edr",
+  location_id = "USGS-09419800",
+  parameter_name = "00060",
+  limit = 31
 )
+wash_flow <- covjson_to_tibble(wash_response)
+wash_flow <- wash_flow[order(wash_flow$datetime), ]
+wash_flow$parameter_code <- wash_flow$parameter
+wash_flow$parameter <- "Discharge"
+wash_flow$coverage_id <- paste0("usgs:", wash_flow$coverage_id)
 
-flow_dates <- as.Date(flow$datetime, tz = "UTC")
+water_dates <- intersect(
+  as.Date(hoover_stage$datetime, tz = "UTC"),
+  as.Date(wash_flow$datetime, tz = "UTC")
+)
+stopifnot(length(water_dates) > 0L)
+```
+
+WWDH treats the interval end as exclusive, so adding one day includes
+the last USGS date. Location `3514` is the USBR/RISE Lake Mead storage
+series.
+
+``` r
+
 water_interval <- paste(
-  min(flow_dates),
-  max(flow_dates) + 1,
+  min(water_dates),
+  max(water_dates) + 1,
   sep = "/"
 )
 
-storage_response <- edr_cube(
+storage_response <- edr_location(
   wwdh,
   "rise-edr",
-  bbox = study_bbox,
+  location_id = "3514",
   datetime = water_interval,
-  parameter_name = "3"       # daily reservoir storage, acre-feet
+  parameter_name = "3"
 )
-
 storage <- covjson_to_tibble(storage_response)
 storage <- storage[order(storage$datetime), ]
+storage <- storage[
+  as.Date(storage$datetime, tz = "UTC") %in% water_dates,
+]
+storage$parameter_code <- storage$parameter
+storage$parameter <- "Reservoir storage"
 storage$coverage_id <- paste0("wwdh:", storage$coverage_id)
 
 stopifnot(
+  nrow(hoover_stage) > 0L,
+  nrow(wash_flow) > 0L,
   nrow(storage) > 0L,
-  all(c("coverage_id", "datetime", "x", "y", "value") %in% names(storage)),
-  length(unique(storage$coverage_id)) == 1L
+  all(vapply(
+    list(hoover_stage, wash_flow, storage),
+    function(x) all(c("datetime", "value", "unit") %in% names(x)),
+    logical(1)
+  ))
 )
 ```
 
-The responses are all CoverageJSON, but they are not the same container
-or domain. Looking at this before row-binding is an important
-interoperability check:
+The WWDH location index currently ignores spatial/page limits, so the
+USBR marker is constructed from the coordinates already carried by the
+returned coverage instead of downloading the full index.
+
+``` r
+
+usbr_site <- sf::st_as_sf(
+  data.frame(
+    id = "USBR-RISE-3514",
+    monitoring_location_name =
+      "Lake Mead Hoover Dam and Powerplant (USBR via WWDH/RISE)",
+    longitude = storage$x[[1]],
+    latitude = storage$y[[1]]
+  ),
+  coords = c("longitude", "latitude"),
+  crs = 4326
+)
+
+usgs_popup_data <- list(
+  "USGS-09421500" = hoover_stage,
+  "USGS-09419800" = wash_flow
+)
+usbr_popup_data <- list(
+  "USBR-RISE-3514" = storage
+)
+```
+
+## 4. Inspect the coverage shapes
+
+The map combines one gridded coverage with three temporal point
+coverages. The container and domain metadata come directly from the
+responses:
 
 ``` r
 
@@ -215,8 +276,9 @@ coverage_signature <- function(source, response) {
 
 signatures <- rbind(
   coverage_signature("Met Office population", population_response),
-  coverage_signature("USGS discharge", flow_response),
-  coverage_signature("WWDH storage", storage_response)
+  coverage_signature("USGS Hoover stage", hoover_response),
+  coverage_signature("USGS Las Vegas Wash", wash_response),
+  coverage_signature("WWDH / USBR storage", storage_response)
 )
 
 knitr::kable(signatures)
@@ -225,37 +287,41 @@ knitr::kable(signatures)
 | source                | container          | domain      | axes    | coverages |
 |:----------------------|:-------------------|:------------|:--------|----------:|
 | Met Office population | Coverage           | Grid        | x, y    |         1 |
-| USGS discharge        | Coverage           | PointSeries | t, x, y |         1 |
-| WWDH storage          | CoverageCollection | PointSeries | x, y, t |         1 |
-
-USGS declares `domainType` inside its domain object, while the WWDH
-child coverage declares the same concept beside the domain object. Both
-expose the `x`, `y`, and `t` axes needed for
-[`covjson_to_tibble()`](https://ksonda.github.io/edr4r/reference/covjson_to_tibble.md)
-to materialize the temporal rows. The parser does not require every
-server to serialize equivalent coverages identically.
-
-The tidy results make their sizes, time ranges, and units easy to
-compare without discarding provenance:
+| USGS Hoover stage     | Coverage           | PointSeries | t, x, y |         1 |
+| USGS Las Vegas Wash   | Coverage           | PointSeries | t, x, y |         1 |
+| WWDH / USBR storage   | CoverageCollection | PointSeries | x, y, t |         1 |
 
 ``` r
 
 snapshot <- data.frame(
-  source = c("Met Office population", "USGS discharge", "WWDH storage"),
-  rows = c(nrow(population), nrow(flow), nrow(storage)),
+  layer = c(
+    "Met Office population",
+    "USGS Hoover stage",
+    "USGS Las Vegas Wash",
+    "WWDH / USBR storage"
+  ),
+  rows = c(
+    nrow(population),
+    nrow(hoover_stage),
+    nrow(wash_flow),
+    nrow(storage)
+  ),
   start = c(
     "static 2015",
-    format(min(flow$datetime), "%Y-%m-%d", tz = "UTC"),
+    format(min(hoover_stage$datetime), "%Y-%m-%d", tz = "UTC"),
+    format(min(wash_flow$datetime), "%Y-%m-%d", tz = "UTC"),
     format(min(storage$datetime), "%Y-%m-%d", tz = "UTC")
   ),
   end = c(
     "static 2015",
-    format(max(flow$datetime), "%Y-%m-%d", tz = "UTC"),
+    format(max(hoover_stage$datetime), "%Y-%m-%d", tz = "UTC"),
+    format(max(wash_flow$datetime), "%Y-%m-%d", tz = "UTC"),
     format(max(storage$datetime), "%Y-%m-%d", tz = "UTC")
   ),
   unit = c(
-    "people per km2 (collection metadata)",
-    unique(flow$unit)[1],
+    "people/km2",
+    unique(hoover_stage$unit)[1],
+    unique(wash_flow$unit)[1],
     unique(storage$unit)[1]
   )
 )
@@ -263,172 +329,108 @@ snapshot <- data.frame(
 knitr::kable(snapshot)
 ```
 
-| source | rows | start | end | unit |
-|:---|---:|:---|:---|:---|
-| Met Office population | 5940 | static 2015 | static 2015 | people per km2 (collection metadata) |
-| USGS discharge | 31 | 2026-01-06 | 2026-02-05 | ft3/s |
-| WWDH storage | 31 | 2026-01-06 | 2026-02-05 | af |
+| layer                 | rows | start       | end         | unit       |
+|:----------------------|-----:|:------------|:------------|:-----------|
+| Met Office population | 5940 | static 2015 | static 2015 | people/km2 |
+| USGS Hoover stage     |   31 | 2026-06-09  | 2026-07-09  | ft         |
+| USGS Las Vegas Wash   |   31 | 2026-06-09  | 2026-07-09  | ft3/s      |
+| WWDH / USBR storage   |   31 | 2026-06-09  | 2026-07-09  | af         |
 
-## 3. Put the grid and monitoring sites on one map
+## 5. Build the layered interactive map
 
-The population coverage is already a tidy `x`/`y` grid. The water
-coverages carry their station coordinates on every row, so one row per
-series is enough for an overlay.
+[`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md)
+creates the population grid.
+[`edr_add_stations()`](https://ksonda.github.io/edr4r/reference/edr_add_stations.md)
+reuses the station matching and popup machinery from
+[`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md) to
+add independently styled source groups. Coverage cells live in a lower
+Leaflet pane, so the station markers stay visible and clickable above
+the raster.
 
 ``` r
 
-sites <- rbind(
-  data.frame(
-    source = "WWDH reservoir storage",
-    x = storage$x[1],
-    y = storage$y[1]
-  ),
-  data.frame(
-    source = "USGS river gauge",
-    x = flow$x[1],
-    y = flow$y[1]
-  )
+lake_mead_map <- edr_map(
+  population,
+  mode = "grid",
+  controls = FALSE,
+  grid_opacity = 0.58,
+  grid_transform = "sqrt",
+  tile_provider = "CartoDB.Positron"
 )
 
-ggplot(population, aes(x = x, y = y)) +
-  geom_raster(aes(fill = value)) +
-  geom_point(
-    data = sites,
-    aes(x = x, y = y, colour = source, shape = source, size = source),
-    inherit.aes = FALSE
-  ) +
-  scale_fill_viridis_c(
-    trans = "sqrt",
-    na.value = "transparent",
-    name = "2015 population\nper km2",
-    breaks = c(0, 2500, 5000, 7500),
-    labels = c("0", "2.5k", "5k", "7.5k")
-  ) +
-  scale_colour_manual(
-    values = c(
-      "USGS river gauge" = "#D55E00",
-      "WWDH reservoir storage" = "#0072B2"
-    ),
-    name = NULL
-  ) +
-  scale_shape_manual(
-    values = c(
-      "USGS river gauge" = 17,
-      "WWDH reservoir storage" = 16
-    ),
-    name = NULL
-  ) +
-  scale_size_manual(
-    values = c(
-      "USGS river gauge" = 3,
-      "WWDH reservoir storage" = 5
-    ),
-    guide = "none"
-  ) +
-  coord_quickmap(
-    xlim = study_bbox[c(1, 3)],
-    ylim = study_bbox[c(2, 4)],
-    expand = FALSE
-  ) +
-  labs(
-    title = "One spatial frame, three EDR services",
-    subtitle = "Met Office population grid with USGS and WWDH water sites",
-    x = "Longitude",
-    y = "Latitude"
-  ) +
-  theme_minimal(base_size = 11) +
-  theme(legend.position = "bottom")
+lake_mead_map <- edr_add_stations(
+  lake_mead_map,
+  usbr_site,
+  data = usbr_popup_data,
+  popup = "plot+csv",
+  id_col = "id",
+  label_col = "monitoring_location_name",
+  group = "USBR / WWDH",
+  matched_color = "#0072B2",
+  marker_radius = 9,
+  legend = FALSE
+)
+
+lake_mead_map <- edr_add_stations(
+  lake_mead_map,
+  usgs_sites,
+  data = usgs_popup_data,
+  popup = "plot+csv",
+  id_col = "id",
+  label_col = "monitoring_location_name",
+  group = "USGS",
+  matched_color = "#D55E00",
+  marker_radius = 6,
+  legend = FALSE
+)
+
+lake_mead_map <- leaflet::addLayersControl(
+  lake_mead_map,
+  overlayGroups = c("USGS", "USBR / WWDH"),
+  options = leaflet::layersControlOptions(collapsed = TRUE)
+)
+
+lake_mead_map <- leaflet::addControl(
+  lake_mead_map,
+  html = paste0(
+    "<div style='background:rgba(255,255,255,.92);padding:7px;",
+    "border-radius:4px;font:12px system-ui,sans-serif'>",
+    "<strong>Water stations</strong><br>Click a marker for its time series",
+    "</div>"
+  ),
+  position = "bottomleft"
+)
+
+dir.create(
+  "cross-endpoint-water-context-full",
+  showWarnings = FALSE,
+  recursive = TRUE
+)
+edr_save_html(
+  lake_mead_map,
+  "cross-endpoint-water-context-full/lake-mead-map.html",
+  selfcontained = TRUE
+)
 ```
 
-![Population-density grid around Las Vegas and Lake Mead with nested
-symbols for colocated USGS and WWDH monitoring
-points](cross-endpoint-water-context-figs/population-water-map-1.png)
+The website build renders the interactive widget below. The package
+vignette uses a static preview of the same precomputed layers.
 
-plot of chunk population-water-map
+The larger blue USBR/WWDH marker and the smaller orange USGS marker near
+Hoover Dam overlap at the initial extent. Use the layer control or zoom
+in to open each popup. The Las Vegas Wash gauge is farther west.
 
-This is contextual rather than causal: the grid is a 2015
-population-density estimate, while the water series are a later
-operational snapshot. It shows where monitoring sits relative to the Las
-Vegas population center; it does not claim that the layers are
-temporally matched. The two water coordinates are colocated at this map
-scale, so the smaller USGS triangle is drawn over the larger WWDH
-circle.
-
-## 4. Compare the water series without mixing units
-
-Both temporal coverages share the same tidy column contract, so they can
-be row-bound after adding source labels. Their values should not share
-one y scale: discharge and reservoir storage measure different things in
-different units. Faceting keeps that distinction visible.
+The same widget can be written anywhere with:
 
 ``` r
 
-flow$source <- "USGS waterdata"
-flow$panel <- paste0("Colorado River discharge (", flow$unit, ")")
-
-storage$source <- "Western Water Datahub"
-storage$panel <- paste0("Lake Mead storage (", storage$unit, ")")
-
-water <- vctrs::vec_rbind(flow, storage)
-
-ggplot(water, aes(x = datetime, y = value, colour = source)) +
-  geom_line(linewidth = 0.7) +
-  geom_point(size = 1) +
-  facet_wrap(~panel, scales = "free_y", ncol = 1) +
-  scale_colour_manual(
-    values = c(
-      "USGS waterdata" = "#D55E00",
-      "Western Water Datahub" = "#0072B2"
-    ),
-    name = NULL
-  ) +
-  labs(
-    title = "Water observations from two EDR implementations",
-    x = NULL,
-    y = NULL
-  ) +
-  theme_minimal(base_size = 11) +
-  theme(legend.position = "bottom")
+edr_save_html(lake_mead_map, "lake-mead-edr-layers.html")
 ```
 
-![Faceted daily USGS river discharge and WWDH Lake Mead reservoir
-storage time
-series](cross-endpoint-water-context-figs/water-series-1.png)
-
-plot of chunk water-series
-
-## What this pattern buys you
-
-The common layer is the tidy output contract, not a claim that all EDR
-responses are interchangeable:
-
-- inspect advertised capabilities before choosing a verb;
-- keep bounding boxes, record counts, and time windows finite;
-- preserve `source`, `parameter`, and `unit` before combining rows;
-- map grid and point coordinates together, but facet unlike
-  measurements;
-- expect endpoint-specific details such as a required explicit CRS or an
-  ignored datetime filter; and
-- keep live demonstrators out of mandatory package checks.
-
-Each response can still be sent to
-[`edr_plot()`](https://ksonda.github.io/edr4r/reference/edr_plot.md).
-The population grid can also go directly to
-[`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md),
-while time-series coverage needs a location layer for station mapping.
-Converting to tibbles is what makes the cross-endpoint composition
-explicit and lets ordinary R plotting code combine only the parts that
-are genuinely compatible.
-
-The repository retains this article’s executable source as
-`vignettes/cross-endpoint-water-context.Rmd.orig`. Maintainers can
-refresh the baked outputs deliberately with:
+The executable source for this article is retained at
+`vignettes/cross-endpoint-water-context.Rmd.orig`. Refresh the baked
+data, static preview, and site widget deliberately with:
 
 ``` r
 Rscript vignettes/precompute.R
 ```
-
-Do that only when the three endpoints are reachable, then inspect the
-changed tables and figures before committing them. The executable source
-deliberately fails rather than baking an empty grid, an empty time
-series, or a changed multi-site WWDH result without review.

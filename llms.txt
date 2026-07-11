@@ -351,6 +351,21 @@ profile <- covjson_to_tibble(profile_resp)
 edr_map(profile)
 ```
 
+Coverage and station layers can share one widget. Start with the
+coverage map, then add independently styled station groups with their
+normal chart/CSV popups:
+
+``` r
+
+m <- edr_map(grid, grid_transform = "sqrt")
+m <- edr_add_stations(
+  m, stations,
+  data = data_list,
+  popup = "plot+csv",
+  group = "USGS"
+)
+```
+
 [`edr_explore()`](https://ksonda.github.io/edr4r/reference/edr_explore.md)
 uses the same behavior for bulk coverage queries. Use `output = "plot"`
 when you want a ggplot instead of the interactive map:
@@ -555,6 +570,8 @@ Plot time series, map stations with popups, save to standalone HTML.
   Plot an EDR response as a ggplot
 - [`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md) :
   Map EDR locations or coverage data
+- [`edr_add_stations()`](https://ksonda.github.io/edr4r/reference/edr_add_stations.md)
+  : Add station layers to an EDR map
 - [`edr_save_html()`](https://ksonda.github.io/edr4r/reference/edr_save_html.md)
   : Save a map to a standalone HTML file
 - [`edr_explore()`](https://ksonda.github.io/edr4r/reference/edr_explore.md)
@@ -568,7 +585,7 @@ Plot time series, map stations with popups, save to standalone HTML.
   edr4r](https://ksonda.github.io/edr4r/articles/getting-started.md):
 - [EDR compatibility and supported
   scope](https://ksonda.github.io/edr4r/articles/compatibility.md):
-- [Cross-endpoint water context: Lake
+- [Layering EDR data: Lake
   Mead](https://ksonda.github.io/edr4r/articles/cross-endpoint-water-context.md):
 - [USGS streamgages: bounded discovery and
   mapping](https://ksonda.github.io/edr4r/articles/usgs-streamgages.md):
