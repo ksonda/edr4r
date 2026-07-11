@@ -1,9 +1,11 @@
 #' Fetch data for multiple EDR locations
 #'
-#' Runs one [edr_location()] request for each explicitly supplied location id.
-#' Requests are made sequentially and in input order. The complete request
-#' plan is validated before any network activity, and `max_requests` provides
-#' a finite guard against accidental fan-out.
+#' Runs one or more [edr_location()] requests for each explicitly supplied
+#' location id. When `chunk` is supplied, a bounded datetime interval is split
+#' into contiguous closed windows and the complete station-by-window plan is
+#' validated before any network activity. Requests remain sequential and in
+#' input order, and `max_requests` guards the expanded plan against accidental
+#' fan-out.
 #'
 #' `format = "covjson"` responses are converted with
 #' [covjson_to_tibble()]. CSV responses are already parsed as tibbles by
@@ -13,8 +15,11 @@
 #' @param client An [edr_client()].
 #' @param collection_id Collection identifier.
 #' @param location_id A non-empty character vector of unique location ids.
-#' @param datetime Optional ISO-8601 instant or interval shared by every
-#'   request.
+#' @param datetime Optional ISO-8601 instant or interval. With `chunk = NULL`,
+#'   it is shared by every request; otherwise the bounded interval is split
+#'   into per-request windows. Timestamp bounds are normalized to UTC before
+#'   calendar arithmetic; up to six fractional-second digits are accepted
+#'   when R can preserve them without loss.
 #' @param parameter_name Optional character vector of parameter names shared
 #'   by every request.
 #' @param z Optional vertical level filter.
@@ -22,8 +27,18 @@
 #' @param format Either `"covjson"` (default) or `"csv"`.
 #' @param ... Additional query parameters forwarded to every
 #'   [edr_location()] request, such as `limit`.
-#' @param max_requests Finite positive integer limiting the number of HTTP
-#'   requests. Defaults to 100.
+#' @param chunk Optional positive-integer calendar interval such as `"1 day"`,
+#'   `"2 weeks"`, `"1 month"`, or `"1 year"`. Requires a bounded `datetime`
+#'   interval. Month/year boundaries use anchored calendar arithmetic, so a
+#'   January 31 start advances to February 28/29 and then March 31.
+#' @param deduplicate If `TRUE` (default), exact rows repeated by different
+#'   time windows for the same location are retained only from the earliest
+#'   request. Duplicates within one response, differing observations, and
+#'   rows from different locations are preserved. Ignored when `chunk` is
+#'   `NULL`.
+#' @param max_requests Finite positive integer limiting the number of logical
+#'   [edr_location()] calls in the complete plan. Transport-level retries do
+#'   not increase this count. Defaults to 100.
 #' @param on_error Either `"stop"` (default), which re-signals the original
 #'   condition immediately, or `"collect"`, which records failures and
 #'   continues through the bounded request plan.
@@ -33,9 +48,10 @@
 #'   remains beneath that instance path.
 #'
 #' @return An object of class `edr_location_batch` and `edr_batch`. It contains
-#'   `requests`, a typed request-status tibble; `data`, a combined data tibble;
-#'   and `errors`, a typed tibble of collected conditions. The object also
-#'   records `collection_id`, `instance_id`, and `format`.
+#'   `requests`, a typed request-status tibble whose `n_rows` values describe
+#'   raw responses before cross-window deduplication; `data`, a combined data
+#'   tibble; and `errors`, a typed tibble of collected conditions. The object
+#'   also records `collection_id`, `instance_id`, and `format`.
 #' @export
 edr_location_batch <- function(client,
                                collection_id,
@@ -46,6 +62,8 @@ edr_location_batch <- function(client,
                                crs = NULL,
                                format = c("covjson", "csv"),
                                ...,
+                               chunk = NULL,
+                               deduplicate = TRUE,
                                max_requests = 100L,
                                on_error = c("stop", "collect"),
                                progress = interactive(),
@@ -54,13 +72,15 @@ edr_location_batch <- function(client,
   format <- match.arg(format)
   on_error <- match.arg(on_error)
   check_batch_progress(progress)
+  check_batch_flag(deduplicate, "deduplicate")
   check_batch_max_requests(max_requests)
+  check_batch_datetime_missing(datetime)
 
   location_id <- check_batch_location_ids(location_id)
-  n_requests <- length(location_id)
-  if (n_requests > max_requests) {
+  n_locations <- length(location_id)
+  if (n_locations > max_requests) {
     cli::cli_abort(c(
-      "The batch would issue {n_requests} requests, exceeding {.arg max_requests} = {max_requests}.",
+      "The batch would issue {n_locations} requests, exceeding {.arg max_requests} = {max_requests}.",
       i = "Reduce {.arg location_id} or explicitly raise the finite request cap."
     ))
   }
@@ -94,10 +114,20 @@ edr_location_batch <- function(client,
   # edr_request(), without performing a request.
   invisible(build_query_string(prepare_query(query, format = format)))
 
+  windows <- batch_datetime_windows(
+    query$datetime,
+    chunk = chunk,
+    max_windows = floor(max_requests / n_locations),
+    n_locations = n_locations,
+    max_requests = max_requests
+  )
+  n_windows <- length(windows)
+  n_requests <- n_locations * n_windows
+
   plan <- tibble::tibble(
     request_id = seq_len(n_requests),
-    location_id = location_id,
-    datetime = rep(batch_datetime_label(query$datetime), n_requests),
+    location_id = rep(location_id, each = n_windows),
+    datetime = rep(windows, times = n_locations),
     status = rep("pending", n_requests),
     n_rows = rep(NA_integer_, n_requests)
   )
@@ -106,7 +136,6 @@ edr_location_batch <- function(client,
     client = client,
     collection_id = collection_id,
     plan = plan,
-    datetime = datetime,
     parameter_name = parameter_name,
     z = z,
     crs = crs,
@@ -126,7 +155,8 @@ edr_location_batch <- function(client,
       data = bind_location_batch_data(
         executed$results,
         executed$requests,
-        format = format
+        format = format,
+        deduplicate = !is.null(chunk) && isTRUE(deduplicate)
       ),
       errors = executed$errors
     ),
@@ -137,7 +167,6 @@ edr_location_batch <- function(client,
 run_location_batch_plan <- function(client,
                                     collection_id,
                                     plan,
-                                    datetime,
                                     parameter_name,
                                     z,
                                     crs,
@@ -162,12 +191,16 @@ run_location_batch_plan <- function(client,
   }
 
   for (i in seq_len(n_requests)) {
+    request_datetime <- plan$datetime[[i]]
+    if (length(request_datetime) == 0L || is.na(request_datetime)) {
+      request_datetime <- NULL
+    }
     args <- c(
       list(
         client = client,
         collection_id = collection_id,
         location_id = plan$location_id[[i]],
-        datetime = datetime,
+        datetime = request_datetime,
         parameter_name = parameter_name,
         z = z,
         crs = crs,
@@ -233,7 +266,8 @@ run_location_batch_plan <- function(client,
   list(requests = plan, results = results, errors = errors)
 }
 
-bind_location_batch_data <- function(results, requests, format) {
+bind_location_batch_data <- function(results, requests, format,
+                                     deduplicate = FALSE) {
   pieces <- vector("list", length(results))
   for (i in seq_along(results)) {
     data <- results[[i]]
@@ -251,32 +285,39 @@ bind_location_batch_data <- function(results, requests, format) {
   if (length(pieces) == 0L) {
     return(empty_location_batch_data(format))
   }
-  if (length(pieces) == 1L) return(pieces[[1L]])
-
-  bound <- tryCatch(
-    vctrs::vec_rbind(!!!pieces),
-    error = function(e) e
-  )
-  if (!inherits(bound, "error")) return(bound)
-
-  conflicts <- batch_conflicting_columns(pieces)
-  if (length(conflicts) == 0L ||
-      !all(vapply(conflicts, batch_column_is_castable, logical(1), pieces = pieces))) {
-    rlang::cnd_signal(bound)
-  }
-
-  for (column in conflicts) {
-    pieces <- lapply(pieces, function(piece) {
-      if (column %in% names(piece)) {
-        piece[[column]] <- as.character(piece[[column]])
+  bound <- if (length(pieces) == 1L) {
+    pieces[[1L]]
+  } else {
+    candidate <- tryCatch(
+      vctrs::vec_rbind(!!!pieces),
+      error = function(e) e
+    )
+    if (!inherits(candidate, "error")) {
+      candidate
+    } else {
+      conflicts <- batch_conflicting_columns(pieces)
+      if (length(conflicts) == 0L ||
+          !all(vapply(
+            conflicts, batch_column_is_castable, logical(1), pieces = pieces
+          ))) {
+        rlang::cnd_signal(candidate)
       }
-      piece
-    })
+
+      for (column in conflicts) {
+        pieces <- lapply(pieces, function(piece) {
+          if (column %in% names(piece)) {
+            piece[[column]] <- as.character(piece[[column]])
+          }
+          piece
+        })
+      }
+      cli::cli_warn(
+        "Demoted batch column{?s} to character: {.field {conflicts}}; response types differed across locations."
+      )
+      vctrs::vec_rbind(!!!pieces)
+    }
   }
-  cli::cli_warn(
-    "Demoted batch column{?s} to character: {.field {conflicts}}; response types differed across locations."
-  )
-  vctrs::vec_rbind(!!!pieces)
+  if (isTRUE(deduplicate)) deduplicate_batch_window_rows(bound) else bound
 }
 
 batch_conflicting_columns <- function(pieces) {
@@ -404,9 +445,23 @@ check_batch_max_requests <- function(x, call = rlang::caller_env()) {
 }
 
 check_batch_progress <- function(x, call = rlang::caller_env()) {
+  check_batch_flag(x, "progress", call = call)
+}
+
+check_batch_datetime_missing <- function(x, call = rlang::caller_env()) {
+  if (!is.null(x) && anyNA(x)) {
+    cli::cli_abort(
+      "{.arg datetime} must not contain missing values.",
+      call = call
+    )
+  }
+  invisible(x)
+}
+
+check_batch_flag <- function(x, arg, call = rlang::caller_env()) {
   if (!is.logical(x) || length(x) != 1L || is.na(x)) {
     cli::cli_abort(
-      "{.arg progress} must be {.code TRUE} or {.code FALSE}.",
+      "{.arg {arg}} must be {.code TRUE} or {.code FALSE}.",
       call = call
     )
   }

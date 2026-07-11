@@ -14,6 +14,8 @@ edr_location_batch(
   crs = NULL,
   format = c("covjson", "csv"),
   ...,
+  chunk = NULL,
+  deduplicate = TRUE,
   max_requests = 100L,
   on_error = c("stop", "collect"),
   progress = interactive(),
@@ -27,8 +29,11 @@ edr_location_batch(
 
 \item{location_id}{A non-empty character vector of unique location ids.}
 
-\item{datetime}{Optional ISO-8601 instant or interval shared by every
-request.}
+\item{datetime}{Optional ISO-8601 instant or interval. With \code{chunk = NULL},
+it is shared by every request; otherwise the bounded interval is split
+into per-request windows. Timestamp bounds are normalized to UTC before
+calendar arithmetic; up to six fractional-second digits are accepted
+when R can preserve them without loss.}
 
 \item{parameter_name}{Optional character vector of parameter names shared
 by every request.}
@@ -42,8 +47,20 @@ by every request.}
 \item{...}{Additional query parameters forwarded to every
 \code{\link[=edr_location]{edr_location()}} request, such as \code{limit}.}
 
-\item{max_requests}{Finite positive integer limiting the number of HTTP
-requests. Defaults to 100.}
+\item{chunk}{Optional positive-integer calendar interval such as \code{"1 day"},
+\code{"2 weeks"}, \code{"1 month"}, or \code{"1 year"}. Requires a bounded \code{datetime}
+interval. Month/year boundaries use anchored calendar arithmetic, so a
+January 31 start advances to February 28/29 and then March 31.}
+
+\item{deduplicate}{If \code{TRUE} (default), exact rows repeated by different
+time windows for the same location are retained only from the earliest
+request. Duplicates within one response, differing observations, and
+rows from different locations are preserved. Ignored when \code{chunk} is
+\code{NULL}.}
+
+\item{max_requests}{Finite positive integer limiting the number of logical
+\code{\link[=edr_location]{edr_location()}} calls in the complete plan. Transport-level retries do
+not increase this count. Defaults to 100.}
 
 \item{on_error}{Either \code{"stop"} (default), which re-signals the original
 condition immediately, or \code{"collect"}, which records failures and
@@ -57,15 +74,18 @@ remains beneath that instance path.}
 }
 \value{
 An object of class \code{edr_location_batch} and \code{edr_batch}. It contains
-\code{requests}, a typed request-status tibble; \code{data}, a combined data tibble;
-and \code{errors}, a typed tibble of collected conditions. The object also
-records \code{collection_id}, \code{instance_id}, and \code{format}.
+\code{requests}, a typed request-status tibble whose \code{n_rows} values describe
+raw responses before cross-window deduplication; \code{data}, a combined data
+tibble; and \code{errors}, a typed tibble of collected conditions. The object
+also records \code{collection_id}, \code{instance_id}, and \code{format}.
 }
 \description{
-Runs one \code{\link[=edr_location]{edr_location()}} request for each explicitly supplied location id.
-Requests are made sequentially and in input order. The complete request
-plan is validated before any network activity, and \code{max_requests} provides
-a finite guard against accidental fan-out.
+Runs one or more \code{\link[=edr_location]{edr_location()}} requests for each explicitly supplied
+location id. When \code{chunk} is supplied, a bounded datetime interval is split
+into contiguous closed windows and the complete station-by-window plan is
+validated before any network activity. Requests remain sequential and in
+input order, and \code{max_requests} guards the expanded plan against accidental
+fan-out.
 }
 \details{
 \code{format = "covjson"} responses are converted with
