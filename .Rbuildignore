@@ -12,6 +12,7 @@
 ^cran-comments\.md$
 ^vignettes/.*\.Rmd\.orig$
 ^vignettes/getting-started-full$
+^vignettes/cross-endpoint-water-context-full$
 ^vignettes/precompute\.R$
 ^doc$
 ^Meta$

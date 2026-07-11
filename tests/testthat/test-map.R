@@ -38,6 +38,24 @@ test_that("popup = 'table' works without data", {
   expect_s3_class(m, "leaflet")
 })
 
+test_that("single-station map extents use unnamed numeric coordinates", {
+  skip_if_not_installed("leaflet")
+  skip_if_not_installed("sf")
+  locs <- geojson_to_sf(read_fixture("locations.geojson"))
+
+  m <- edr_map(locs[1, , drop = FALSE], popup = "table")
+  marker_call <- Filter(
+    function(call) identical(call$method, "addCircleMarkers"),
+    m$x$calls
+  )[[1]]
+
+  expect_type(marker_call$args[[1]], "double")
+  expect_type(marker_call$args[[2]], "double")
+  expect_null(names(marker_call$args[[1]]))
+  expect_null(names(marker_call$args[[2]]))
+  expect_null(names(m$x$setView[[1]]))
+})
+
 test_that("plot/csv popup modes need data", {
   skip_if_not_installed("leaflet")
   skip_if_not_installed("sf")
@@ -138,6 +156,7 @@ test_that("edr_map renders gridded coverage data with slice controls", {
   expect_s3_class(m, "leaflet")
   payload <- extract_render_payload(m)
   expect_equal(payload$mode, "grid")
+  expect_identical(payload$transform, "identity")
   expect_setequal(vapply(payload$controls, `[[`, character(1), "key"),
                   c("parameter", "datetime", "z"))
   expect_equal(payload$initial$parameter, "precip")
@@ -146,6 +165,144 @@ test_that("edr_map renders gridded coverage data with slice controls", {
   expect_true(all(c("xmin", "xmax", "ymin", "ymax", "unit") %in% names(payload$rows[[1]])))
   expect_match(m$jsHooks$render[[1]]$code, "gridTimeSeriesRows")
   expect_match(m$jsHooks$render[[1]]$code, "edrPopupChartHtml")
+  expect_match(m$jsHooks$render[[1]]$code, "transformValue")
+})
+
+test_that("grid colour transforms retain original values and validate domains", {
+  skip_if_not_installed("leaflet")
+  skip_if_not_installed("htmlwidgets")
+
+  grid <- expand.grid(x = c(-110, -109), y = c(40, 41))
+  grid$value <- c(0, 1, 100, 10000)
+
+  m <- edr_map(
+    tibble::as_tibble(grid),
+    mode = "grid",
+    grid_transform = "sqrt"
+  )
+  payload <- extract_render_payload(m)
+  expect_identical(payload$transform, "sqrt")
+  expect_equal(vapply(payload$rows, `[[`, numeric(1), "value"), grid$value)
+
+  grid$value[[1]] <- -1
+  expect_error(
+    edr_map(tibble::as_tibble(grid), mode = "grid", grid_transform = "sqrt"),
+    "non-negative"
+  )
+  expect_error(
+    edr_map(tibble::as_tibble(grid), mode = "grid", grid_transform = "log1p"),
+    "greater than -1"
+  )
+})
+
+test_that("edr_add_stations composes station popups over a coverage map", {
+  skip_if_not_installed("leaflet")
+  skip_if_not_installed("htmlwidgets")
+  skip_if_not_installed("sf")
+  skip_if_not_installed("base64enc")
+
+  grid <- expand.grid(
+    x = c(-110, -109),
+    y = c(36, 37),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  grid$parameter <- "population density"
+  grid$unit <- "people/km2"
+  grid$value <- seq_len(nrow(grid))
+
+  locs <- geojson_to_sf(read_fixture("locations.geojson"))
+  series <- covjson_to_tibble(read_fixture("pointseries.covjson"))
+  data_list <- list(
+    "08313000" = series,
+    "08317400" = series
+  )
+
+  base <- edr_map(tibble::as_tibble(grid), mode = "grid")
+  m <- edr_add_stations(
+    base,
+    locs,
+    data = data_list,
+    popup = "plot+csv",
+    group = "USGS gauges"
+  )
+
+  expect_s3_class(m, "leaflet")
+  expect_equal(extract_render_payload(m)$mode, "grid")
+  expect_length(m$jsHooks$render, 1L)
+  expect_match(m$jsHooks$render[[1]]$code, "edrRenderPopupCharts")
+  expect_match(m$jsHooks$render[[1]]$code, "edr-coverage-pane")
+  expect_match(m$jsHooks$render[[1]]$code, "pane: paneName", fixed = TRUE)
+
+  marker_calls <- Filter(
+    function(call) identical(call$method, "addCircleMarkers"),
+    m$x$calls
+  )
+  expect_length(marker_calls, 1L)
+  expect_identical(marker_calls[[1]]$args[[5]], "USGS gauges")
+  expect_identical(marker_calls[[1]]$args[[6]]$className, "edr-station-marker")
+  expect_match(extract_popup_html(m), "edr-popup-chart")
+  expect_match(extract_popup_html(m), "data:text/csv;base64,")
+
+  expect_null(m$x$fitBounds)
+  expect_null(m$x$setView)
+})
+
+test_that("edr_add_stations supports multiple groups without duplicate chart hooks", {
+  skip_if_not_installed("leaflet")
+  skip_if_not_installed("htmlwidgets")
+  skip_if_not_installed("sf")
+
+  grid <- expand.grid(x = c(-110, -109), y = c(36, 37))
+  grid$value <- seq_len(nrow(grid))
+  locs <- geojson_to_sf(read_fixture("locations.geojson"))
+  series <- covjson_to_tibble(read_fixture("pointseries.covjson"))
+
+  m <- edr_map(tibble::as_tibble(grid), mode = "grid")
+  m <- edr_add_stations(
+    m,
+    locs[1, , drop = FALSE],
+    data = setNames(list(series), locs$id[[1]]),
+    popup = "plot",
+    group = "USBR stations",
+    marker_radius = 8
+  )
+  m <- edr_add_stations(
+    m,
+    locs[2, , drop = FALSE],
+    data = setNames(list(series), locs$id[[2]]),
+    popup = "plot",
+    group = "USGS stations",
+    fit = TRUE
+  )
+
+  marker_calls <- Filter(
+    function(call) identical(call$method, "addCircleMarkers"),
+    m$x$calls
+  )
+  groups <- vapply(marker_calls, function(call) call$args[[5]], character(1))
+  expect_setequal(groups, c("USBR stations", "USGS stations"))
+  expect_length(m$jsHooks$render, 1L)
+  station_fit <- extract_render_payload(m)$station_fit
+  expect_identical(station_fit$type, "view")
+  expect_identical(station_fit$zoom, 9)
+  expect_equal(station_fit$lng, as.numeric(sf::st_coordinates(locs[2, ])[1, 1]))
+  expect_equal(station_fit$lat, as.numeric(sf::st_coordinates(locs[2, ])[1, 2]))
+  expect_null(m$x$fitBounds)
+  expect_null(m$x$setView)
+})
+
+test_that("edr_add_stations validates additive map arguments", {
+  skip_if_not_installed("leaflet")
+  skip_if_not_installed("sf")
+  locs <- geojson_to_sf(read_fixture("locations.geojson"))
+  m <- leaflet::leaflet()
+
+  expect_error(edr_add_stations(list(), locs, popup = "table"),
+               "Leaflet htmlwidget")
+  expect_error(edr_add_stations(m, locs, popup = "table", group = ""),
+               "non-empty character")
+  expect_error(edr_add_stations(m, locs, popup = "table", fit = NA),
+               "TRUE.*FALSE")
 })
 
 test_that("coverage maps apply parameter filters to their payload", {
@@ -239,6 +396,8 @@ test_that("edr_map renders profile coverage data with controls but keeps z as pr
                   c("parameter", "datetime"))
   expect_false("z" %in% vapply(payload$controls, `[[`, character(1), "key"))
   expect_equal(payload$rows[[1]]$z, "0")
+  expect_false(grepl("edr-coverage-profile", m$jsHooks$render[[1]]$code,
+                     fixed = TRUE))
 })
 
 test_that("edr_save_html writes a non-trivial HTML file", {

@@ -74,6 +74,9 @@
 #' @param initial Named list of initial coverage-map selections, e.g.
 #'   `list(parameter = "temperature", datetime = "2024-01-01", z = 0)`.
 #' @param grid_opacity Fill opacity for gridded coverage cells.
+#' @param grid_transform Colour transform for grid values: `"identity"`
+#'   (default), `"sqrt"`, or `"log1p"`. The legend continues to report
+#'   values on the original scale.
 #'
 #' @return A `leaflet` htmlwidget. Pass it to [edr_save_html()] to
 #'   write a selfcontained HTML file.
@@ -98,10 +101,12 @@ edr_map <- function(locations,
                     mode               = c("auto", "stations", "grid", "profile"),
                     controls           = TRUE,
                     initial            = list(),
-                    grid_opacity       = 0.75) {
+                    grid_opacity       = 0.75,
+                    grid_transform     = c("identity", "sqrt", "log1p")) {
   check_installed_for("leaflet", "render maps")
   mode <- match.arg(mode)
   popup <- match.arg(popup)
+  grid_transform <- match.arg(grid_transform)
   check_max_match_distance(max_match_distance)
 
   resolved_mode <- resolve_map_mode(locations, mode)
@@ -113,164 +118,35 @@ edr_map <- function(locations,
       controls = controls,
       initial = initial,
       grid_opacity = grid_opacity,
+      grid_transform = grid_transform,
       tile_provider = tile_provider,
       legend = legend
     ))
   }
 
-  check_installed_for("sf", "render maps")
-  locations <- as_locations_sf(locations)
-
-  needs_data <- popup %in% c("plot", "csv", "plot+csv", "all")
-  if (needs_data && is.null(data)) {
-    cli::cli_abort(
-      c("{.arg data} is required for popup mode {.val {popup}}.",
-        i = "Pass a tidy tibble, a named list of tibbles, or use {.val table}.")
-    )
-  }
-
-  attr_table <- sf::st_drop_geometry(locations)
-  ids    <- detect_id_column(attr_table, id_col)
-  labels <- detect_labels(attr_table, label_col, ids)
-  per_feature_data <- per_feature_split(
-    data, ids, location_col, locations, max_match_distance
-  )
-  if (!is.null(parameter)) {
-    per_feature_data <- lapply(
-      per_feature_data,
-      function(df) {
-        if (is.null(df)) return(NULL)
-        filter_parameter_rows(df, parameter)
-      }
-    )
-  }
-  # When `data` is NULL the matched/unmatched distinction doesn't apply —
-  # everyone is drawn as a regular station marker.
-  has_data <- if (is.null(data)) {
-    rep(TRUE, length(ids))
-  } else {
-    vapply(
-      per_feature_data,
-      function(df) !is.null(df) && nrow(df) > 0L,
-      logical(1)
-    )
-  }
-
-  # Drop data-less stations entirely if the caller doesn't want them.
-  if (!is.null(data) && !show_unmatched) {
-    keep <- has_data
-    if (!any(keep)) {
-      cli::cli_abort(
-        c("No stations in {.arg locations} joined to {.arg data}.",
-          i = "Check that ids overlap, or set {.code show_unmatched = TRUE}.")
-      )
-    }
-    locations        <- locations[keep, , drop = FALSE]
-    attr_table       <- attr_table[keep, , drop = FALSE]
-    ids              <- ids[keep]
-    labels           <- labels[keep]
-    per_feature_data <- per_feature_data[keep]
-    has_data         <- has_data[keep]
-  }
-
-  popups <- vapply(
-    seq_along(ids),
-    function(i) build_feature_popup(
-      df          = per_feature_data[[i]],
-      attrs       = if (popup %in% c("table", "all")) as.list(attr_table[i, , drop = FALSE]) else NULL,
-      label       = labels[[i]],
-      popup_mode  = popup,
-      plot_width  = plot_width,
-      plot_height = plot_height,
-      plot_dpi    = plot_dpi,
-      csv_name    = paste0("station-", ids[[i]], ".csv")
-    ),
-    character(1)
-  )
-
-  # Reduce non-point geometries (lines, polygons, mixed) to centroids so
-  # we can place a single marker per feature. sf warns on lon/lat
-  # centroids; suppress that since it's expected for monitoring sites.
-  geom <- sf::st_geometry(locations)
-  if (!all(sf::st_geometry_type(geom) == "POINT")) {
-    geom <- suppressWarnings(sf::st_centroid(geom))
-  }
-  coords <- sf::st_coordinates(geom)
-
-  popup_opts <- leaflet::popupOptions(
-    maxWidth = popup_chart_width_px(plot_width, plot_dpi) + 72
-  )
-
   m <- leaflet::leaflet() |>
     leaflet::addProviderTiles(tile_provider)
-
-  # Draw unmatched first, matched on top — leaflet renders later layers
-  # above earlier ones, so the data-bearing markers stay clickable even
-  # in a dense cluster of grey ones.
-  if (any(!has_data)) {
-    idx <- which(!has_data)
-    m <- leaflet::addCircleMarkers(
-      m,
-      lng         = coords[idx, 1],
-      lat         = coords[idx, 2],
-      radius      = max(marker_radius - 1L, 3L),
-      color       = unmatched_color,
-      stroke      = TRUE,
-      weight      = 1,
-      fillOpacity = 0.5,
-      opacity     = 0.6,
-      popup       = popups[idx],
-      label       = labels[idx],
-      popupOptions = popup_opts,
-      group       = "No data in window"
-    )
-  }
-  if (any(has_data)) {
-    idx <- which(has_data)
-    m <- leaflet::addCircleMarkers(
-      m,
-      lng         = coords[idx, 1],
-      lat         = coords[idx, 2],
-      radius      = marker_radius,
-      color       = matched_color,
-      stroke      = TRUE,
-      weight      = 1,
-      fillOpacity = 0.9,
-      opacity     = 1,
-      popup       = popups[idx],
-      label       = labels[idx],
-      popupOptions = popup_opts,
-      group       = "Has data"
-    )
-  }
-
-  if (isTRUE(legend) && !is.null(data) && any(has_data) && any(!has_data)) {
-    m <- leaflet::addLegend(
-      m,
-      position = "bottomright",
-      colors   = c(matched_color, unmatched_color),
-      labels   = c("Has data", "No data in window"),
-      opacity  = 0.9,
-      title    = "Stations"
-    )
-  }
-
-  if (nrow(coords) > 1L) {
-    m <- leaflet::fitBounds(
-      m,
-      lng1 = min(coords[, 1]), lat1 = min(coords[, 2]),
-      lng2 = max(coords[, 1]), lat2 = max(coords[, 2])
-    )
-  } else if (nrow(coords) == 1L) {
-    m <- leaflet::setView(m, lng = coords[1, 1], lat = coords[1, 2], zoom = 9)
-  }
-
-  if (popup %in% c("plot", "plot+csv", "all")) {
-    check_installed_for("htmlwidgets", "render interactive popup charts")
-    m <- htmlwidgets::onRender(m, popup_chart_js())
-  }
-
-  m
+  edr_add_stations(
+    m,
+    locations = locations,
+    data = data,
+    popup = popup,
+    location_col = location_col,
+    id_col = id_col,
+    label_col = label_col,
+    parameter = parameter,
+    plot_width = plot_width,
+    plot_height = plot_height,
+    plot_dpi = plot_dpi,
+    marker_radius = marker_radius,
+    matched_color = matched_color,
+    unmatched_color = unmatched_color,
+    show_unmatched = show_unmatched,
+    legend = legend,
+    max_match_distance = max_match_distance,
+    group = NULL,
+    fit = TRUE
+  )
 }
 
 #' Save a map to a standalone HTML file
@@ -335,6 +211,7 @@ coverage_leaflet_map <- function(data,
                                  controls,
                                  initial,
                                  grid_opacity,
+                                 grid_transform,
                                  tile_provider,
                                  legend,
                                  parameter = NULL) {
@@ -357,20 +234,43 @@ coverage_leaflet_map <- function(data,
       "{.code mode = \"grid\"} requires data with a complete x/y lattice."
     )
   }
+  if (mode == "grid") check_grid_transform(data, grid_transform)
   if (mode == "profile" && !all(c("x", "y", "z") %in% names(data))) {
     cli::cli_abort(
       "{.code mode = \"profile\"} requires {.field x}, {.field y}, and {.field z} columns."
     )
   }
 
-  payload <- coverage_map_payload(data, mode, controls, initial, grid_opacity, legend)
+  payload <- coverage_map_payload(
+    data, mode, controls, initial, grid_opacity, legend, grid_transform
+  )
   m <- leaflet::leaflet() |>
     leaflet::addProviderTiles(tile_provider)
   htmlwidgets::onRender(m, coverage_map_js(), data = payload)
 }
 
+check_grid_transform <- function(data, transform,
+                                 call = rlang::caller_env()) {
+  values <- suppressWarnings(as.numeric(data$value))
+  values <- values[is.finite(values)]
+  if (identical(transform, "sqrt") && any(values < 0)) {
+    cli::cli_abort(
+      "{.code grid_transform = \"sqrt\"} requires non-negative grid values.",
+      call = call
+    )
+  }
+  if (identical(transform, "log1p") && any(values <= -1)) {
+    cli::cli_abort(
+      "{.code grid_transform = \"log1p\"} requires grid values greater than -1.",
+      call = call
+    )
+  }
+  invisible(transform)
+}
+
 coverage_map_payload <- function(data, mode, controls, initial,
-                                 grid_opacity, legend) {
+                                 grid_opacity, legend,
+                                 grid_transform = "identity") {
   data <- data[!is.na(data$x) & !is.na(data$y), , drop = FALSE]
   if (nrow(data) == 0L) {
     cli::cli_abort("Coverage map data must include at least one non-missing x/y coordinate.")
@@ -426,6 +326,7 @@ coverage_map_payload <- function(data, mode, controls, initial,
     controls_enabled = isTRUE(controls),
     initial = initial,
     opacity = grid_opacity,
+    transform = grid_transform,
     legend = isTRUE(legend),
     bounds = list(
       xmin = min(data$x, na.rm = TRUE),
@@ -798,6 +699,13 @@ function(el, x, payload) {
   var map = this;
   var rows = payload.rows || [];
   var active = payload.initial || {};
+  var paneName = null;
+  if (payload.mode === 'grid') {
+    paneName = 'edr-coverage-' + (el.id || 'map');
+    var coveragePane = map.getPane(paneName) || map.createPane(paneName);
+    coveragePane.style.zIndex = '350';
+    coveragePane.classList.add('edr-coverage-pane');
+  }
   var layer = L.layerGroup().addTo(map);
   var legendControl = null;
 ",
@@ -838,11 +746,21 @@ function(el, x, payload) {
     return Number.isFinite(n) ? n : null;
   }
 
-  function colorFor(value, min, max) {
+  function transformValue(value) {
     var v = finiteNumber(value);
+    if (v === null) return null;
+    if (payload.transform === 'sqrt') return v < 0 ? null : Math.sqrt(v);
+    if (payload.transform === 'log1p') return v <= -1 ? null : Math.log1p(v);
+    return v;
+  }
+
+  function colorFor(value, min, max) {
+    var v = transformValue(value);
     if (v === null) return '#bdbdbd';
-    if (max <= min) return '#2c7fb8';
-    var t = Math.max(0, Math.min(1, (v - min) / (max - min)));
+    var scaledMin = transformValue(min);
+    var scaledMax = transformValue(max);
+    if (scaledMin === null || scaledMax === null || scaledMax <= scaledMin) return '#2c7fb8';
+    var t = Math.max(0, Math.min(1, (v - scaledMin) / (scaledMax - scaledMin)));
     var stops = [
       [68, 1, 84],
       [59, 82, 139],
@@ -872,9 +790,21 @@ function(el, x, payload) {
     return out + '</table>';
   }
 
-  function addLegend(min, max) {
+  function addLegend(min, max, slice) {
     if (!payload.legend || payload.mode !== 'grid') return;
     if (legendControl) map.removeControl(legendControl);
+    var parameters = [];
+    var units = [];
+    (slice || []).forEach(function(row) {
+      var parameter = asText(row.parameter);
+      var unit = asText(row.unit);
+      if (parameter !== '' && parameters.indexOf(parameter) < 0) parameters.push(parameter);
+      if (unit !== '' && units.indexOf(unit) < 0) units.push(unit);
+    });
+    var legendTitle = parameters.length === 1 ? parameters[0] : '';
+    if (units.length === 1) {
+      legendTitle += (legendTitle === '' ? '' : ' ') + '(' + units[0] + ')';
+    }
     legendControl = L.control({position: 'bottomright'});
     legendControl.onAdd = function() {
       var div = L.DomUtil.create('div', 'edr-coverage-legend');
@@ -884,6 +814,8 @@ function(el, x, payload) {
       div.style.boxShadow = '0 1px 4px rgba(0,0,0,0.25)';
       div.style.font = '12px system-ui, sans-serif';
       div.innerHTML =
+        (legendTitle === '' ? '' : '<div style=\"font-weight:600;margin-bottom:5px\">' +
+          escapeHtml(legendTitle) + '</div>') +
         '<div style=\"width:140px;height:10px;background:linear-gradient(to right,#440154,#3b528b,#21918c,#5ec962,#fde725);margin-bottom:4px\"></div>' +
         '<div style=\"display:flex;justify-content:space-between;gap:8px\"><span>' +
         escapeHtml(Number(min).toPrecision(4)) + '</span><span>' +
@@ -982,13 +914,15 @@ function(el, x, payload) {
       L.rectangle(
         [[Number(row.ymin), Number(row.xmin)], [Number(row.ymax), Number(row.xmax)]],
         {
+          pane: paneName,
+          className: 'edr-coverage-cell',
           stroke: false,
           fillColor: colorFor(row.value, min, max),
           fillOpacity: payload.opacity == null ? 0.75 : payload.opacity
         }
       ).bindPopup(gridPopupHtml(row), {maxWidth: 680, minWidth: 560}).addTo(layer);
     });
-    addLegend(min, max);
+    addLegend(min, max, slice);
   }
 
   function renderProfiles(slice) {
@@ -1064,7 +998,17 @@ function(el, x, payload) {
   }
 
   render();
-  if (payload.bounds) {
+  if (payload.station_fit && payload.station_fit.type === 'view') {
+    map.setView(
+      [payload.station_fit.lat, payload.station_fit.lng],
+      payload.station_fit.zoom || 9
+    );
+  } else if (payload.station_fit && payload.station_fit.type === 'bounds') {
+    map.fitBounds([
+      [payload.station_fit.ymin, payload.station_fit.xmin],
+      [payload.station_fit.ymax, payload.station_fit.xmax]
+    ]);
+  } else if (payload.bounds) {
     map.fitBounds([
       [payload.bounds.ymin, payload.bounds.xmin],
       [payload.bounds.ymax, payload.bounds.xmax]

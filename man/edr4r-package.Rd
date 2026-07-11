@@ -39,6 +39,8 @@ station sets with \code{\link[=edr_location_batch]{edr_location_batch()}}, \code
 collections can be inspected with \code{\link[=edr_instances]{edr_instances()}}.
 \item Flatten the response with \code{\link[=covjson_to_tibble]{covjson_to_tibble()}} (for CoverageJSON)
 or \code{\link[=geojson_to_sf]{geojson_to_sf()}} (for GeoJSON).
+\item Plot or map it with \code{\link[=edr_plot]{edr_plot()}} / \code{\link[=edr_map]{edr_map()}}, and compose station
+observations over coverage maps with \code{\link[=edr_add_stations]{edr_add_stations()}}.
 }
 
 For everything the high-level verbs don't cover, \code{\link[=edr_request]{edr_request()}} is

@@ -5,8 +5,12 @@ on:
   pull_request:
     paths:
       - "R/map.R"
+      - "R/map-stations.R"
       - "R/viz-utils.R"
       - "tests/testthat/test-map.R"
+      - "vignettes/cross-endpoint-water-context.Rmd"
+      - "vignettes/cross-endpoint-water-context.Rmd.orig"
+      - "vignettes/cross-endpoint-water-context-full/**"
       - ".github/scripts/map-browser-smoke.R"
       - ".github/workflows/browser-smoke.yaml"
 

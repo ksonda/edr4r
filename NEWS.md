@@ -12,10 +12,15 @@
 * Accept finite, safely representable numeric strings in CoverageJSON ranges
   that declare a numeric `dataType`, as currently emitted by USGS waterdata,
   while rejecting text, overflow/underflow, and unsafe declared integers.
-* Add a precomputed cross-endpoint Lake Mead vignette combining a Met Office
-  population `Grid`, a USGS discharge `PointSeries`, and a WWDH
-  `CoverageCollection`, with an executable source retained for deliberate
-  live refreshes.
+* Add `edr_add_stations()` for composing one or more independently styled
+  station groups over an existing coverage map, reusing interactive chart and
+  CSV popups. Coverage layers now render in a lower Leaflet pane, grid legends
+  identify the active parameter/unit, and grid colour scales support identity,
+  square-root, and `log1p` transforms.
+* Upgrade the cross-endpoint Lake Mead vignette to a precomputed interactive
+  map: a Met Office population `Grid` beneath toggleable USGS and USBR/WWDH
+  station groups with time-series popups. The full widget is deployed only on
+  the pkgdown site; package builds retain a small static fallback.
 * Remove a precomputed base64 map from the USGS vignette, reducing that source
   file by about 1 MB while retaining the runnable interactive-map example.
 

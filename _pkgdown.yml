@@ -51,6 +51,7 @@ reference:
     contents:
       - edr_plot
       - edr_map
+      - edr_add_stations
       - edr_save_html
       - edr_explore
 
