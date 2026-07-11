@@ -266,6 +266,8 @@ batch <- edr_location_batch(
   datetime       = "2023-01-01/2023-06-30",
   parameter_name = "3",
   chunk           = "1 month",
+  checkpoint      = "wwdh-monthly-checkpoint",
+  resume          = TRUE,
   max_requests   = 30,
   on_error       = "collect",
   progress       = FALSE
@@ -280,8 +282,11 @@ The request count and every location ID are validated before the first HTTP
 call. Here the complete plan is five stations by six monthly windows. Adjacent
 closed windows may repeat a boundary observation; the combined data keeps the
 earliest exact copy while `batch$requests` retains each raw row count. In this
-WWDH workflow, `cube` remains preferable when all stations in a spatial extent
-are wanted in one request.
+example, the first call initializes the checkpoint and later identical calls
+reuse successful or empty windows while retrying unresolved ones. The
+checkpoint contains parsed observations and can be removed when the pull is no
+longer needed. In this WWDH workflow, `cube` remains preferable when all
+stations in a spatial extent are wanted in one request.
 
 ## 5. Plot the time series
 
