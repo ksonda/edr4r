@@ -1,7 +1,7 @@
 # Position query (data at a point)
 
-Calls `GET /collections/{collection_id}/position` with a WKT POINT in
-the `coords` parameter.
+Calls `GET /collections/{collection_id}/position` with a WKT POINT or
+MULTIPOINT in the `coords` parameter.
 
 ## Usage
 
@@ -16,7 +16,8 @@ edr_position(
   crs = NULL,
   format = c("covjson", "json"),
   ...,
-  instance_id = NULL
+  instance_id = NULL,
+  f = NULL
 )
 ```
 
@@ -33,7 +34,7 @@ edr_position(
 - coords:
 
   Either a length-2 numeric vector `c(lon, lat)`, a length-3 vector
-  `c(lon, lat, z)`, or a WKT POINT string.
+  `c(lon, lat, z)`, or a WKT POINT/MULTIPOINT string.
 
 - datetime:
 
@@ -66,6 +67,13 @@ edr_position(
   Optional instance identifier. When supplied, the request is sent
   beneath `/collections/{collection_id}/instances/{instance_id}`. This
   keyword-only argument leaves existing positional calls unchanged.
+
+- f:
+
+  Optional server-advertised output-format token sent as the EDR `f`
+  query parameter. This is separate from `format`, which selects the
+  client-side parser. For example, a strict coverage endpoint can use
+  `edr_position(..., format = "covjson", f = "CoverageJSON")`.
 
 ## Value
 

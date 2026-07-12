@@ -1,7 +1,7 @@
 # Area query (data inside a polygon)
 
-Calls `GET /collections/{collection_id}/area` with a WKT POLYGON in the
-`coords` parameter.
+Calls `GET /collections/{collection_id}/area` with a WKT POLYGON or
+MULTIPOLYGON in the `coords` parameter.
 
 ## Usage
 
@@ -16,7 +16,8 @@ edr_area(
   crs = NULL,
   format = c("covjson", "json"),
   ...,
-  instance_id = NULL
+  instance_id = NULL,
+  f = NULL
 )
 ```
 
@@ -32,9 +33,9 @@ edr_area(
 
 - coords:
 
-  WKT polygon string, or a matrix / data.frame of `(lon, lat)` rows that
-  will be closed into a POLYGON. May also be an `sf` / `sfc` polygon if
-  `sf` is installed.
+  WKT POLYGON/MULTIPOLYGON string, or a matrix / data.frame of
+  `(lon, lat)` rows that will be closed into a POLYGON. May also be an
+  `sf` / `sfc` polygon if `sf` is installed.
 
 - datetime:
 
@@ -67,6 +68,13 @@ edr_area(
   Optional instance identifier. When supplied, the request is sent
   beneath `/collections/{collection_id}/instances/{instance_id}`. This
   keyword-only argument leaves existing positional calls unchanged.
+
+- f:
+
+  Optional server-advertised output-format token sent as the EDR `f`
+  query parameter. This is separate from `format`, which selects the
+  client-side parser. For example, a strict coverage endpoint can use
+  `edr_position(..., format = "covjson", f = "CoverageJSON")`.
 
 ## Value
 

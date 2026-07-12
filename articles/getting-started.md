@@ -265,14 +265,19 @@ batch <- edr_location_batch(
   chunk           = "1 month",
   checkpoint      = "wwdh-monthly-checkpoint",
   resume          = TRUE,
-  max_requests   = 30,
-  on_error       = "collect",
-  progress       = FALSE
+  include_parameters = TRUE,
+  max_requests    = 30,
+  on_error        = "collect",
+  progress        = FALSE
 )
 
 batch$requests
 batch$data
 batch$errors
+batch$parameters[
+  batch$parameters$id == "3",
+  c("id", "name", "description", "unit_symbol", "unit_definition")
+]
 ```
 
 The request count and every location ID are validated before the first
@@ -285,6 +290,13 @@ windows while retrying unresolved ones. The checkpoint contains parsed
 observations and can be removed when the pull is no longer needed. In
 this WWDH workflow, `cube` remains preferable when all stations in a
 spatial extent are wanted in one request.
+
+`include_parameters = TRUE` makes one explicit, cacheable metadata
+request and stores the complete catalog once in `batch$parameters`,
+rather than repeating definitions and unit identifiers on every
+observation. The catalog is not stored in the checkpoint, `max_requests`
+counts only data requests, and a metadata-discovery failure is not
+collected by `on_error`.
 
 ## 5. Plot the time series
 

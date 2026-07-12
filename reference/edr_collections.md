@@ -28,4 +28,5 @@ A tibble with one row per collection. Always includes `id`, `title`,
 `output_formats`, `parameters`, `data_queries`, `query_details`,
 `query_error`, `has_instances`, and `links` columns. `extent_bbox` is a
 convenience view of the first bounding box; all spatial extents are
-retained in `extent_bboxes` and `extent_spatial` list columns.
+retained in `extent_bboxes` and `extent_spatial` list columns. EDR 1.1
+custom dimensions are retained in the `extent_custom` list column.

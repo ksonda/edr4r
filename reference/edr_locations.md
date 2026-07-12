@@ -20,7 +20,8 @@ edr_locations(
   instance_id = NULL,
   paginate = FALSE,
   max_pages = 100L,
-  max_features = 100000L
+  max_features = 100000L,
+  f = NULL
 )
 ```
 
@@ -87,6 +88,13 @@ edr_locations(
 
   Maximum combined feature count when `paginate = TRUE`. Must be a
   finite positive integer; defaults to 100,000.
+
+- f:
+
+  Optional server-advertised output-format token sent as the EDR `f`
+  query parameter. This is separate from `format`, which selects the
+  client-side parser. For example, a strict coverage endpoint can use
+  `edr_position(..., format = "covjson", f = "CoverageJSON")`.
 
 ## Value
 

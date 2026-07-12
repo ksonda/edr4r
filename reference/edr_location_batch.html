@@ -75,10 +75,12 @@ fan-out.</p>
 <span>  deduplicate <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  checkpoint <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  resume <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  include_parameters <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  max_requests <span class="op">=</span> <span class="fl">100L</span>,</span>
 <span>  on_error <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"stop"</span>, <span class="st">"collect"</span><span class="op">)</span>,</span>
 <span>  progress <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  instance_id <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  instance_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  f <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -157,6 +159,15 @@ yet exist, it is initialized, which supports rerunnable scripts. An
 existing checkpoint requires <code>resume = TRUE</code>. Defaults to <code>FALSE</code>.</p></dd>
 
 
+<dt id="arg-include-parameters">include_parameters<a class="anchor" aria-label="anchor" href="#arg-include-parameters"></a></dt>
+<dd><p>If <code>TRUE</code>, fetch the collection's full parameter
+catalog with <code><a href="edr_parameters.html">edr_parameters()</a></code> and attach it once as <code>parameters</code> on the
+result. This is an explicit, cacheable discovery request in addition to
+the planned data requests. For an instance-scoped batch, metadata comes
+from that instance. Defaults to <code>FALSE</code>, which performs no metadata
+request and stores <code>NULL</code> in <code>parameters</code>.</p></dd>
+
+
 <dt id="arg-max-requests">max_requests<a class="anchor" aria-label="anchor" href="#arg-max-requests"></a></dt>
 <dd><p>Finite positive integer limiting the number of logical
 <code><a href="edr_location.html">edr_location()</a></code> calls in the complete plan. Transport-level retries do
@@ -178,14 +189,22 @@ batches. Defaults to <code><a href="https://rdrr.io/r/base/interactive.html" cla
 <dd><p>Optional collection instance identifier. Every request
 remains beneath that instance path.</p></dd>
 
+
+<dt id="arg-f">f<a class="anchor" aria-label="anchor" href="#arg-f"></a></dt>
+<dd><p>Optional server-advertised output-format token sent as the EDR
+<code>f</code> query parameter. This is separate from <code>format</code>, which controls
+client-side parsing.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>An object of class <code>edr_location_batch</code> and <code>edr_batch</code>. It contains
 <code>requests</code>, a typed request-status tibble whose <code>n_rows</code> values describe
 raw responses before cross-window deduplication; <code>data</code>, a combined data
-tibble; and <code>errors</code>, a typed tibble of collected conditions. The object
-also records <code>collection_id</code>, <code>instance_id</code>, and <code>format</code>.</p>
+tibble; <code>errors</code>, a typed tibble of collected conditions; and <code>parameters</code>,
+either the nonduplicated collection/instance parameter catalog or <code>NULL</code>
+when it was not requested. The object also records <code>collection_id</code>,
+<code>instance_id</code>, and <code>format</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -202,6 +221,13 @@ extract and resume it under the same logical authorization context.
 Checkpointed clients must use an absolute HTTP(S) base URL without an
 embedded query, fragment, username, or password; rotating credentials
 belong in <code>client</code> headers and are not written to the checkpoint.</p>
+<p><code>max_requests</code> counts data requests only. When <code>include_parameters = TRUE</code>,
+the additional discovery request is made after an existing checkpoint has
+been validated and restored. The catalog is not stored in the checkpoint,
+so a resumed call obtains current metadata (subject to the client's cache)
+even when every data response is restored. Parameter-discovery failures are
+not collected by <code>on_error</code>; they abort the call because the requested
+result metadata would be incomplete.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

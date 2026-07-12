@@ -19,7 +19,8 @@ edr_corridor(
   crs = NULL,
   format = c("covjson", "json"),
   ...,
-  instance_id = NULL
+  instance_id = NULL,
+  f = NULL
 )
 ```
 
@@ -35,8 +36,8 @@ edr_corridor(
 
 - coords:
 
-  WKT LINESTRING, a matrix / data.frame of `(lon, lat)` rows, or an
-  `sfc` linestring.
+  WKT LINESTRING/MULTILINESTRING, a matrix / data.frame of `(lon, lat)`
+  rows, or an `sfc` linestring.
 
 - corridor_width:
 
@@ -86,6 +87,13 @@ edr_corridor(
   Optional instance identifier. When supplied, the request is sent
   beneath `/collections/{collection_id}/instances/{instance_id}`. This
   keyword-only argument leaves existing positional calls unchanged.
+
+- f:
+
+  Optional server-advertised output-format token sent as the EDR `f`
+  query parameter. This is separate from `format`, which selects the
+  client-side parser. For example, a strict coverage endpoint can use
+  `edr_position(..., format = "covjson", f = "CoverageJSON")`.
 
 ## Value
 

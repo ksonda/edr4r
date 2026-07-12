@@ -62,7 +62,8 @@ Typically returns CoverageJSON; pass the result to
 <span>  crs <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  format <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"covjson"</span>, <span class="st">"geojson"</span>, <span class="st">"csv"</span>, <span class="st">"json"</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span>,</span>
-<span>  instance_id <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  instance_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  f <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -117,6 +118,13 @@ on. Sent as a comma-separated <code>parameter-name=</code> query.</p></dd>
 <dd><p>Optional instance identifier. When supplied, the request
 is sent beneath <code>/collections/{collection_id}/instances/{instance_id}</code>.
 This keyword-only argument leaves existing positional calls unchanged.</p></dd>
+
+
+<dt id="arg-f">f<a class="anchor" aria-label="anchor" href="#arg-f"></a></dt>
+<dd><p>Optional server-advertised output-format token sent as the EDR
+<code>f</code> query parameter. This is separate from <code>format</code>, which selects the
+client-side parser. For example, a strict coverage endpoint can use
+<code>edr_position(..., format = "covjson", f = "CoverageJSON")</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

@@ -110,6 +110,20 @@ conformance class is not mistaken for a guarantee that every
 subset</td>
 </tr>
 <tr class="even">
+<td>EDR 1.0/1.1 conformance identifiers</td>
+<td>Supported</td>
+<td>Version-tolerant capability matching; current verified endpoints
+advertise 1.0 identifiers</td>
+</tr>
+<tr class="odd">
+<td>EDR 1.1 multi-geometries and custom dimensions</td>
+<td>Supported subset</td>
+<td>WKT <code>MULTIPOINT</code>, <code>MULTIPOLYGON</code>, and
+<code>MULTILINESTRING</code>; custom extent metadata is retained and
+named dimension parameters pass through <code>...</code>
+</td>
+</tr>
+<tr class="even">
 <td>CoverageJSON</td>
 <td>Supported subset</td>
 <td>Inline <code>Coverage</code>/<code>CoverageCollection</code> with
@@ -171,6 +185,13 @@ checkpoint/resume, CoverageJSON/CSV, and a finite expanded-plan cap</td>
 <p>CRS values are passed to the server as requested. <code>edr4r</code>
 does not silently reproject CoverageJSON coordinates; GeoJSON
 reprojection is available after conversion through <code>sf</code>.</p>
+<p>Current pygeoapi endpoints commonly serve GeoJSON and CoverageJSON
+through <code>f=json</code>, which remains the compatibility default.
+When a stricter endpoint advertises an encoding-specific token, pass it
+explicitly while keeping the desired parser, for example
+<code>edr_position(..., format = "covjson", f = "CoverageJSON")</code>
+or
+<code>edr_request(..., query = list(f = "CoverageJSON"), format = "covjson")</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="return-and-failure-contract">Return and failure contract<a class="anchor" aria-label="anchor" href="#return-and-failure-contract"></a>
@@ -196,14 +217,18 @@ declared integers remain explicit parser errors.</p>
 query), <code>data</code> (row-bound CoverageJSON/CSV data with
 <code>.request_id</code> and <code>.location_id</code> provenance), and
 <code>errors</code> (preserved conditions when
-<code>on_error = "collect"</code>). Optional day/week/month/year chunks
-require a finite closed interval. Adjacent windows share their boundary;
-exact rows repeated across windows for the same location are removed by
-default, while <code>requests$n_rows</code> retains raw response counts.
-Timestamp bounds are normalized to UTC before calendar arithmetic and
-may contain up to six fractional-second digits; values that R cannot
-represent without loss are rejected before requests begin. It is
-sequential in this release so the normal client retry policy remains
+<code>on_error = "collect"</code>). With explicit
+<code>include_parameters = TRUE</code>, a fourth <code>parameters</code>
+tibble holds the nonduplicated collection or instance parameter catalog;
+otherwise that component is <code>NULL</code> and no metadata request is
+made. Optional day/week/month/year chunks require a finite closed
+interval. Adjacent windows share their boundary; exact rows repeated
+across windows for the same location are removed by default, while
+<code>requests$n_rows</code> retains raw response counts. Timestamp
+bounds are normalized to UTC before calendar arithmetic and may contain
+up to six fractional-second digits; values that R cannot represent
+without loss are rejected before requests begin. It is sequential in
+this release so the normal client retry policy remains
 authoritative.</p>
 <p>Checkpointing is opt-in and preserves only terminal successful or
 empty parsed responses. An interrupted or failed request has no terminal
@@ -217,6 +242,13 @@ Checkpointed clients require an absolute HTTP(S) base URL without an
 embedded query, fragment, username, or password. Rotating credentials
 belong in client headers; the caller remains responsible for resuming
 under the same logical authorization context.</p>
+<p>Parameter catalogs are not checkpointed or included in the
+request-plan fingerprint. A resumed batch with
+<code>include_parameters = TRUE</code> obtains current metadata through
+the client’s discovery cache even when every data request is restored.
+<code>max_requests</code> counts data requests only, and
+<code>on_error</code> does not collect a parameter-discovery
+failure.</p>
 <p>Pagination is deliberately opt-in. The client follows only the
 server-advertised body link with <code>rel = "next"</code>, treats its
 cursor/offset as opaque, and requires the continuation to remain on the

@@ -18,7 +18,8 @@ edr_location(
   crs = NULL,
   format = c("covjson", "geojson", "csv", "json"),
   ...,
-  instance_id = NULL
+  instance_id = NULL,
+  f = NULL
 )
 ```
 
@@ -72,6 +73,13 @@ edr_location(
   Optional instance identifier. When supplied, the request is sent
   beneath `/collections/{collection_id}/instances/{instance_id}`. This
   keyword-only argument leaves existing positional calls unchanged.
+
+- f:
+
+  Optional server-advertised output-format token sent as the EDR `f`
+  query parameter. This is separate from `format`, which selects the
+  client-side parser. For example, a strict coverage endpoint can use
+  `edr_position(..., format = "covjson", f = "CoverageJSON")`.
 
 ## Value
 

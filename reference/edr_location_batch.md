@@ -25,10 +25,12 @@ edr_location_batch(
   deduplicate = TRUE,
   checkpoint = NULL,
   resume = FALSE,
+  include_parameters = FALSE,
   max_requests = 100L,
   on_error = c("stop", "collect"),
   progress = interactive(),
-  instance_id = NULL
+  instance_id = NULL,
+  f = NULL
 )
 ```
 
@@ -105,6 +107,16 @@ edr_location_batch(
   not yet exist, it is initialized, which supports rerunnable scripts.
   An existing checkpoint requires `resume = TRUE`. Defaults to `FALSE`.
 
+- include_parameters:
+
+  If `TRUE`, fetch the collection's full parameter catalog with
+  [`edr_parameters()`](https://ksonda.github.io/edr4r/reference/edr_parameters.md)
+  and attach it once as `parameters` on the result. This is an explicit,
+  cacheable discovery request in addition to the planned data requests.
+  For an instance-scoped batch, metadata comes from that instance.
+  Defaults to `FALSE`, which performs no metadata request and stores
+  `NULL` in `parameters`.
+
 - max_requests:
 
   Finite positive integer limiting the number of logical
@@ -129,13 +141,21 @@ edr_location_batch(
   Optional collection instance identifier. Every request remains beneath
   that instance path.
 
+- f:
+
+  Optional server-advertised output-format token sent as the EDR `f`
+  query parameter. This is separate from `format`, which controls
+  client-side parsing.
+
 ## Value
 
 An object of class `edr_location_batch` and `edr_batch`. It contains
 `requests`, a typed request-status tibble whose `n_rows` values describe
 raw responses before cross-window deduplication; `data`, a combined data
-tibble; and `errors`, a typed tibble of collected conditions. The object
-also records `collection_id`, `instance_id`, and `format`.
+tibble; `errors`, a typed tibble of collected conditions; and
+`parameters`, either the nonduplicated collection/instance parameter
+catalog or `NULL` when it was not requested. The object also records
+`collection_id`, `instance_id`, and `format`.
 
 ## Details
 
@@ -156,3 +176,12 @@ logical authorization context. Checkpointed clients must use an absolute
 HTTP(S) base URL without an embedded query, fragment, username, or
 password; rotating credentials belong in `client` headers and are not
 written to the checkpoint.
+
+`max_requests` counts data requests only. When
+`include_parameters = TRUE`, the additional discovery request is made
+after an existing checkpoint has been validated and restored. The
+catalog is not stored in the checkpoint, so a resumed call obtains
+current metadata (subject to the client's cache) even when every data
+response is restored. Parameter-discovery failures are not collected by
+`on_error`; they abort the call because the requested result metadata
+would be incomplete.

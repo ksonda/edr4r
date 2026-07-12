@@ -14,6 +14,8 @@ unchanged.
 | Landing page, conformance, collections, parameters, queryables | Supported | JSON discovery documents |
 | Collection instances | Supported | Discovery and instance-scoped query paths |
 | `locations`, `items`, `position`, `area`, `cube`, `radius`, `trajectory`, `corridor` | Supported | Read-only HTTP GET helpers; the server may implement only a subset |
+| EDR 1.0/1.1 conformance identifiers | Supported | Version-tolerant capability matching; current verified endpoints advertise 1.0 identifiers |
+| EDR 1.1 multi-geometries and custom dimensions | Supported subset | WKT `MULTIPOINT`, `MULTIPOLYGON`, and `MULTILINESTRING`; custom extent metadata is retained and named dimension parameters pass through `...` |
 | CoverageJSON | Supported subset | Inline `Coverage`/`CoverageCollection` with primitive, regular, or tuple axes and inline `NdArray` ranges |
 | GeoJSON | Supported | Converted to `sf` when installed; otherwise retained as an `edr_response` |
 | CSV | Limited | Parsed by the low-level client and supported directly by location queries |
@@ -27,6 +29,13 @@ unchanged.
 CRS values are passed to the server as requested. `edr4r` does not
 silently reproject CoverageJSON coordinates; GeoJSON reprojection is
 available after conversion through `sf`.
+
+Current pygeoapi endpoints commonly serve GeoJSON and CoverageJSON
+through `f=json`, which remains the compatibility default. When a
+stricter endpoint advertises an encoding-specific token, pass it
+explicitly while keeping the desired parser, for example
+`edr_position(..., format = "covjson", f = "CoverageJSON")` or
+`edr_request(..., query = list(f = "CoverageJSON"), format = "covjson")`.
 
 ## Return and failure contract
 
@@ -56,7 +65,10 @@ returns an `edr_location_batch` object with three stable tibbles:
 `requests` (one status row per planned location/window query), `data`
 (row-bound CoverageJSON/CSV data with `.request_id` and `.location_id`
 provenance), and `errors` (preserved conditions when
-`on_error = "collect"`). Optional day/week/month/year chunks require a
+`on_error = "collect"`). With explicit `include_parameters = TRUE`, a
+fourth `parameters` tibble holds the nonduplicated collection or
+instance parameter catalog; otherwise that component is `NULL` and no
+metadata request is made. Optional day/week/month/year chunks require a
 finite closed interval. Adjacent windows share their boundary; exact
 rows repeated across windows for the same location are removed by
 default, while `requests$n_rows` retains raw response counts. Timestamp
@@ -77,6 +89,12 @@ Checkpointed clients require an absolute HTTP(S) base URL without an
 embedded query, fragment, username, or password. Rotating credentials
 belong in client headers; the caller remains responsible for resuming
 under the same logical authorization context.
+
+Parameter catalogs are not checkpointed or included in the request-plan
+fingerprint. A resumed batch with `include_parameters = TRUE` obtains
+current metadata through the client’s discovery cache even when every
+data request is restored. `max_requests` counts data requests only, and
+`on_error` does not collect a parameter-discovery failure.
 
 Pagination is deliberately opt-in. The client follows only the
 server-advertised body link with `rel = "next"`, treats its

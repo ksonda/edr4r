@@ -85,9 +85,12 @@ dropped.</p></dd>
 
 <dt id="arg-format">format<a class="anchor" aria-label="anchor" href="#arg-format"></a></dt>
 <dd><p>Response format: one of <code>"json"</code> (default), <code>"geojson"</code>,
-<code>"covjson"</code>, <code>"csv"</code>, <code>"html"</code>, or <code>"raw"</code>. Passed as <code>?f=</code> (except
-<code>"covjson"</code>, which is sent as <code>?f=json</code> with a CoverageJSON
-<code>Accept</code> hint, since EDR servers return CovJSON via JSON).</p></dd>
+<code>"covjson"</code>, <code>"csv"</code>, <code>"html"</code>, or <code>"raw"</code>. For compatibility with
+current pygeoapi deployments, JSON, GeoJSON, and CoverageJSON default to
+<code>?f=json</code> and use the <code>Accept</code> header plus response body to distinguish
+encodings. An explicit <code>query$f</code> is always honored, so a strict endpoint's
+advertised token can be requested with, for example,
+<code>query = list(f = "CoverageJSON")</code> while retaining CoverageJSON parsing.</p></dd>
 
 
 <dt id="arg-parse">parse<a class="anchor" aria-label="anchor" href="#arg-parse"></a></dt>

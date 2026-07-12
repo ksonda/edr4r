@@ -110,8 +110,8 @@
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/ksonda/edr4r" class="external-link">edr4r</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_client.html">edr_client</a></span><span class="op">(</span><span class="st">"https://api.waterdata.usgs.gov/ogcapi/beta"</span><span class="op">)</span></span>
-<span><span class="co"># or "https://api.wwdh.internetofwater.app"</span></span>
-<span><span class="co"># or "http://localhost:5005" if you're running pygeoapi locally</span></span>
+<span><span class="va">wwdh</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_client.html">edr_client</a></span><span class="op">(</span><span class="st">"https://api.wwdh.internetofwater.app"</span><span class="op">)</span></span>
+<span><span class="co"># or use "http://localhost:5005" for a local pygeoapi deployment</span></span>
 <span></span>
 <span><span class="va">collections</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_collections.html">edr_collections</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span></span>
 <span><span class="va">collections</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"title"</span>, <span class="st">"data_queries"</span>, <span class="st">"output_formats"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
@@ -159,12 +159,15 @@
 </h3>
 <p><code><a href="reference/edr_locations.html">edr_locations()</a></code> returns one server response by default. If the response is GeoJSON and <a href="https://r-spatial.github.io/sf/" class="external-link"><code>sf</code></a> is installed, it is promoted to an <code>sf</code> object automatically. For a complete result from a server that advertises <code>rel = "next"</code>, opt into bounded pagination:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">locs</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_locations.html">edr_locations</a></span><span class="op">(</span></span>
-<span>  <span class="va">client</span>, <span class="st">"monitoring-locations"</span>,</span>
-<span>  limit <span class="op">=</span> <span class="fl">500</span>,              <span class="co"># server page size</span></span>
+<code class="sourceCode R"><span><span class="va">piedmont_bbox</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">78.60</span>, <span class="fl">36.04</span>, <span class="op">-</span><span class="fl">78.28</span>, <span class="fl">36.22</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">locs</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_locations.html">edr_locations</a></span><span class="op">(</span></span>
+<span>  <span class="va">client</span>, <span class="st">"daily-edr"</span>,</span>
+<span>  bbox <span class="op">=</span> <span class="va">piedmont_bbox</span>,</span>
+<span>  limit <span class="op">=</span> <span class="fl">100</span>,              <span class="co"># server page size</span></span>
 <span>  paginate <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  max_pages <span class="op">=</span> <span class="fl">20</span>,</span>
-<span>  max_features <span class="op">=</span> <span class="fl">10000</span></span>
+<span>  max_pages <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  max_features <span class="op">=</span> <span class="fl">100</span></span>
 <span><span class="op">)</span></span>
 <span><span class="va">locs</span>                            <span class="co"># sf POINTs with station attributes</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_geometry</a></span><span class="op">(</span><span class="va">locs</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
@@ -175,32 +178,32 @@
 </h3>
 <p>Once you know a station ID, ask for its values. The server returns CoverageJSON; <code><a href="reference/covjson_to_tibble.html">covjson_to_tibble()</a></code> flattens it into one row per (coverage × parameter × timestamp):</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_location.html">edr_location</a></span><span class="op">(</span></span>
-<span>  <span class="va">client</span>, <span class="st">"daily-values"</span>,</span>
-<span>  location_id    <span class="op">=</span> <span class="st">"08313000"</span>,</span>
-<span>  datetime       <span class="op">=</span> <span class="st">"2020-01-01/2020-12-31"</span>,</span>
-<span>  parameter_name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"discharge"</span>, <span class="st">"gage_height"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">station_id</span> <span class="op">&lt;-</span> <span class="va">locs</span><span class="op">$</span><span class="va">id</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>      <span class="co"># USGS ids include the "USGS-" prefix</span></span>
+<span></span>
+<span><span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_location.html">edr_location</a></span><span class="op">(</span></span>
+<span>  <span class="va">client</span>, <span class="st">"daily-edr"</span>,</span>
+<span>  location_id    <span class="op">=</span> <span class="va">station_id</span>,</span>
+<span>  parameter_name <span class="op">=</span> <span class="st">"00060"</span>,    <span class="co"># daily discharge</span></span>
+<span>  limit          <span class="op">=</span> <span class="fl">200</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span></span>
-<span><span class="va">df</span></span>
-<span><span class="co">#&gt; # A tibble: 732 × 9</span></span>
-<span><span class="co">#&gt;   coverage_id parameter   parameter_label  unit  datetime                x     y     z value</span></span>
-<span><span class="co">#&gt;   &lt;chr&gt;       &lt;chr&gt;       &lt;chr&gt;            &lt;chr&gt; &lt;dttm&gt;              &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;</span></span>
-<span><span class="co">#&gt; 1 08313000    discharge   Discharge        ft3/s 2020-01-01 00:00:00 -109.  37.0    NA   240</span></span>
-<span><span class="co">#&gt; ...</span></span></code></pre></div>
+<span><span class="va">df</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"datetime"</span>, <span class="st">"value"</span>, <span class="st">"unit"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<p>The USGS beta location endpoint currently ignores <code>datetime</code> and returns its latest <code>limit</code> records, so filter the resulting tibble client-side when you need a shorter period. Other EDR implementations, including WWDH, honor bounded intervals.</p>
 </div>
 <div class="section level3">
 <h3 id="pull-several-station-time-series-safely">Pull several station time series safely<a class="anchor" aria-label="anchor" href="#pull-several-station-time-series-safely"></a>
 </h3>
 <p>When you already have station IDs, <code><a href="reference/edr_location_batch.html">edr_location_batch()</a></code> makes one bounded, sequential <code><a href="reference/edr_location.html">edr_location()</a></code> request per ID and keeps request provenance and failures visible:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">pull</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_location_batch.html">edr_location_batch</a></span><span class="op">(</span></span>
-<span>  <span class="va">client</span>, <span class="st">"daily-values"</span>,</span>
-<span>  location_id    <span class="op">=</span> <span class="va">locs</span><span class="op">$</span><span class="va">id</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">]</span>,</span>
-<span>  datetime       <span class="op">=</span> <span class="st">"2020-01-01/2020-12-31"</span>,</span>
-<span>  parameter_name <span class="op">=</span> <span class="st">"discharge"</span>,</span>
-<span>  max_requests   <span class="op">=</span> <span class="fl">10</span>,</span>
+<code class="sourceCode R"><span><span class="va">selected_ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">locs</span><span class="op">$</span><span class="va">id</span>, <span class="fl">10</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">pull</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_location_batch.html">edr_location_batch</a></span><span class="op">(</span></span>
+<span>  <span class="va">client</span>, <span class="st">"daily-edr"</span>,</span>
+<span>  location_id    <span class="op">=</span> <span class="va">selected_ids</span>,</span>
+<span>  parameter_name <span class="op">=</span> <span class="st">"00060"</span>,</span>
+<span>  limit           <span class="op">=</span> <span class="fl">200</span>,</span>
+<span>  max_requests   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">selected_ids</span><span class="op">)</span>,</span>
 <span>  on_error       <span class="op">=</span> <span class="st">"collect"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -210,9 +213,7 @@
 <p>The helper deliberately does not discover stations or parallelize requests; the full request count is known and validated before network activity.</p>
 <p>For a server that honors bounded <code>datetime</code> intervals, split a long pull into calendar windows with <code>chunk</code>. The request cap applies to the complete station-by-window plan, so ten stations over twelve monthly windows requires a cap of at least 120:</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">wwdh</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_client.html">edr_client</a></span><span class="op">(</span><span class="st">"https://api.wwdh.internetofwater.app"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">monthly_pull</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_location_batch.html">edr_location_batch</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">monthly_pull</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_location_batch.html">edr_location_batch</a></span><span class="op">(</span></span>
 <span>  <span class="va">wwdh</span>, <span class="st">"rise-edr"</span>,</span>
 <span>  location_id    <span class="op">=</span> <span class="st">"3514"</span>,</span>
 <span>  datetime       <span class="op">=</span> <span class="st">"2023-01-01/2024-01-01"</span>,</span>
@@ -220,11 +221,18 @@
 <span>  chunk           <span class="op">=</span> <span class="st">"1 month"</span>,</span>
 <span>  checkpoint      <span class="op">=</span> <span class="st">"lake-mead-2023-checkpoint"</span>,</span>
 <span>  resume          <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  include_parameters <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  max_requests    <span class="op">=</span> <span class="fl">12</span>,</span>
 <span>  on_error        <span class="op">=</span> <span class="st">"collect"</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">monthly_pull</span><span class="op">$</span><span class="va">parameters</span><span class="op">[</span></span>
+<span>  <span class="va">monthly_pull</span><span class="op">$</span><span class="va">parameters</span><span class="op">$</span><span class="va">id</span> <span class="op">==</span> <span class="st">"3"</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"name"</span>, <span class="st">"description"</span>, <span class="st">"unit_symbol"</span>, <span class="st">"unit_definition"</span><span class="op">)</span></span>
+<span><span class="op">]</span></span></code></pre></div>
 <p>Adjacent windows share their boundary because EDR intervals are closed and server inclusivity varies. By default, exact observations repeated across windows for the same station are retained only from the earliest request; <code>deduplicate = FALSE</code> preserves the raw responses. <code>requests$n_rows</code> records the pre-deduplication row count for each request.</p>
 <p><code>resume = TRUE</code> initializes a missing checkpoint on the first run. Later runs with the same effective request plan load successful and empty windows from disk and retry only unresolved work. The expanded plan still has to satisfy <code>max_requests</code> before the checkpoint is opened. Checkpoints contain parsed observations, but do not store client headers, query URLs, or error conditions; protect the directory like any other local data extract.</p>
+<p><code>include_parameters = TRUE</code> makes one explicit, cacheable discovery request and attaches the full collection parameter catalog once at <code>monthly_pull$parameters</code>; definitions and units are not repeated on every observation row. This discovery request is not counted by <code>max_requests</code>, is not persisted in the checkpoint, and is not collected by <code>on_error</code> if it fails.</p>
 <p>The USGS beta location endpoint currently ignores <code>datetime</code> and returns its latest records. Chunking is therefore useful only for endpoints that honor the requested interval; it is not a workaround for retrieving USGS history.</p>
 </div>
 <div class="section level3">
@@ -233,20 +241,24 @@
 <p>To grab everything inside a rectangle, use <code><a href="reference/edr_cube.html">edr_cube()</a></code>:</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cube</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_cube.html">edr_cube</a></span><span class="op">(</span></span>
-<span>  <span class="va">client</span>, <span class="st">"daily-values"</span>,</span>
-<span>  bbox           <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">120</span>, <span class="fl">39</span>, <span class="op">-</span><span class="fl">118</span>, <span class="fl">41</span><span class="op">)</span>,</span>
+<span>  <span class="va">wwdh</span>, <span class="st">"rise-edr"</span>,</span>
+<span>  bbox           <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">115.5</span>, <span class="fl">35.5</span>, <span class="op">-</span><span class="fl">114.5</span>, <span class="fl">36.5</span><span class="op">)</span>,</span>
 <span>  datetime       <span class="op">=</span> <span class="st">"2023-01-01/2023-03-31"</span>,</span>
-<span>  parameter_name <span class="op">=</span> <span class="st">"discharge"</span></span>
+<span>  parameter_name <span class="op">=</span> <span class="st">"3"</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">cube</span><span class="op">)</span></span></code></pre></div>
 <p>For an arbitrary polygon, <code><a href="reference/edr_area.html">edr_area()</a></code> takes WKT, an <code>sf</code> polygon, or a matrix of <code>(lon, lat)</code> rows (it’ll close the ring for you):</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ring</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">109</span>, <span class="fl">47</span>, <span class="op">-</span><span class="fl">104</span>, <span class="fl">47</span>, <span class="op">-</span><span class="fl">104</span>, <span class="fl">49</span>, <span class="op">-</span><span class="fl">109</span>, <span class="fl">49</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">115.5</span>, <span class="fl">35.5</span>, <span class="op">-</span><span class="fl">114.5</span>, <span class="fl">35.5</span>, <span class="op">-</span><span class="fl">114.5</span>, <span class="fl">36.5</span>, <span class="op">-</span><span class="fl">115.5</span>, <span class="fl">36.5</span><span class="op">)</span>,</span>
 <span>  ncol <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
-<span><span class="va">area</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_area.html">edr_area</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"monitoring-locations"</span>, coords <span class="op">=</span> <span class="va">ring</span>,</span>
-<span>                 datetime <span class="op">=</span> <span class="st">"2022-01-01/.."</span><span class="op">)</span></span>
+<span><span class="va">area</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_area.html">edr_area</a></span><span class="op">(</span></span>
+<span>  <span class="va">wwdh</span>, <span class="st">"rise-edr"</span>,</span>
+<span>  coords <span class="op">=</span> <span class="va">ring</span>,</span>
+<span>  datetime <span class="op">=</span> <span class="st">"2023-01-01/2023-03-31"</span>,</span>
+<span>  parameter_name <span class="op">=</span> <span class="st">"3"</span></span>
+<span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">area</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
@@ -270,18 +282,16 @@
 </h3>
 <p><code><a href="reference/edr_map.html">edr_map()</a></code> puts the stations on a leaflet basemap. Pass <code>data =</code> as a named list keyed by station id (the shape [edr_explore()] produces) and each marker gets a popup with an inline plot and a “Download CSV” link for that station’s data — embedded as a <code>data:</code> URI so the saved HTML is selfcontained:</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">stations</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_locations.html">edr_locations</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"monitoring-locations"</span>,</span>
-<span>                          bbox <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">116</span>, <span class="fl">35.5</span>, <span class="op">-</span><span class="fl">114</span>, <span class="fl">36.5</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">data_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"3514"</span> <span class="op">=</span> <span class="fu"><a href="reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_map.html">edr_map</a></span><span class="op">(</span><span class="va">stations</span>, data <span class="op">=</span> <span class="va">data_list</span>, popup <span class="op">=</span> <span class="st">"plot+csv"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">station</span> <span class="op">&lt;-</span> <span class="va">locs</span><span class="op">[</span><span class="va">locs</span><span class="op">$</span><span class="va">id</span> <span class="op">==</span> <span class="va">station_id</span>, <span class="op">]</span></span>
+<span><span class="va">data_list</span> <span class="op">&lt;-</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">df</span><span class="op">)</span>, <span class="va">station_id</span><span class="op">)</span></span>
+<span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_map.html">edr_map</a></span><span class="op">(</span><span class="va">station</span>, data <span class="op">=</span> <span class="va">data_list</span>, popup <span class="op">=</span> <span class="st">"plot+csv"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/edr_save_html.html">edr_save_html</a></span><span class="op">(</span><span class="va">m</span>, <span class="st">"stations.html"</span><span class="op">)</span></span></code></pre></div>
 <p>For a quick exploratory pass over a whole collection, <code><a href="reference/edr_explore.html">edr_explore()</a></code> does the fetch + plot + map in one call:</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_explore.html">edr_explore</a></span><span class="op">(</span></span>
-<span>  <span class="va">client</span>, <span class="st">"daily-values"</span>,</span>
-<span>  bbox           <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">116</span>, <span class="fl">35.5</span>, <span class="op">-</span><span class="fl">114</span>, <span class="fl">36.5</span><span class="op">)</span>,</span>
-<span>  datetime       <span class="op">=</span> <span class="st">"2024-01-01/2024-03-31"</span>,</span>
-<span>  parameter_name <span class="op">=</span> <span class="st">"discharge"</span>,</span>
+<span>  <span class="va">client</span>, <span class="st">"daily-edr"</span>,</span>
+<span>  bbox           <span class="op">=</span> <span class="va">piedmont_bbox</span>,</span>
+<span>  parameter_name <span class="op">=</span> <span class="st">"00060"</span>,</span>
 <span>  limit          <span class="op">=</span> <span class="fl">25</span>,</span>
 <span>  file           <span class="op">=</span> <span class="st">"snapshot.html"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -305,27 +315,19 @@
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_explore.html">edr_explore</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"gridded-collection"</span>,</span>
 <span>            bbox <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">120</span>, <span class="fl">39</span>, <span class="op">-</span><span class="fl">118</span>, <span class="fl">41</span><span class="op">)</span>,</span>
-<span>            method <span class="op">=</span> <span class="st">"cube"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="reference/edr_explore.html">edr_explore</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"profile-collection"</span>,</span>
-<span>            coords <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">119</span>, <span class="fl">40</span><span class="op">)</span>,</span>
-<span>            method <span class="op">=</span> <span class="st">"position"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="reference/edr_explore.html">edr_explore</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"profile-collection"</span>,</span>
-<span>            coords <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">119</span>, <span class="fl">40</span><span class="op">)</span>,</span>
-<span>            method <span class="op">=</span> <span class="st">"position"</span>, output <span class="op">=</span> <span class="st">"plot"</span><span class="op">)</span></span></code></pre></div>
+<span>            method <span class="op">=</span> <span class="st">"cube"</span><span class="op">)</span></span></code></pre></div>
+<p>Here <code>"gridded-collection"</code> is intentionally schematic: substitute a collection whose <code>data_queries</code> metadata advertises <code>cube</code>. The concrete WWDH <code>rise-edr</code> cube above and the Met Office examples in the cross-endpoint vignette are runnable counterparts.</p>
 </div>
 <div class="section level3">
 <h3 id="weird-ids-csv-and-an-escape-hatch">Weird IDs, CSV, and an escape hatch<a class="anchor" aria-label="anchor" href="#weird-ids-csv-and-an-escape-hatch"></a>
 </h3>
-<p>Some monitoring networks use compound station IDs — colon-separated triplets are a common pattern. The client URL-encodes reserved characters for you:</p>
+<p>Some monitoring networks use compound station IDs — colon-separated triplets are a common pattern. The client URL-encodes reserved characters for you. Because the identifier field varies by deployment, this call is schematic and must use an ID advertised by that collection:</p>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="reference/edr_location.html">edr_location</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"station-network"</span>, <span class="st">"1185:CO:SNTL"</span>,</span>
-<span>             datetime <span class="op">=</span> <span class="st">"2024-01-01/.."</span><span class="op">)</span></span></code></pre></div>
-<p>If the server advertises CSV, you can ask for it instead of CovJSON:</p>
+<code class="sourceCode R"><span><span class="fu"><a href="reference/edr_location.html">edr_location</a></span><span class="op">(</span><span class="va">your_client</span>, <span class="st">"station-network"</span>, <span class="st">"1185:CO:SNTL"</span>,</span>
+<span>             datetime <span class="op">=</span> <span class="st">"2024-01-01/2024-01-03"</span><span class="op">)</span></span></code></pre></div>
+<p>If a collection advertises CSV, ask for it instead of CoverageJSON by setting the parser format. Collection IDs and format support are server-specific, so this low-level form is deliberately schematic:</p>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="reference/edr_location.html">edr_location</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"daily-values"</span>, <span class="st">"08313000"</span>,</span>
-<span>             datetime <span class="op">=</span> <span class="st">"2010-01-01/.."</span>, format <span class="op">=</span> <span class="st">"csv"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="reference/edr_location.html">edr_location</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"collection-id"</span>, <span class="st">"location-id"</span>, format <span class="op">=</span> <span class="st">"csv"</span><span class="op">)</span></span></code></pre></div>
 <p>And if you need to hit an endpoint or encoding the package doesn’t wrap, <code><a href="reference/edr_request.html">edr_request()</a></code> is the raw escape hatch:</p>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">service_description</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_request.html">edr_request</a></span><span class="op">(</span></span>
@@ -457,6 +459,8 @@
 <code>coords</code> — for <code>position</code>/<code>area</code>/<code>radius</code>/<code>trajectory</code>/<code>corridor</code>: a WKT string, a numeric vector / 2-column matrix of lon-lat, or an <code>sf</code>/<code>sfc</code> geometry.</li>
 <li>
 <code>z</code>, <code>crs</code>, <code>limit</code> — passed through when supplied.</li>
+<li>
+<code>f</code> — an exact server-advertised EDR output token. Keep <code>format</code> as the client-side parser selector; for example, pair <code>format = "covjson"</code> with <code>f = "CoverageJSON"</code> when a strict endpoint requires that token.</li>
 <li>
 <code>instance_id</code> — named, optional model-run/version identifier; inserts the standard <code>/instances/{id}</code> path segment before the query type.</li>
 <li>

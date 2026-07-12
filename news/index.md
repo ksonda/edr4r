@@ -2,6 +2,23 @@
 
 ## edr4r 0.3.0 (development version)
 
+- Add explicit `include_parameters = TRUE` support to
+  [`edr_location_batch()`](https://ksonda.github.io/edr4r/reference/edr_location_batch.md).
+  A full collection- or instance-scoped parameter catalog is attached
+  once as `result$parameters`, without duplicating definitions on
+  observation rows or silently adding discovery calls to the default
+  batch path. Resumed checkpoints validate before metadata access and
+  can attach fresh cached metadata without repeating completed data
+  requests.
+- Expand parameter discovery with instance-scoped
+  [`edr_parameters()`](https://ksonda.github.io/edr4r/reference/edr_parameters.md),
+  explicit unit-definition and symbol-type fields, official EDR 1.1
+  `data-type` metadata, and preserved custom collection dimensions.
+- Add EDR 1.1-compatible WKT `MULTIPOINT`, `MULTIPOLYGON`, and
+  `MULTILINESTRING` query inputs, including Z/M/ZM dimensional markers.
+  Named custom-dimension query parameters continue through `...`, and
+  explicit advertised `f` tokens can override the pygeoapi-compatible
+  `f=json` default.
 - Add opt-in, bounded GeoJSON pagination to
   [`edr_locations()`](https://ksonda.github.io/edr4r/reference/edr_locations.md)
   and
