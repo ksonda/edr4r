@@ -16,7 +16,8 @@ edr_radius(
   crs = NULL,
   format = c("covjson", "json"),
   ...,
-  instance_id = NULL
+  instance_id = NULL,
+  f = NULL
 )
 }
 \arguments{
@@ -25,7 +26,7 @@ edr_radius(
 \item{collection_id}{Collection identifier.}
 
 \item{coords}{Either a length-2 numeric vector \code{c(lon, lat)}, a
-length-3 vector \code{c(lon, lat, z)}, or a WKT POINT string.}
+length-3 vector \code{c(lon, lat, z)}, or a WKT POINT/MULTIPOINT string.}
 
 \item{within}{Radius value.}
 
@@ -48,6 +49,11 @@ on. Sent as a comma-separated \verb{parameter-name=} query.}
 \item{instance_id}{Optional instance identifier. When supplied, the request
 is sent beneath \verb{/collections/\{collection_id\}/instances/\{instance_id\}}.
 This keyword-only argument leaves existing positional calls unchanged.}
+
+\item{f}{Optional server-advertised output-format token sent as the EDR
+\code{f} query parameter. This is separate from \code{format}, which selects the
+client-side parser. For example, a strict coverage endpoint can use
+\code{edr_position(..., format = "covjson", f = "CoverageJSON")}.}
 }
 \value{
 An \code{edr_response} containing the server's CoverageJSON response.

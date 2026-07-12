@@ -64,7 +64,7 @@ jobs:
         with:
           fail_ci_if_error: false
           files: ./cobertura.xml
-          plugin: noop
+          plugins: noop
           disable_search: true
           token: ${{ secrets.CODECOV_TOKEN }}
 

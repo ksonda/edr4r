@@ -4,7 +4,7 @@
 \alias{edr_parameters}
 \title{List the data parameters a collection serves}
 \usage{
-edr_parameters(client, collection_id, refresh = FALSE)
+edr_parameters(client, collection_id, refresh = FALSE, instance_id = NULL)
 }
 \arguments{
 \item{client}{An \code{edr_client}.}
@@ -14,17 +14,22 @@ server -- e.g. \code{"monitoring-locations"} or \code{"daily-values"}.}
 
 \item{refresh}{If \code{TRUE}, bypass and replace any cached response. Discovery
 responses otherwise use the client's \code{cache_ttl}; see \code{\link[=edr_client]{edr_client()}}.}
+
+\item{instance_id}{Optional collection instance identifier. When supplied,
+parameter metadata is read from that instance document rather than the
+parent collection document.}
 }
 \value{
-A tibble with one row per parameter. Columns:
-\code{id}, \code{name}, \code{description}, unit and observed-property metadata,
+A tibble with one row per parameter. Columns include \code{id}, \code{name},
+\code{description}, \code{parameter_type}, \code{unit_symbol}, \code{unit_symbol_type},
+\code{unit_label}, \code{unit_definition}, \code{unit_id}, observed-property metadata,
 \code{data_type}, \code{measurement_type}, \code{extent}, category metadata, and \code{raw}.
 }
 \description{
-Pulls the \code{parameter_names} block out of the collection document
-(\code{GET /collections/{id}}) and flattens it into a tidy tibble. These
-are the observed properties you can pass to \verb{parameter_name =} on the
-query verbs (\code{\link[=edr_location]{edr_location()}}, \code{\link[=edr_cube]{edr_cube()}}, etc.).
+Pulls the \code{parameter_names} block out of a collection or instance document
+and flattens it into a tidy tibble. These are the observed properties you
+can pass to \verb{parameter_name =} on the query verbs (\code{\link[=edr_location]{edr_location()}},
+\code{\link[=edr_cube]{edr_cube()}}, etc.).
 }
 \details{
 EDR servers vary in how they key the \code{parameter_names} dictionary

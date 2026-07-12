@@ -18,10 +18,12 @@ edr_location_batch(
   deduplicate = TRUE,
   checkpoint = NULL,
   resume = FALSE,
+  include_parameters = FALSE,
   max_requests = 100L,
   on_error = c("stop", "collect"),
   progress = interactive(),
-  instance_id = NULL
+  instance_id = NULL,
+  f = NULL
 )
 }
 \arguments{
@@ -70,6 +72,13 @@ parsed response data, but not client headers, query URLs, or errors.}
 yet exist, it is initialized, which supports rerunnable scripts. An
 existing checkpoint requires \code{resume = TRUE}. Defaults to \code{FALSE}.}
 
+\item{include_parameters}{If \code{TRUE}, fetch the collection's full parameter
+catalog with \code{\link[=edr_parameters]{edr_parameters()}} and attach it once as \code{parameters} on the
+result. This is an explicit, cacheable discovery request in addition to
+the planned data requests. For an instance-scoped batch, metadata comes
+from that instance. Defaults to \code{FALSE}, which performs no metadata
+request and stores \code{NULL} in \code{parameters}.}
+
 \item{max_requests}{Finite positive integer limiting the number of logical
 \code{\link[=edr_location]{edr_location()}} calls in the complete plan. Transport-level retries do
 not increase this count. Defaults to 100.}
@@ -83,13 +92,19 @@ batches. Defaults to \code{\link[=interactive]{interactive()}}.}
 
 \item{instance_id}{Optional collection instance identifier. Every request
 remains beneath that instance path.}
+
+\item{f}{Optional server-advertised output-format token sent as the EDR
+\code{f} query parameter. This is separate from \code{format}, which controls
+client-side parsing.}
 }
 \value{
 An object of class \code{edr_location_batch} and \code{edr_batch}. It contains
 \code{requests}, a typed request-status tibble whose \code{n_rows} values describe
 raw responses before cross-window deduplication; \code{data}, a combined data
-tibble; and \code{errors}, a typed tibble of collected conditions. The object
-also records \code{collection_id}, \code{instance_id}, and \code{format}.
+tibble; \code{errors}, a typed tibble of collected conditions; and \code{parameters},
+either the nonduplicated collection/instance parameter catalog or \code{NULL}
+when it was not requested. The object also records \code{collection_id},
+\code{instance_id}, and \code{format}.
 }
 \description{
 Runs one or more \code{\link[=edr_location]{edr_location()}} requests for each explicitly supplied
@@ -114,4 +129,12 @@ extract and resume it under the same logical authorization context.
 Checkpointed clients must use an absolute HTTP(S) base URL without an
 embedded query, fragment, username, or password; rotating credentials
 belong in \code{client} headers and are not written to the checkpoint.
+
+\code{max_requests} counts data requests only. When \code{include_parameters = TRUE},
+the additional discovery request is made after an existing checkpoint has
+been validated and restored. The catalog is not stored in the checkpoint,
+so a resumed call obtains current metadata (subject to the client's cache)
+even when every data response is restored. Parameter-discovery failures are
+not collected by \code{on_error}; they abort the call because the requested
+result metadata would be incomplete.
 }

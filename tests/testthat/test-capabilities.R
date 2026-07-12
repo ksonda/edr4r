@@ -146,6 +146,16 @@ test_that("conformance checks support URIs, aliases, and namespaces", {
   expect_true(edr_supports(caps, conformance = "edr/covjson"))
   expect_false(edr_supports(caps, conformance = "common/unknown"))
   expect_error(edr_supports(caps, conformance = "core"), "ambiguous")
+
+  caps$conformance <- sub(
+    "/1[.]0/", "/1.1/", caps$conformance,
+    perl = TRUE
+  )
+  expect_true(edr_supports(
+    caps,
+    conformance = "http://www.opengis.net/spec/ogcapi-edr-1/1.1/conf/core"
+  ))
+  expect_true(edr_supports(caps, conformance = "edr/core"))
 })
 
 test_that("supports validates scope, ids, criteria, and malformed snapshots", {

@@ -46,6 +46,26 @@ test_that("covjson format wraps response", {
   expect_length(res$covjson$coverages, 1)
 })
 
+test_that("explicit advertised format tokens override compatibility defaults", {
+  cov <- read_fixture("pointseries.covjson")
+  captured <- NULL
+  httr2::local_mocked_responses(function(req) {
+    captured <<- req
+    mock_json_response(cov, content_type = "application/prs.coverage+json")
+  })
+
+  res <- edr_request(
+    test_client(),
+    "collections/demo/position",
+    query = list(f = "CoverageJSON"),
+    format = "covjson"
+  )
+
+  expect_s3_class(res, "edr_covjson")
+  expect_match(captured$url, "f=CoverageJSON", fixed = TRUE)
+  expect_false(grepl("f=json", captured$url, fixed = TRUE))
+})
+
 test_that("CSV responses parse to a tibble", {
   csv <- "parameter,datetime,value,unit\nstorage,2020-01-01,100.5,acre-feet\n"
   httr2::local_mocked_responses(function(req) {

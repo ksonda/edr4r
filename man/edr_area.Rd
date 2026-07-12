@@ -14,7 +14,8 @@ edr_area(
   crs = NULL,
   format = c("covjson", "json"),
   ...,
-  instance_id = NULL
+  instance_id = NULL,
+  f = NULL
 )
 }
 \arguments{
@@ -22,7 +23,7 @@ edr_area(
 
 \item{collection_id}{Collection identifier.}
 
-\item{coords}{WKT polygon string, or a matrix / data.frame of
+\item{coords}{WKT POLYGON/MULTIPOLYGON string, or a matrix / data.frame of
 \verb{(lon, lat)} rows that will be closed into a POLYGON. May also be
 an \code{sf} / \code{sfc} polygon if \code{sf} is installed.}
 
@@ -43,12 +44,17 @@ on. Sent as a comma-separated \verb{parameter-name=} query.}
 \item{instance_id}{Optional instance identifier. When supplied, the request
 is sent beneath \verb{/collections/\{collection_id\}/instances/\{instance_id\}}.
 This keyword-only argument leaves existing positional calls unchanged.}
+
+\item{f}{Optional server-advertised output-format token sent as the EDR
+\code{f} query parameter. This is separate from \code{format}, which selects the
+client-side parser. For example, a strict coverage endpoint can use
+\code{edr_position(..., format = "covjson", f = "CoverageJSON")}.}
 }
 \value{
 An \code{edr_response} containing the server's CoverageJSON response.
 Convert it with \code{\link[=covjson_to_tibble]{covjson_to_tibble()}}.
 }
 \description{
-Calls \code{GET /collections/{collection_id}/area} with a WKT POLYGON in
-the \code{coords} parameter.
+Calls \code{GET /collections/{collection_id}/area} with a WKT POLYGON or
+MULTIPOLYGON in the \code{coords} parameter.
 }

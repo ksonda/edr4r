@@ -60,7 +60,10 @@ jobs:
           target-folder: dev
 
       - name: Deploy release docs to GitHub pages 🚀
-        if: github.event_name != 'pull_request' && github.ref_name != 'dev'
+        if: >-
+          github.event_name == 'release' ||
+          ((github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+          (github.ref_name == 'main' || github.ref_name == 'master'))
         uses: JamesIves/github-pages-deploy-action@v4.5.0
         with:
           clean: false

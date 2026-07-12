@@ -15,9 +15,26 @@ test_that("single-string datetime is passed through", {
   expect_equal(q$datetime, "2020-01-01/..")
 })
 
+test_that("explicit format tokens are scalar and whitespace-normalized", {
+  expect_equal(
+    edr4r:::common_query(f = " CoverageJSON ")$f,
+    "CoverageJSON"
+  )
+  expect_identical(
+    edr4r:::common_query(f = I("CoverageJSON"))$f,
+    "CoverageJSON"
+  )
+  expect_error(edr4r:::common_query(f = "   "), "single non-empty string")
+  expect_error(edr4r:::common_query(f = c("json", "csv")), "single non-empty string")
+})
+
 test_that("WKT coercion handles vectors, matrices, and strings", {
   expect_equal(edr4r:::to_wkt_point(c(-105.5, 40.2)), "POINT(-105.5 40.2)")
   expect_equal(edr4r:::to_wkt_point("POINT(1 2)"), "POINT(1 2)")
+  expect_equal(
+    edr4r:::to_wkt_point("MULTIPOINT((1 2),(3 4))"),
+    "MULTIPOINT((1 2),(3 4))"
+  )
 
   poly <- edr4r:::to_wkt_polygon(
     matrix(c(-109, 47, -104, 47, -104, 49, -109, 49), ncol = 2, byrow = TRUE)
@@ -28,6 +45,18 @@ test_that("WKT coercion handles vectors, matrices, and strings", {
 
   ls <- edr4r:::to_wkt_linestring(matrix(c(0, 0, 1, 1, 2, 0), ncol = 2, byrow = TRUE))
   expect_equal(ls, "LINESTRING(0 0, 1 1, 2 0)")
+  expect_equal(
+    edr4r:::to_wkt_polygon(
+      "MULTIPOLYGON(((0 0, 1 0, 1 1, 0 0)),((2 2, 3 2, 3 3, 2 2)))"
+    ),
+    "MULTIPOLYGON(((0 0, 1 0, 1 1, 0 0)),((2 2, 3 2, 3 3, 2 2)))"
+  )
+  expect_equal(
+    edr4r:::to_wkt_linestring(
+      "MULTILINESTRINGZM((0 0 1 2, 1 1 2 3),(2 2 3 4, 3 3 4 5))"
+    ),
+    "MULTILINESTRINGZM((0 0 1 2, 1 1 2 3),(2 2 3 4, 3 3 4 5))"
+  )
 
   expect_error(edr4r:::to_wkt_point("notwkt"), "WKT POINT")
 })

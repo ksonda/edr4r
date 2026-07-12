@@ -54,14 +54,20 @@ test_that("rich collection and parameter metadata is retained", {
     c(-180, -90, 0, 90),
     c(0, -90, 180, 90)
   )
+  rich$extent$custom <- list(list(
+    id = "realisations",
+    interval = list(c(1, 50)),
+    values = list("R50/1/1"),
+    reference = "Ensemble members"
+  ))
   rich$parameter_names$air_temperature <- list(
     type = "Parameter",
     label = list(en = "Air temperature parameter"),
     description = "Near-surface temperature",
-    dataType = "float",
     unit = list(
       label = "kelvin",
-      symbol = list(value = "K", type = "https://qudt.org/vocab/unit/K")
+      symbol = list(value = "K", type = "https://qudt.org/vocab/unit/K"),
+      definition = "https://qudt.org/vocab/unit/K-PER-K"
     ),
     observedProperty = list(
       id = "http://codes.wmo.int/temperature",
@@ -71,11 +77,24 @@ test_that("rich collection and parameter metadata is retained", {
     measurementType = list(method = "instantaneous"),
     extent = list(interval = list(c(180, 330)))
   )
+  rich$parameter_names$air_temperature[["data-type"]] <- "float"
   httr2::local_mocked_responses(function(req) {
     mock_json_response(list(collections = list(rich)))
   })
 
   tb <- edr_collections(test_client())
+  legacy_collection_columns <- c(
+    "id", "title", "description", "extent_bbox", "extent_bboxes",
+    "extent_crs", "crs", "extent_spatial", "extent_temporal",
+    "extent_vertical", "output_crs", "output_formats", "parameters",
+    "data_queries", "query_details", "query_error", "has_instances",
+    "keywords", "links", "raw"
+  )
+  expect_identical(
+    names(tb)[seq_along(legacy_collection_columns)],
+    legacy_collection_columns
+  )
+  expect_identical(tail(names(tb), 1L), "extent_custom")
   expect_equal(tb$extent_bbox[[1]], c(-180, -90, 0, 90))
   expect_equal(length(tb$extent_bboxes[[1]]), 2L)
   expect_equal(tb$extent_crs, "CRS84")
@@ -84,6 +103,11 @@ test_that("rich collection and parameter metadata is retained", {
     "2024-07-09T00:00:00Z", "2024-07-14T00:00:00Z"
   ))
   expect_equal(tb$extent_vertical[[1]]$vrs, "EPSG:5703")
+  custom <- tb$extent_custom[[1]][[1L]]
+  expect_equal(custom$id, "realisations")
+  expect_equal(unlist(custom$interval, use.names = FALSE), c(1, 50))
+  expect_equal(unlist(custom$values, use.names = FALSE), "R50/1/1")
+  expect_equal(custom$reference, "Ensemble members")
   expect_equal(tb$output_crs[[1]], c("CRS84", "EPSG:4326"))
   expect_equal(tb$output_formats[[1]], c("CoverageJSON", "NetCDF"))
 
@@ -95,13 +119,74 @@ test_that("rich collection and parameter metadata is retained", {
   expect_true(is.na(tb$query_error))
 
   params <- parameters_tibble(rich)
+  legacy_parameter_columns <- c(
+    "id", "name", "description", "parameter_type", "unit_symbol",
+    "unit_label", "unit_id", "unit_type", "observed_property",
+    "observed_property_label", "observed_property_description", "data_type",
+    "measurement_type", "extent", "categories", "category_encoding", "raw"
+  )
+  expect_identical(
+    names(params)[seq_along(legacy_parameter_columns)],
+    legacy_parameter_columns
+  )
+  expect_identical(
+    tail(names(params), 2L),
+    c("unit_symbol_type", "unit_definition")
+  )
   expect_equal(params$name, "Air temperature parameter")
   expect_equal(params$parameter_type, "Parameter")
   expect_equal(params$unit_symbol, "K")
+  expect_equal(params$unit_symbol_type, "https://qudt.org/vocab/unit/K")
+  expect_equal(params$unit_definition, "https://qudt.org/vocab/unit/K-PER-K")
   expect_equal(params$unit_id, "https://qudt.org/vocab/unit/K")
   expect_equal(params$observed_property, "http://codes.wmo.int/temperature")
   expect_equal(params$data_type, "float")
   expect_equal(params$measurement_type[[1]]$method, "instantaneous")
+})
+
+test_that("edr_parameters can use instance-scoped metadata", {
+  metadata <- list(
+    id = "run 00",
+    parameter_names = list(
+      wind = list(
+        label = "Wind speed",
+        description = "Instantaneous wind speed",
+        unit = list(label = "metres per second", symbol = "m/s")
+      )
+    )
+  )
+  captured <- NULL
+  httr2::local_mocked_responses(function(req) {
+    captured <<- req$url
+    mock_json_response(metadata)
+  })
+
+  params <- edr_parameters(
+    test_client(), "model family",
+    instance_id = "run 00"
+  )
+
+  expect_equal(params$id, "wind")
+  expect_equal(params$name, "Wind speed")
+  expect_equal(params$description, "Instantaneous wind speed")
+  expect_equal(params$unit_symbol, "m/s")
+  expect_equal(params$unit_label, "metres per second")
+  expect_match(
+    captured,
+    "collections/model%20family/instances/run%200",
+    fixed = TRUE
+  )
+})
+
+test_that("legacy camelCase parameter dataType remains supported", {
+  metadata <- list(parameter_names = list(
+    legacy = list(label = "Legacy value", dataType = "integer")
+  ))
+
+  params <- parameters_tibble(metadata)
+
+  expect_equal(params$id, "legacy")
+  expect_equal(params$data_type, "integer")
 })
 
 test_that("one malformed query does not discard a collection or valid queries", {

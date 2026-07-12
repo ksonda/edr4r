@@ -118,6 +118,27 @@ test_that("edr_position builds a POINT coords param", {
   expect_match(utils::URLdecode(captured$url), "POINT\\(-105.5 40.2\\)")
 })
 
+test_that("EDR 1.1 multi-geometries and custom dimensions pass through", {
+  captured <- NULL
+  cov <- read_fixture("pointseries.covjson")
+  httr2::local_mocked_responses(function(req) {
+    captured <<- req
+    mock_json_response(cov)
+  })
+
+  edr_position(
+    test_client(), "forecast",
+    coords = "MULTIPOINT((1 2),(3 4))",
+    realisations = c(1, 9),
+    f = "CoverageJSON"
+  )
+
+  decoded <- utils::URLdecode(captured$url)
+  expect_match(decoded, "coords=MULTIPOINT((1 2),(3 4))", fixed = TRUE)
+  expect_match(decoded, "realisations=1,9", fixed = TRUE)
+  expect_match(decoded, "f=CoverageJSON", fixed = TRUE)
+})
+
 test_that("edr_radius requires numeric within", {
   expect_error(
     edr_radius(test_client(), "monitoring-locations", coords = c(0, 0), within = "x"),

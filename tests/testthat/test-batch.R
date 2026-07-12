@@ -24,8 +24,12 @@ test_that("edr_location_batch returns ordered, provenance-rich data", {
   expect_identical(result$format, "covjson")
   expect_equal(
     names(result),
-    c("collection_id", "instance_id", "format", "requests", "data", "errors")
+    c(
+      "collection_id", "instance_id", "format", "requests", "data", "errors",
+      "parameters"
+    )
   )
+  expect_null(result$parameters)
   expect_s3_class(result$requests, "tbl_df")
   expect_s3_class(result$data, "tbl_df")
   expect_s3_class(result$errors, "tbl_df")
@@ -65,6 +69,99 @@ test_that("edr_location_batch returns ordered, provenance-rich data", {
 
   expect_output(print(result), "requests:.*2.*2 success")
   expect_output(print(result), "instance:.*run 00")
+})
+
+test_that("batch parameter catalogs are explicit, cached, and nonduplicated", {
+  coverage <- read_fixture("pointseries.covjson")
+  metadata <- read_fixture("instances.json")$instances[[1L]]
+  metadata$parameter_names$air_temperature <- list(
+    type = "Parameter",
+    label = "Air temperature",
+    description = "Near-surface air temperature",
+    unit = list(
+      label = "kelvin",
+      symbol = list(value = "K", type = "https://qudt.org/vocab/unit/K"),
+      definition = "https://qudt.org/vocab/unit/K-PER-K"
+    ),
+    observedProperty = list(id = "https://example.test/observed/air-temperature")
+  )
+  urls <- character()
+  httr2::local_mocked_responses(function(req) {
+    urls <<- c(urls, req$url)
+    path <- sub("[?].*$", "", req$url)
+    if (grepl("/collections/demo$", path)) {
+      return(mock_json_response(metadata))
+    }
+    mock_json_response(coverage)
+  })
+  client <- edr_client("http://test", max_tries = 1, cache_ttl = Inf)
+
+  result <- edr_location_batch(
+    client, "demo", c("station-a", "station-b"),
+    include_parameters = TRUE,
+    progress = FALSE
+  )
+
+  expect_s3_class(result$parameters, "tbl_df")
+  expect_equal(nrow(result$parameters), 1L)
+  expect_equal(result$parameters$id, "air_temperature")
+  expect_equal(result$parameters$description, "Near-surface air temperature")
+  expect_equal(result$parameters$unit_symbol, "K")
+  expect_equal(result$parameters$unit_symbol_type, "https://qudt.org/vocab/unit/K")
+  expect_equal(result$parameters$unit_label, "kelvin")
+  expect_equal(
+    result$parameters$unit_definition,
+    "https://qudt.org/vocab/unit/K-PER-K"
+  )
+  expect_equal(result$parameters$unit_id, "https://qudt.org/vocab/unit/K")
+  expect_equal(length(urls), 3L)
+  expect_equal(sum(grepl("/collections/demo$", sub("[?].*$", "", urls))), 1L)
+  expect_output(print(result), "parameters:.*1 definition")
+
+  # A later explicit metadata request reuses the batch's discovery response.
+  expect_equal(edr_parameters(client, "demo"), result$parameters)
+  expect_equal(length(urls), 3L)
+})
+
+test_that("instance-scoped batch catalogs use instance metadata", {
+  coverage <- read_fixture("pointseries.covjson")
+  metadata <- list(
+    id = "run 00",
+    parameter_names = list(
+      wind = list(
+        label = "Wind speed",
+        unit = list(symbol = "m/s")
+      )
+    )
+  )
+  urls <- character()
+  httr2::local_mocked_responses(function(req) {
+    urls <<- c(urls, utils::URLdecode(req$url))
+    path <- sub("[?].*$", "", utils::URLdecode(req$url))
+    if (endsWith(path, "/instances/run 00")) {
+      return(mock_json_response(metadata))
+    }
+    mock_json_response(coverage)
+  })
+
+  result <- edr_location_batch(
+    test_client(), "model", "station",
+    instance_id = "run 00",
+    include_parameters = TRUE,
+    progress = FALSE
+  )
+
+  expect_equal(result$parameters$id, "wind")
+  expect_equal(result$parameters$unit_symbol, "m/s")
+  expect_equal(length(urls), 2L)
+  expect_true(endsWith(
+    sub("[?].*$", "", urls[[1L]]),
+    "/collections/model/instances/run 00"
+  ))
+  expect_true(grepl(
+    "/collections/model/instances/run 00/locations/station", urls[[2L]],
+    fixed = TRUE
+  ))
 })
 
 test_that("time chunks expand the bounded plan and remove boundary duplicates", {
@@ -417,6 +514,16 @@ test_that("batch validation finishes before network activity", {
     ),
     "deduplicate.*TRUE.*FALSE"
   )
+  expect_error(
+    edr_location_batch(
+      client, "demo", "a", include_parameters = NA, progress = FALSE
+    ),
+    "include_parameters.*TRUE.*FALSE"
+  )
+  expect_error(
+    edr_location_batch(client, "demo", "a", f = NA_character_, progress = FALSE),
+    "f.*single non-empty string"
+  )
   for (cap in list(Inf, 0, -1, 1.5, NA_real_, 1e20)) {
     expect_error(
       edr_location_batch(client, "demo", "a", max_requests = cap, progress = FALSE),
@@ -615,7 +722,8 @@ test_that("reserved provenance columns become per-request parser failures", {
 test_that("batch controls and instance_id are keyword-only", {
   formal_names <- names(formals(edr_location_batch))
   for (argument in c(
-    "chunk", "deduplicate", "max_requests", "on_error", "progress", "instance_id"
+    "chunk", "deduplicate", "include_parameters", "max_requests",
+    "on_error", "progress", "instance_id", "f"
   )) {
     expect_gt(match(argument, formal_names), match("...", formal_names))
   }

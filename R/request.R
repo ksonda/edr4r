@@ -12,9 +12,12 @@
 #'   or vectors; vectors are joined with `","`. `NULL` entries are
 #'   dropped.
 #' @param format Response format: one of `"json"` (default), `"geojson"`,
-#'   `"covjson"`, `"csv"`, `"html"`, or `"raw"`. Passed as `?f=` (except
-#'   `"covjson"`, which is sent as `?f=json` with a CoverageJSON
-#'   `Accept` hint, since EDR servers return CovJSON via JSON).
+#'   `"covjson"`, `"csv"`, `"html"`, or `"raw"`. For compatibility with
+#'   current pygeoapi deployments, JSON, GeoJSON, and CoverageJSON default to
+#'   `?f=json` and use the `Accept` header plus response body to distinguish
+#'   encodings. An explicit `query$f` is always honored, so a strict endpoint's
+#'   advertised token can be requested with, for example,
+#'   `query = list(f = "CoverageJSON")` while retaining CoverageJSON parsing.
 #' @param parse If `TRUE` (default), parses JSON / GeoJSON / CovJSON
 #'   bodies into R structures. If `FALSE`, returns the raw `httr2`
 #'   response.
@@ -161,6 +164,17 @@ prepare_query <- function(query, format) {
     if (!is.null(f_value)) query$f <- f_value
   }
   query
+}
+
+check_format_token <- function(f, call = rlang::caller_env()) {
+  if (!is.character(f) || length(f) != 1L || is.na(f) ||
+      !nzchar(trimws(f))) {
+    cli::cli_abort(
+      "{.arg f} must be a single non-empty string or {.code NULL}.",
+      call = call
+    )
+  }
+  trimws(as.character(f))
 }
 
 accept_header <- function(format) {

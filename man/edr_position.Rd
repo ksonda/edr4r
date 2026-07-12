@@ -14,7 +14,8 @@ edr_position(
   crs = NULL,
   format = c("covjson", "json"),
   ...,
-  instance_id = NULL
+  instance_id = NULL,
+  f = NULL
 )
 }
 \arguments{
@@ -23,7 +24,7 @@ edr_position(
 \item{collection_id}{Collection identifier.}
 
 \item{coords}{Either a length-2 numeric vector \code{c(lon, lat)}, a
-length-3 vector \code{c(lon, lat, z)}, or a WKT POINT string.}
+length-3 vector \code{c(lon, lat, z)}, or a WKT POINT/MULTIPOINT string.}
 
 \item{datetime}{ISO-8601 instant or interval, e.g.
 \code{"2024-01-01/2024-12-31"} or \code{"2024-01-01/.."}.}
@@ -42,12 +43,17 @@ on. Sent as a comma-separated \verb{parameter-name=} query.}
 \item{instance_id}{Optional instance identifier. When supplied, the request
 is sent beneath \verb{/collections/\{collection_id\}/instances/\{instance_id\}}.
 This keyword-only argument leaves existing positional calls unchanged.}
+
+\item{f}{Optional server-advertised output-format token sent as the EDR
+\code{f} query parameter. This is separate from \code{format}, which selects the
+client-side parser. For example, a strict coverage endpoint can use
+\code{edr_position(..., format = "covjson", f = "CoverageJSON")}.}
 }
 \value{
 An \code{edr_response} containing the server's CoverageJSON response.
 Convert it with \code{\link[=covjson_to_tibble]{covjson_to_tibble()}}.
 }
 \description{
-Calls \code{GET /collections/{collection_id}/position} with a WKT POINT
-in the \code{coords} parameter.
+Calls \code{GET /collections/{collection_id}/position} with a WKT POINT or
+MULTIPOINT in the \code{coords} parameter.
 }

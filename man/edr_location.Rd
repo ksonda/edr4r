@@ -14,7 +14,8 @@ edr_location(
   crs = NULL,
   format = c("covjson", "geojson", "csv", "json"),
   ...,
-  instance_id = NULL
+  instance_id = NULL,
+  f = NULL
 )
 }
 \arguments{
@@ -46,6 +47,11 @@ on. Sent as a comma-separated \verb{parameter-name=} query.}
 \item{instance_id}{Optional instance identifier. When supplied, the request
 is sent beneath \verb{/collections/\{collection_id\}/instances/\{instance_id\}}.
 This keyword-only argument leaves existing positional calls unchanged.}
+
+\item{f}{Optional server-advertised output-format token sent as the EDR
+\code{f} query parameter. This is separate from \code{format}, which selects the
+client-side parser. For example, a strict coverage endpoint can use
+\code{edr_position(..., format = "covjson", f = "CoverageJSON")}.}
 }
 \value{
 An \code{edr_response} containing CoverageJSON or GeoJSON, or a tibble

@@ -19,7 +19,8 @@ A tibble with one row per collection. Always includes \code{id},
 \code{output_formats}, \code{parameters}, \code{data_queries}, \code{query_details},
 \code{query_error}, \code{has_instances}, and \code{links} columns. \code{extent_bbox} is a
 convenience view of the first bounding box; all spatial extents are
-retained in \code{extent_bboxes} and \code{extent_spatial} list columns.
+retained in \code{extent_bboxes} and \code{extent_spatial} list columns. EDR 1.1
+custom dimensions are retained in the \code{extent_custom} list column.
 }
 \description{
 List collections offered by the service
