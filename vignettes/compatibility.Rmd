@@ -22,19 +22,25 @@ mistaken for a guarantee that every `edr4r` workflow will work unchanged.
 | `locations`, `items`, `position`, `area`, `cube`, `radius`, `trajectory`, `corridor` | Supported | Read-only HTTP GET helpers; the server may implement only a subset |
 | EDR 1.0/1.1 conformance identifiers | Supported | Version-tolerant capability matching; current verified endpoints advertise 1.0 identifiers |
 | EDR 1.1 multi-geometries and custom dimensions | Supported subset | WKT `MULTIPOINT`, `MULTIPOLYGON`, and `MULTILINESTRING`; custom extent metadata is retained and named dimension parameters pass through `...` |
-| CoverageJSON | Supported subset | Inline `Coverage`/`CoverageCollection` with primitive, regular, or tuple axes and inline `NdArray` ranges |
+| CoverageJSON | Supported subset | Inline `Coverage`/`CoverageCollection` with primitive, regular, or tuple axes and inline `NdArray` ranges; nonstandard coordinates are retained as `.axis_*` columns |
 | GeoJSON | Supported | Converted to `sf` when installed; otherwise retained as an `edr_response` |
 | CSV | Limited | Parsed by the low-level client and supported directly by location queries |
 | NetCDF, GeoTIFF, GRIB and other native encodings | Download only | Use `edr_request(..., parse = FALSE)` with the server's advertised `f` value; no native R conversion yet |
 | External CoverageJSON domains/ranges and `TiledNdArray` | Not supported | Rejected explicitly rather than partially or silently parsed |
 | Pagination/link following | Supported subset | Opt-in for GeoJSON FeatureCollections from `edr_locations()` / `edr_items()`; bounded by finite page and feature caps |
-| Multi-location retrieval | Supported subset | Explicit IDs through sequential `edr_location_batch()`; optional bounded calendar windows, exact cross-window deduplication, checkpoint/resume, CoverageJSON/CSV, and a finite expanded-plan cap |
+| Multi-location retrieval | Supported subset | Explicit IDs through sequential `edr_location_batch()`; optional bounded calendar windows, custom-axis-aware exact deduplication, checkpoint/resume, CoverageJSON/CSV, and a finite expanded-plan cap |
 | HTTP 202/308 asynchronous polling | Not yet supported | HTTP 204 empty responses are supported |
 | POST queries and EDR Part 2 Pub/Sub | Out of current scope | The package is a synchronous, read-only client |
 
-CRS values are passed to the server as requested. `edr4r` does not silently
-reproject CoverageJSON coordinates; GeoJSON reprojection is available after
-conversion through `sf`.
+CRS values are passed to the server as requested. `edr4r` retains effective
+CoverageJSON referencing metadata and does not silently reproject coverage
+coordinates. A projected grid remains valid in `edr_plot()`, which uses source
+coordinates. `edr_map()` requires WGS 84/CRS84 longitude/latitude: it rejects a
+declared projected or other known geographic CRS and out-of-range coordinates or inferred cell bounds. Missing or
+custom references produce a warning only after those range checks pass.
+Station `sf` geometry is transformed to WGS 84 for Leaflet display after any
+ID or source-CRS spatial matching has been completed; missing `sf` CRS metadata
+warns before plausible degree-range coordinates are used as-is.
 
 Current pygeoapi endpoints commonly serve GeoJSON and CoverageJSON through
 `f=json`, which remains the compatibility default. When a stricter endpoint
@@ -55,6 +61,14 @@ CoverageJSON query verbs return an `edr_response`; convert it explicitly with
 `covjson_to_tibble()`. GeoJSON collection verbs return `sf` when `sf` is
 installed and otherwise retain an `edr_response`. CSV responses return a
 tibble. HTTP 204 produces a typed empty result rather than a parser failure.
+The first nine CoverageJSON columns remain `coverage_id`, `parameter`,
+`parameter_label`, `unit`, `datetime`, `x`, `y`, `z`, and `value`.
+Nonstandard coordinates follow as `.axis_<coordinate>` columns without
+changing row cardinality. A versioned `edr_covjson_metadata` attribute retains
+per-coverage domain type, axis details, and effective referencing, including
+collection-level values inherited by child coverages. Package batch, explore,
+and checkpoint paths preserve that attribute; arbitrary third-party row binds
+are not promised to do so.
 For numeric CoverageJSON ranges, values serialized as JSON strings are
 coerced only when every non-missing string is finite and safely representable;
 actual text, overflow/underflow, and unsafe declared integers remain explicit
@@ -86,6 +100,11 @@ Checkpointed clients require an absolute HTTP(S) base URL without an embedded
 query, fragment, username, or password. Rotating credentials belong in client
 headers; the caller remains responsible for resuming under the same logical
 authorization context.
+
+The checkpoint schema is versioned with parser semantics. Schema 2 records the
+custom-axis identity and CoverageJSON metadata contract; earlier checkpoints
+are rejected explicitly and must be recreated rather than combined with newly
+parsed rows.
 
 Parameter catalogs are not checkpointed or included in the request-plan
 fingerprint. A resumed batch with `include_parameters = TRUE` obtains current
@@ -155,6 +174,11 @@ Tests use small, reviewed fixtures so CRAN and pull-request checks are
 deterministic and offline. Met Office fixtures retain the response shapes
 needed for capability, instance, and single-Coverage parsing tests while
 omitting large payloads and verbose WKT definitions.
+
+CoverageJSON axis bounds are not yet used as cell edges. Grid visualization
+infers cell bounds from coordinate centers, including range validation of the
+derived edges; external domains/ranges and tiled arrays remain unsupported as
+listed above.
 
 Frozen cursor- and offset-shaped pages exercise both pagination styles without
 relying on live service state. Security and edge-case tests also cover relative

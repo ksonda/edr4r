@@ -10,7 +10,11 @@ explore_grid_cov <- function() {
       axes = list(
         x = list(values = list(-110, -109, -108)),
         y = list(values = list(40, 41))
-      )
+      ),
+      referencing = list(list(
+        coordinates = list("x", "y"),
+        system = list(type = "GeographicCRS", id = "OGC:CRS84")
+      ))
     ),
     ranges = list(
       temp = list(
@@ -36,7 +40,11 @@ explore_profile_cov <- function() {
         x = list(values = list(-110)),
         y = list(values = list(40)),
         z = list(values = list(0, 10, 20))
-      )
+      ),
+      referencing = list(list(
+        coordinates = list("x", "y"),
+        system = list(type = "GeographicCRS", id = "OGC:CRS84")
+      ))
     ),
     ranges = list(
       temp = list(
@@ -328,6 +336,7 @@ test_that("per-location exploration keeps every request in instance scope", {
 test_that("edr_explore keeps instance_id keyword-only", {
   formal_names <- names(formals(edr_explore))
   expect_gt(match("instance_id", formal_names), match("...", formal_names))
+  expect_gt(match("initial", formal_names), match("...", formal_names))
 })
 
 test_that("per-station fetches warn when stations fail", {
@@ -436,6 +445,29 @@ test_that("edr_explore auto falls back to coverage maps when locations are unava
   expect_s3_class(p, "leaflet")
   expect_equal(extract_render_payload(p)$mode, "grid")
   expect_equal(call_n, 1L)
+})
+
+test_that("edr_explore carries custom axes into coverage-map selectors", {
+  skip_if_not_installed("leaflet")
+  skip_if_not_installed("htmlwidgets")
+  coverage <- read_fixture("custom-axis.covjson")
+  httr2::local_mocked_responses(function(req) mock_json_response(coverage))
+
+  map <- edr_explore(
+    test_client(), "ensemble-grid",
+    bbox = c(-110, 40, -109, 41),
+    method = "cube",
+    output = "map",
+    initial = list(realisations = "perturbed")
+  )
+  payload <- extract_render_payload(map)
+
+  expect_s3_class(map, "leaflet")
+  expect_identical(payload$axis_keys, ".axis_realisations")
+  expect_identical(
+    payload$initial[[".axis_realisations"]],
+    "perturbed"
+  )
 })
 
 test_that("edr_explore output = 'map' can return coverage maps without locations", {

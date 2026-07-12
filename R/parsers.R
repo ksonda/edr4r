@@ -4,7 +4,8 @@
 #' long tibble with one row per (coverage, parameter, domain position).
 #' Handles primitive, regularly spaced, and composite tuple axes, including
 #' the axes used by `Grid`, `PointSeries`, `MultiPointSeries`, and `Trajectory`
-#' domains. Inline `NdArray` ranges are validated before they are flattened.
+#' domains. Additional coordinate dimensions are appended as `.axis_*`
+#' columns. Inline `NdArray` ranges are validated before they are flattened.
 #'
 #' @param x A CoverageJSON object: either an `edr_response` returned by
 #'   [edr_location()] / [edr_area()] / [edr_cube()] (etc.) with
@@ -12,9 +13,13 @@
 #' @param datetime_as_posix If `TRUE` (default), attempts to parse the
 #'   time axis to `POSIXct` (UTC). Falls back to character on failure.
 #'
-#' @return A tibble with columns `coverage_id`, `parameter`,
+#' @return A tibble whose first columns are `coverage_id`, `parameter`,
 #'   `parameter_label`, `unit`, `datetime`, `x`, `y`, `z`, and `value`.
-#'   Columns that are absent from the source are filled with `NA`.
+#'   Columns that are absent from the source are filled with `NA`. Nonstandard
+#'   CoverageJSON coordinates are appended without changing row cardinality,
+#'   using names such as `.axis_realisations`. The tibble carries an
+#'   `edr_covjson_metadata` attribute with versioned, per-coverage domain,
+#'   axis, and effective referencing metadata.
 #' @export
 covjson_to_tibble <- function(x, datetime_as_posix = TRUE) {
   cov <- as_covjson(x)
@@ -33,16 +38,41 @@ covjson_to_tibble <- function(x, datetime_as_posix = TRUE) {
   if (!is.list(params)) {
     cli::cli_abort("CoverageJSON {.field parameters} must be an object.")
   }
-  if (length(coverages) == 0L) return(empty_covjson_tibble())
+  if (length(coverages) == 0L) {
+    return(set_covjson_metadata(
+      empty_covjson_tibble(),
+      new_covjson_metadata()
+    ))
+  }
 
-  per_cov <- purrr::imap(coverages, function(cvg, i) {
+  is_collection <- identical(type, "CoverageCollection") ||
+    !is.null(cov$coverages)
+  collection_domain_type <- if (is_collection) {
+    cov$domainType
+  } else {
+    NULL
+  }
+  collection_referencing <- if (is_collection) {
+    cov$referencing
+  } else {
+    NULL
+  }
+
+  per_cov <- purrr::map2(coverages, seq_along(coverages), function(cvg, i) {
     if (!is.list(cvg)) {
       cli::cli_abort(
         "Coverage {i} is external or malformed; only inline Coverage objects are supported."
       )
     }
     cid <- coverage_id(cvg, i)
-    one_coverage(cvg, params, coverage_id = cid)
+    one_coverage(
+      cvg,
+      params,
+      coverage_id = cid,
+      coverage_index = i,
+      inherited_domain_type = collection_domain_type,
+      inherited_referencing = collection_referencing
+    )
   })
 
   # Names of parameters demoted from numeric to character inside each
@@ -72,7 +102,7 @@ covjson_to_tibble <- function(x, datetime_as_posix = TRUE) {
     }
   }
 
-  out <- vctrs::vec_rbind(!!!per_cov)
+  out <- bind_covjson_tibbles(per_cov)
 
   if (length(demoted) > 0L) {
     cli::cli_warn(
@@ -142,16 +172,39 @@ coverage_id <- function(cvg, i) {
     (cvg$properties %||% list())[["id"]] %||% as.character(i)
 }
 
-one_coverage <- function(cvg, params, coverage_id) {
+one_coverage <- function(cvg,
+                         params,
+                         coverage_id,
+                         coverage_index,
+                         inherited_domain_type = NULL,
+                         inherited_referencing = NULL) {
   ranges <- cvg$ranges %||% list()
-  if (length(ranges) == 0L) return(empty_covjson_tibble())
 
   params <- merge_coverage_parameters(
     params,
     cvg$parameters %||% list(),
     coverage_id
   )
-  domain <- normalize_covjson_domain(cvg$domain, coverage_id)
+  coverage_domain_type <- cvg$domainType %||% inherited_domain_type
+  coverage_referencing <- if (!is.null(cvg$referencing)) {
+    cvg$referencing
+  } else {
+    inherited_referencing
+  }
+  domain <- normalize_covjson_domain(
+    cvg$domain,
+    coverage_id,
+    inherited_domain_type = coverage_domain_type,
+    inherited_referencing = coverage_referencing
+  )
+  metadata <- new_covjson_metadata(covjson_coverage_metadata_row(
+    domain,
+    coverage_id = coverage_id,
+    coverage_index = coverage_index
+  ))
+  if (length(ranges) == 0L) {
+    return(set_covjson_metadata(empty_covjson_tibble(), metadata))
+  }
 
   rows <- purrr::imap(ranges, function(rng, pname) {
     range_to_rows(rng, pname, domain, params, coverage_id)
@@ -177,7 +230,7 @@ one_coverage <- function(cvg, params, coverage_id) {
 
   out <- vctrs::vec_rbind(!!!rows)
   attr(out, "edr_demoted") <- demoted
-  out
+  set_covjson_metadata(out, metadata)
 }
 
 merge_coverage_parameters <- function(parent, child, coverage_id) {
@@ -208,7 +261,10 @@ merge_coverage_parameters <- function(parent, child, coverage_id) {
   parent
 }
 
-normalize_covjson_domain <- function(domain, coverage_id) {
+normalize_covjson_domain <- function(domain,
+                                     coverage_id,
+                                     inherited_domain_type = NULL,
+                                     inherited_referencing = NULL) {
   if (is.character(domain)) {
     cli::cli_abort(
       "Coverage {.val {coverage_id}} uses an external domain; external CoverageJSON domains are not supported."
@@ -254,11 +310,42 @@ normalize_covjson_domain <- function(domain, coverage_id) {
     }
   }
 
+  axis_details <- vctrs::vec_rbind(!!!Map(
+    function(axis, axis_name) {
+      coordinate_names <- names(axis$coordinates)
+      tibble::tibble(
+        axis_name = rep(axis_name, length(coordinate_names)),
+        coordinate_name = coordinate_names,
+        column_name = unname(vapply(
+          coordinate_names,
+          covjson_coordinate_column,
+          character(1)
+        )),
+        data_type = rep(axis$data_type, length(coordinate_names)),
+        size = rep(as.integer(axis$size), length(coordinate_names))
+      )
+    },
+    normalized_axes,
+    names(normalized_axes)
+  ))
+
+  domain_type <- domain$domainType %||% inherited_domain_type
+  if (!is.character(domain_type) || length(domain_type) != 1L ||
+      is.na(domain_type)) {
+    domain_type <- NA_character_
+  }
+  referencing <- if (!is.null(domain$referencing)) {
+    domain$referencing
+  } else {
+    inherited_referencing %||% list()
+  }
+
   list(
     axes = normalized_axes,
     coordinates = coordinates,
-    domain_type = domain$domainType %||% NA_character_,
-    referencing = domain$referencing %||% list()
+    axis_details = axis_details,
+    domain_type = domain_type,
+    referencing = referencing
   )
 }
 
@@ -323,7 +410,8 @@ normalize_covjson_axis <- function(ax, axis_name, coverage_id) {
     }
     return(list(
       size = length(values),
-      coordinates = stats::setNames(list(values), coordinate_names)
+      coordinates = stats::setNames(list(values), coordinate_names),
+      data_type = data_type
     ))
   }
 
@@ -361,7 +449,11 @@ normalize_covjson_axis <- function(ax, axis_name, coverage_id) {
     unlist(lapply(tuple_values, `[[`, i), use.names = FALSE)
   })
   names(coordinate_values) <- coordinate_names
-  list(size = length(tuple_values), coordinates = coordinate_values)
+  list(
+    size = length(tuple_values),
+    coordinates = coordinate_values,
+    data_type = data_type
+  )
 }
 
 normalize_axis_coordinates <- function(x, default, axis_name, coverage_id) {
@@ -481,6 +573,13 @@ range_to_rows <- function(rng, pname, domain, params, coverage_id) {
     z               = as.numeric(get_axis("z")),
     value           = values
   )
+  custom_coordinates <- setdiff(
+    names(domain$coordinates),
+    c("t", "x", "y", "z")
+  )
+  for (coordinate_name in custom_coordinates) {
+    out[[covjson_coordinate_column(coordinate_name)]] <- get_axis(coordinate_name)
+  }
   if (value_demoted) {
     attr(out, "edr_demoted") <- pname
   }

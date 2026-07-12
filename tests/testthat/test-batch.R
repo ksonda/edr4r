@@ -285,6 +285,36 @@ test_that("CoverageJSON chunks deduplicate typed boundary observations", {
   expect_true(all(result$data$.request_id[result$data$datetime == boundary] == 1L))
 })
 
+test_that("chunk deduplication preserves distinct custom-axis members", {
+  coverage <- read_fixture("custom-axis.covjson")
+  coverage$ranges$temperature$values <- as.list(rep(1, 8L))
+  httr2::local_mocked_responses(function(req) mock_json_response(coverage))
+
+  result <- edr_location_batch(
+    test_client(), "ensemble", "station",
+    datetime = "2024-01-01/2024-01-03",
+    chunk = "1 day",
+    max_requests = 2L,
+    progress = FALSE
+  )
+
+  expect_equal(result$requests$n_rows, c(8L, 8L))
+  expect_equal(nrow(result$data), 8L)
+  expect_setequal(
+    unique(result$data$.axis_realisations),
+    c("control", "perturbed")
+  )
+  expect_equal(
+    as.integer(table(result$data$.axis_realisations)),
+    c(4L, 4L)
+  )
+
+  metadata <- attr(result$data, "edr_covjson_metadata")$coverages
+  expect_equal(nrow(metadata), 1L)
+  expect_equal(metadata$.request_id, 1L)
+  expect_equal(metadata$.location_id, "station")
+})
+
 test_that("calendar chunks clamp end-of-month boundaries to the anchor day", {
   expect_equal(
     edr4r:::batch_datetime_windows(

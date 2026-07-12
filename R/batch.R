@@ -417,11 +417,16 @@ bind_location_batch_data <- function(results, requests, format,
     data <- results[[i]]
     if (is.null(data)) next
     n <- nrow(data)
-    pieces[[i]] <- tibble::add_column(
+    piece <- tibble::add_column(
       data,
       .request_id = rep.int(requests$request_id[[i]], n),
       .location_id = rep(requests$location_id[[i]], n),
       .before = 1L
+    )
+    pieces[[i]] <- add_covjson_metadata_provenance(
+      piece,
+      .request_id = as.integer(requests$request_id[[i]]),
+      .location_id = as.character(requests$location_id[[i]])
     )
   }
   pieces <- pieces[!vapply(pieces, is.null, logical(1))]
@@ -461,6 +466,7 @@ bind_location_batch_data <- function(results, requests, format,
       vctrs::vec_rbind(!!!pieces)
     }
   }
+  bound <- restore_covjson_metadata(bound, pieces)
   if (isTRUE(deduplicate)) deduplicate_batch_window_rows(bound) else bound
 }
 
@@ -495,7 +501,7 @@ batch_column_is_castable <- function(column, pieces) {
 
 empty_location_batch_data <- function(format) {
   data <- if (identical(format, "covjson")) {
-    empty_covjson_tibble()
+    set_covjson_metadata(empty_covjson_tibble(), new_covjson_metadata())
   } else {
     tibble::tibble()
   }

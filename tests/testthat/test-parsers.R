@@ -77,6 +77,201 @@ test_that("covjson_to_tibble materializes regular grid axes", {
   expect_equal(v(-112, 36), 23)
 })
 
+test_that("custom CoverageJSON coordinates remain attached to every value", {
+  cov <- read_fixture("custom-axis.covjson")
+  tb <- covjson_to_tibble(cov)
+
+  legacy <- c(
+    "coverage_id", "parameter", "parameter_label", "unit", "datetime",
+    "x", "y", "z", "value"
+  )
+  expect_identical(names(tb)[seq_along(legacy)], legacy)
+  expect_identical(tail(names(tb), 1L), ".axis_realisations")
+  expect_equal(
+    tb$.axis_realisations,
+    rep(c("control", "perturbed"), each = 4L)
+  )
+  expect_equal(
+    tb$value[tb$.axis_realisations == "control" & tb$x == -110 & tb$y == 40],
+    1
+  )
+  expect_equal(
+    tb$value[tb$.axis_realisations == "perturbed" & tb$x == -109 & tb$y == 41],
+    8
+  )
+
+  metadata <- attr(tb, "edr_covjson_metadata", exact = TRUE)
+  expect_identical(metadata$version, 1L)
+  expect_equal(nrow(metadata$coverages), 1L)
+  expect_equal(metadata$coverages$coverage_index, 1L)
+  expect_equal(metadata$coverages$coverage_id, "ensemble-grid")
+  expect_equal(metadata$coverages$domain_type, "CustomGrid")
+  expect_setequal(
+    metadata$coverages$coordinate_names[[1L]],
+    c("realisations", "x", "y")
+  )
+  axes <- metadata$coverages$axes[[1L]]
+  realization <- axes[axes$coordinate_name == "realisations", ]
+  expect_equal(realization$axis_name, "realisations")
+  expect_equal(realization$column_name, ".axis_realisations")
+  expect_equal(realization$data_type, "primitive")
+  expect_equal(realization$size, 2L)
+  expect_equal(
+    metadata$coverages$referencing[[1L]][[1L]]$system$type,
+    "GeographicCRS"
+  )
+})
+
+test_that("regular, tuple, scalar, and reserved custom coordinates align", {
+  cov <- list(
+    type = "Coverage",
+    domain = list(
+      type = "Domain",
+      domainType = "CustomDomain",
+      axes = list(
+        ensemble = list(start = 1, stop = 2, num = 2L),
+        site = list(
+          dataType = "tuple",
+          coordinates = list("x", "y", "member"),
+          values = list(
+            list(-110, 40, "a"),
+            list(-109, 41, "b")
+          )
+        ),
+        scenario = list(values = list("baseline"))
+      )
+    ),
+    ranges = list(reading = list(
+      type = "NdArray",
+      axisNames = list("ensemble", "site"),
+      shape = list(2L, 2L),
+      values = list(11, 12, 21, 22)
+    ))
+  )
+
+  tb <- covjson_to_tibble(cov)
+  expect_equal(tb$.axis_ensemble, c(1, 1, 2, 2))
+  expect_equal(tb$.axis_member, c("a", "b", "a", "b"))
+  expect_equal(tb$.axis_scenario, rep("baseline", 4L))
+  expect_equal(tb$x, c(-110, -109, -110, -109))
+  expect_equal(tb$value, c(11, 12, 21, 22))
+
+  reserved <- list(
+    type = "Coverage",
+    domain = list(
+      type = "Domain",
+      domainType = "CustomDomain",
+      axes = list(value = list(values = list("low", "high")))
+    ),
+    ranges = list(reading = list(
+      type = "NdArray",
+      axisNames = list("value"),
+      shape = list(2L),
+      values = list(1, 2)
+    ))
+  )
+  reserved_tb <- covjson_to_tibble(reserved)
+  expect_equal(reserved_tb$.axis_value, c("low", "high"))
+  expect_equal(reserved_tb$value, c(1, 2))
+})
+
+test_that("custom coordinate type conflicts demote explicitly across coverages", {
+  make_coverage <- function(id, member) {
+    list(
+      type = "Coverage",
+      id = id,
+      domain = list(
+        type = "Domain",
+        domainType = "CustomDomain",
+        axes = list(member = list(values = list(member)))
+      ),
+      ranges = list(reading = list(type = "NdArray", values = list(1)))
+    )
+  }
+  cov <- list(
+    type = "CoverageCollection",
+    coverages = list(
+      make_coverage("numeric", 1),
+      make_coverage("text", "control")
+    )
+  )
+
+  expect_warning(
+    tb <- covjson_to_tibble(cov),
+    "Demoted custom CoverageJSON coordinate.*axis_member"
+  )
+  expect_equal(tb$.axis_member, c("1", "control"))
+  expect_equal(
+    attr(tb, "edr_covjson_metadata")$coverages$coverage_id,
+    c("numeric", "text")
+  )
+})
+
+test_that("named CoverageCollection arrays retain numeric coverage indices", {
+  cov <- list(
+    type = "CoverageCollection",
+    coverages = list(
+      first = list(
+        type = "Coverage",
+        domain = list(
+          type = "Domain",
+          domainType = "Point",
+          axes = list(x = list(values = list(-110)),
+                      y = list(values = list(40)))
+        ),
+        ranges = list(reading = list(type = "NdArray", values = list(1)))
+      )
+    )
+  )
+
+  tb <- covjson_to_tibble(cov)
+  metadata <- attr(tb, "edr_covjson_metadata", exact = TRUE)
+  expect_identical(metadata$coverages$coverage_index, 1L)
+  expect_identical(metadata$coverages$coverage_id, "1")
+})
+
+test_that("collection referencing is inherited and domain metadata is versioned", {
+  geographic <- list(
+    coordinates = list("x", "y"),
+    system = list(type = "GeographicCRS", id = "OGC:CRS84")
+  )
+  cov <- list(
+    type = "CoverageCollection",
+    domainType = "Grid",
+    referencing = list(geographic),
+    coverages = list(list(
+      type = "Coverage",
+      id = "inherited",
+      domain = list(
+        type = "Domain",
+        axes = list(
+          x = list(values = list(-110)),
+          y = list(values = list(40))
+        )
+      ),
+      ranges = list(reading = list(type = "NdArray", values = list(1)))
+    ))
+  )
+
+  tb <- covjson_to_tibble(cov)
+  metadata <- attr(tb, "edr_covjson_metadata")
+  expect_equal(metadata$coverages$domain_type, "Grid")
+  expect_equal(metadata$coverages$referencing[[1L]][[1L]], geographic)
+
+  cov$type <- NULL
+  inferred <- attr(covjson_to_tibble(cov), "edr_covjson_metadata")
+  expect_equal(inferred$coverages$domain_type, "Grid")
+  expect_equal(inferred$coverages$referencing[[1L]][[1L]], geographic)
+
+  empty <- covjson_to_tibble(list(
+    type = "CoverageCollection",
+    coverages = list()
+  ))
+  empty_metadata <- attr(empty, "edr_covjson_metadata")
+  expect_identical(empty_metadata$version, 1L)
+  expect_equal(nrow(empty_metadata$coverages), 0L)
+})
+
 test_that("covjson_to_tibble expands composite trajectory coordinates", {
   cov <- read_fixture("trajectory.covjson")
   tb <- covjson_to_tibble(cov)

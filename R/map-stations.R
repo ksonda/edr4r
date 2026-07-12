@@ -130,6 +130,7 @@ edr_add_stations <- function(map,
   if (!all(sf::st_geometry_type(geom) == "POINT")) {
     geom <- suppressWarnings(sf::st_centroid(geom))
   }
+  geom <- leaflet_display_geometry(geom)
   coords <- sf::st_coordinates(geom)
   lng <- as.numeric(coords[, 1])
   lat <- as.numeric(coords[, 2])
@@ -201,6 +202,63 @@ edr_add_stations <- function(map,
   }
 
   map
+}
+
+leaflet_display_geometry <- function(geometry,
+                                     call = rlang::caller_env()) {
+  crs <- sf::st_crs(geometry)
+  missing_crs <- is.na(crs)
+  if (!missing_crs) {
+    geometry <- tryCatch(
+      sf::st_transform(geometry, 4326),
+      error = function(error) {
+        cli::cli_abort(
+          c(
+            "Could not transform station geometry to WGS 84 for Leaflet.",
+            "x" = conditionMessage(error)
+          ),
+          class = "edr_map_crs_error",
+          call = call
+        )
+      }
+    )
+  }
+
+  coords <- sf::st_coordinates(geometry)
+  lng <- suppressWarnings(as.numeric(coords[, 1L]))
+  lat <- suppressWarnings(as.numeric(coords[, 2L]))
+  if (any(!is.finite(lng)) || any(!is.finite(lat))) {
+    cli::cli_abort(
+      "Station map coordinates must be finite numbers.",
+      class = "edr_map_crs_error",
+      call = call
+    )
+  }
+  if (any(lng < -180 | lng > 180) || any(lat < -90 | lat > 90)) {
+    hint <- if (is.na(crs)) {
+      "Set the correct sf CRS before calling edr_map() or edr_add_stations()."
+    } else {
+      "Verify that the source geometry has the correct sf CRS."
+    }
+    cli::cli_abort(
+      c(
+        "Station coordinates fall outside Leaflet longitude/latitude bounds.",
+        "i" = hint
+      ),
+      class = "edr_map_crs_error",
+      call = call
+    )
+  }
+  if (missing_crs) {
+    cli::cli_warn(
+      c(
+        "Station geometry has no CRS; coordinates are being treated as WGS 84 longitude/latitude.",
+        "i" = "Set the correct sf CRS before mapping when the coordinates are not already WGS 84."
+      ),
+      class = "edr_map_crs_warning"
+    )
+  }
+  geometry
 }
 
 fit_station_extent <- function(map, lng, lat) {

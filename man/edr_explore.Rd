@@ -21,7 +21,8 @@ edr_explore(
   plot_view = c("auto", "time", "profile", "grid"),
   quiet = FALSE,
   ...,
-  instance_id = NULL
+  instance_id = NULL,
+  initial = list()
 )
 }
 \arguments{
@@ -79,6 +80,11 @@ falling back to per-location fetches.}
 \item{instance_id}{Optional collection instance identifier. When supplied,
 capability planning and every locations/data request use that instance.
 This keyword-only argument leaves existing positional calls unchanged.}
+
+\item{initial}{Named list of initial coverage-map selections, including
+friendly custom-coordinate names such as
+\code{list(realisations = "control")}. Keyword-only and used only when the
+result is a grid/profile coverage map.}
 }
 \value{
 A \code{leaflet} htmlwidget, a \code{ggplot}, a tidy tibble/list when

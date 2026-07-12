@@ -2,7 +2,7 @@
 
 .batch_checkpoint_magic <- "edr4r_location_batch_checkpoint"
 .batch_checkpoint_result_magic <- "edr4r_location_batch_result"
-.batch_checkpoint_schema <- 1L
+.batch_checkpoint_schema <- 2L
 
 check_batch_checkpoint_args <- function(checkpoint,
                                         resume,
@@ -59,7 +59,7 @@ batch_checkpoint_plan_urls <- function(client,
 batch_checkpoint_fingerprint <- function(urls, format) {
   payload <- jsonlite::toJSON(
     list(
-      protocol = "edr4r-location-request-v1",
+      protocol = "edr4r-location-request-v2",
       method = "GET",
       schema_version = .batch_checkpoint_schema,
       format = format,
@@ -280,6 +280,20 @@ batch_checkpoint_validate_manifest <- function(x,
                                                expected,
                                                path,
                                                call) {
+  if (is.list(x) && identical(x$magic, .batch_checkpoint_magic) &&
+      is.numeric(x$schema_version) && length(x$schema_version) == 1L &&
+      !is.na(x$schema_version) &&
+      !identical(x$schema_version, .batch_checkpoint_schema)) {
+    current_schema <- .batch_checkpoint_schema
+    cli::cli_abort(
+      c(
+        "Checkpoint schema {x$schema_version} is incompatible with current schema {current_schema}: {.path {dirname(path)}}.",
+        "i" = "Create a new checkpoint directory; older parsed results cannot be combined safely with the current parser."
+      ),
+      class = "edr_batch_checkpoint_schema_error",
+      call = call
+    )
+  }
   required <- names(expected)
   valid_structure <- is.list(x) && identical(names(x), required) &&
     identical(x$magic, .batch_checkpoint_magic) &&

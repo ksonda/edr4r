@@ -62,6 +62,10 @@
 #' @param instance_id Optional collection instance identifier. When supplied,
 #'   capability planning and every locations/data request use that instance.
 #'   This keyword-only argument leaves existing positional calls unchanged.
+#' @param initial Named list of initial coverage-map selections, including
+#'   friendly custom-coordinate names such as
+#'   `list(realisations = "control")`. Keyword-only and used only when the
+#'   result is a grid/profile coverage map.
 #'
 #' @return A `leaflet` htmlwidget, a `ggplot`, a tidy tibble/list when
 #'   `output = "data"`, or `invisible(file)` when a map is saved.
@@ -96,7 +100,8 @@ edr_explore <- function(client,
                         plot_view      = c("auto", "time", "profile", "grid"),
                         quiet          = FALSE,
                         ...,
-                        instance_id    = NULL) {
+                        instance_id    = NULL,
+                        initial        = list()) {
   check_client(client)
   collection_id <- check_collection_id(collection_id)
   method <- match.arg(method)
@@ -161,7 +166,7 @@ edr_explore <- function(client,
     m <- edr_map(
       data,
       mode = coverage_mode,
-      initial = explore_initial_selection(parameter_name),
+      initial = explore_initial_selection(parameter_name, initial),
       ...
     )
     if (!is.null(file)) {
@@ -380,11 +385,16 @@ explore_coverage_map_mode <- function(data, plot_view) {
   NULL
 }
 
-explore_initial_selection <- function(parameter_name) {
-  if (!is.null(parameter_name) && length(parameter_name) == 1L) {
-    return(list(parameter = as.character(parameter_name)))
+explore_initial_selection <- function(parameter_name, initial = list()) {
+  if (is.null(initial)) initial <- list()
+  if (!is.list(initial)) {
+    cli::cli_abort("{.arg initial} must be a named list.")
   }
-  list()
+  if (!is.null(parameter_name) && length(parameter_name) == 1L &&
+      is.null(initial$parameter)) {
+    initial$parameter <- as.character(parameter_name)
+  }
+  initial
 }
 
 explore_plot_data <- function(data) {
@@ -398,9 +408,12 @@ explore_plot_data <- function(data) {
     if (is.null(ids)) ids <- as.character(seq_along(pieces))
     pieces <- Map(function(piece, id) {
       piece$.location_id <- rep(as.character(id), nrow(piece))
-      piece
+      add_covjson_metadata_provenance(
+        piece,
+        .location_id = as.character(id)
+      )
     }, pieces, ids)
-    return(vctrs::vec_rbind(!!!pieces))
+    return(bind_covjson_tibbles(pieces))
   }
   data
 }
