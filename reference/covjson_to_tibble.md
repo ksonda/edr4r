@@ -4,7 +4,8 @@ Flattens a CoverageJSON `Coverage` or `CoverageCollection` into a long
 tibble with one row per (coverage, parameter, domain position). Handles
 primitive, regularly spaced, and composite tuple axes, including the
 axes used by `Grid`, `PointSeries`, `MultiPointSeries`, and `Trajectory`
-domains. Inline `NdArray` ranges are validated before they are
+domains. Additional coordinate dimensions are appended as `.axis_*`
+columns. Inline `NdArray` ranges are validated before they are
 flattened.
 
 ## Usage
@@ -30,6 +31,10 @@ covjson_to_tibble(x, datetime_as_posix = TRUE)
 
 ## Value
 
-A tibble with columns `coverage_id`, `parameter`, `parameter_label`,
-`unit`, `datetime`, `x`, `y`, `z`, and `value`. Columns that are absent
-from the source are filled with `NA`.
+A tibble whose first columns are `coverage_id`, `parameter`,
+`parameter_label`, `unit`, `datetime`, `x`, `y`, `z`, and `value`.
+Columns that are absent from the source are filled with `NA`.
+Nonstandard CoverageJSON coordinates are appended without changing row
+cardinality, using names such as `.axis_realisations`. The tibble
+carries an `edr_covjson_metadata` attribute with versioned, per-coverage
+domain, axis, and effective referencing metadata.

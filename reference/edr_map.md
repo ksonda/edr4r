@@ -138,8 +138,8 @@ edr_map(
 - controls:
 
   If `TRUE` (default), coverage maps include in-map controls for
-  available slice dimensions (`parameter`, `datetime`, and `z` for
-  grids).
+  available slice dimensions (`parameter`, `datetime`, `z`, and any
+  varying `.axis_*` CoverageJSON coordinates).
 
 - initial:
 

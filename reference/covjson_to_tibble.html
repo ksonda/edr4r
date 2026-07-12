@@ -3,11 +3,13 @@
 long tibble with one row per (coverage, parameter, domain position).
 Handles primitive, regularly spaced, and composite tuple axes, including
 the axes used by Grid, PointSeries, MultiPointSeries, and Trajectory
-domains. Inline NdArray ranges are validated before they are flattened."><meta property="og:description" content="Flattens a CoverageJSON Coverage or CoverageCollection into a
+domains. Additional coordinate dimensions are appended as .axis_*
+columns. Inline NdArray ranges are validated before they are flattened."><meta property="og:description" content="Flattens a CoverageJSON Coverage or CoverageCollection into a
 long tibble with one row per (coverage, parameter, domain position).
 Handles primitive, regularly spaced, and composite tuple axes, including
 the axes used by Grid, PointSeries, MultiPointSeries, and Trajectory
-domains. Inline NdArray ranges are validated before they are flattened."></head><body>
+domains. Additional coordinate dimensions are appended as .axis_*
+columns. Inline NdArray ranges are validated before they are flattened."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -53,7 +55,8 @@ domains. Inline NdArray ranges are validated before they are flattened."></head>
 long tibble with one row per (coverage, parameter, domain position).
 Handles primitive, regularly spaced, and composite tuple axes, including
 the axes used by <code>Grid</code>, <code>PointSeries</code>, <code>MultiPointSeries</code>, and <code>Trajectory</code>
-domains. Inline <code>NdArray</code> ranges are validated before they are flattened.</p>
+domains. Additional coordinate dimensions are appended as <code>.axis_*</code>
+columns. Inline <code>NdArray</code> ranges are validated before they are flattened.</p>
     </div>
 
     <div class="section level2">
@@ -78,9 +81,13 @@ time axis to <code>POSIXct</code> (UTC). Falls back to character on failure.</p>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A tibble with columns <code>coverage_id</code>, <code>parameter</code>,
+    <p>A tibble whose first columns are <code>coverage_id</code>, <code>parameter</code>,
 <code>parameter_label</code>, <code>unit</code>, <code>datetime</code>, <code>x</code>, <code>y</code>, <code>z</code>, and <code>value</code>.
-Columns that are absent from the source are filled with <code>NA</code>.</p>
+Columns that are absent from the source are filled with <code>NA</code>. Nonstandard
+CoverageJSON coordinates are appended without changing row cardinality,
+using names such as <code>.axis_realisations</code>. The tibble carries an
+<code>edr_covjson_metadata</code> attribute with versioned, per-coverage domain,
+axis, and effective referencing metadata.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -72,7 +72,7 @@
 <p>The goal is to take the tedious parts of EDR off your hands — URL construction, comma-separated parameter lists, WKT coordinate encoding, retries, content negotiation — and hand back something you can actually do data analysis with:</p>
 <ul>
 <li>
-<strong>CoverageJSON</strong> → a long <a href="https://tibble.tidyverse.org/" class="external-link"><code>tibble</code></a> (one row per coverage × parameter × time step), via <code><a href="reference/covjson_to_tibble.html">covjson_to_tibble()</a></code>.</li>
+<strong>CoverageJSON</strong> → a long <a href="https://tibble.tidyverse.org/" class="external-link"><code>tibble</code></a> (one row per coverage × parameter × domain position), via <code><a href="reference/covjson_to_tibble.html">covjson_to_tibble()</a></code>. Nonstandard dimensions are retained as <code>.axis_*</code> columns and normalized domain type, axis summaries, and effective referencing remain available in the <code>edr_covjson_metadata</code> attribute.</li>
 <li>
 <strong>GeoJSON</strong> → an <a href="https://r-spatial.github.io/sf/" class="external-link"><code>sf</code></a> object, via <code><a href="reference/geojson_to_sf.html">geojson_to_sf()</a></code>.</li>
 <li>
@@ -176,7 +176,7 @@
 <div class="section level3">
 <h3 id="pull-a-time-series-for-one-station">Pull a time series for one station<a class="anchor" aria-label="anchor" href="#pull-a-time-series-for-one-station"></a>
 </h3>
-<p>Once you know a station ID, ask for its values. The server returns CoverageJSON; <code><a href="reference/covjson_to_tibble.html">covjson_to_tibble()</a></code> flattens it into one row per (coverage × parameter × timestamp):</p>
+<p>Once you know a station ID, ask for its values. The server returns CoverageJSON; <code><a href="reference/covjson_to_tibble.html">covjson_to_tibble()</a></code> flattens it into one row per (coverage × parameter × domain position):</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">station_id</span> <span class="op">&lt;-</span> <span class="va">locs</span><span class="op">$</span><span class="va">id</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>      <span class="co"># USGS ids include the "USGS-" prefix</span></span>
 <span></span>
@@ -295,15 +295,19 @@
 <span>  limit          <span class="op">=</span> <span class="fl">25</span>,</span>
 <span>  file           <span class="op">=</span> <span class="st">"snapshot.html"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>Gridded coverages and vertical profiles can be mapped too. <code><a href="reference/edr_map.html">edr_map()</a></code> detects tidy CoverageJSON grids/profiles and puts slice selectors inside the leaflet widget when there are multiple parameters or datetimes; grids also get a <code>z</code> selector when multiple vertical levels are present:</p>
+<p>Gridded coverages and vertical profiles can be mapped too. <code><a href="reference/edr_map.html">edr_map()</a></code> detects tidy CoverageJSON grids/profiles and puts slice selectors inside the leaflet widget when there are multiple parameters, datetimes, vertical levels, or nonstandard dimensions such as ensemble <code>realisations</code>:</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">cube</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/edr_map.html">edr_map</a></span><span class="op">(</span><span class="va">grid</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">profile</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">profile_resp</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/edr_map.html">edr_map</a></span><span class="op">(</span><span class="va">profile</span><span class="op">)</span></span></code></pre></div>
-<p>Coverage and station layers can share one widget. Start with the coverage map, then add independently styled station groups with their normal chart/CSV popups:</p>
+<p>Coverage maps require WGS 84/CRS84 longitude/latitude coordinates. A declared projected or other known geographic CRS is rejected rather than passed to Leaflet as WGS 84 degrees. Missing or custom horizontal references are accepted only after coordinate and inferred cell-bound checks, with a warning; request a geographic response such as <code>crs = "CRS84"</code> when the endpoint supports it. Station <code>sf</code> geometries are transformed to WGS 84 for display while spatial matching and <code>max_match_distance</code> remain in the source CRS; missing <code>sf</code> CRS metadata warns before plausible degree-range coordinates are used as-is.</p>
+<p>When a coverage has a custom dimension, its selector can be initialized by the original coordinate name:</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/edr_map.html">edr_map</a></span><span class="op">(</span><span class="va">ensemble_grid</span>, initial <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>realisations <span class="op">=</span> <span class="st">"control"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>Coverage and station layers can share one widget. Start with the coverage map, then add independently styled station groups with their normal chart/CSV popups:</p>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_map.html">edr_map</a></span><span class="op">(</span><span class="va">grid</span>, grid_transform <span class="op">=</span> <span class="st">"sqrt"</span><span class="op">)</span></span>
 <span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_add_stations.html">edr_add_stations</a></span><span class="op">(</span></span>
 <span>  <span class="va">m</span>, <span class="va">stations</span>,</span>
@@ -312,7 +316,7 @@
 <span>  group <span class="op">=</span> <span class="st">"USGS"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p><code><a href="reference/edr_explore.html">edr_explore()</a></code> uses the same behavior for bulk coverage queries. Use <code>output = "plot"</code> when you want a ggplot instead of the interactive map:</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_explore.html">edr_explore</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"gridded-collection"</span>,</span>
 <span>            bbox <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">120</span>, <span class="fl">39</span>, <span class="op">-</span><span class="fl">118</span>, <span class="fl">41</span><span class="op">)</span>,</span>
 <span>            method <span class="op">=</span> <span class="st">"cube"</span><span class="op">)</span></span></code></pre></div>
@@ -322,14 +326,14 @@
 <h3 id="weird-ids-csv-and-an-escape-hatch">Weird IDs, CSV, and an escape hatch<a class="anchor" aria-label="anchor" href="#weird-ids-csv-and-an-escape-hatch"></a>
 </h3>
 <p>Some monitoring networks use compound station IDs — colon-separated triplets are a common pattern. The client URL-encodes reserved characters for you. Because the identifier field varies by deployment, this call is schematic and must use an ID advertised by that collection:</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_location.html">edr_location</a></span><span class="op">(</span><span class="va">your_client</span>, <span class="st">"station-network"</span>, <span class="st">"1185:CO:SNTL"</span>,</span>
 <span>             datetime <span class="op">=</span> <span class="st">"2024-01-01/2024-01-03"</span><span class="op">)</span></span></code></pre></div>
 <p>If a collection advertises CSV, ask for it instead of CoverageJSON by setting the parser format. Collection IDs and format support are server-specific, so this low-level form is deliberately schematic:</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_location.html">edr_location</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"collection-id"</span>, <span class="st">"location-id"</span>, format <span class="op">=</span> <span class="st">"csv"</span><span class="op">)</span></span></code></pre></div>
 <p>And if you need to hit an endpoint or encoding the package doesn’t wrap, <code><a href="reference/edr_request.html">edr_request()</a></code> is the raw escape hatch:</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">service_description</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_request.html">edr_request</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>, <span class="st">"api"</span>, format <span class="op">=</span> <span class="st">"raw"</span>, parse <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>

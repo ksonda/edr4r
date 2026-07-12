@@ -31,7 +31,8 @@ edr_explore(
   plot_view = c("auto", "time", "profile", "grid"),
   quiet = FALSE,
   ...,
-  instance_id = NULL
+  instance_id = NULL,
+  initial = list()
 )
 ```
 
@@ -132,6 +133,13 @@ edr_explore(
   Optional collection instance identifier. When supplied, capability
   planning and every locations/data request use that instance. This
   keyword-only argument leaves existing positional calls unchanged.
+
+- initial:
+
+  Named list of initial coverage-map selections, including friendly
+  custom-coordinate names such as `list(realisations = "control")`.
+  Keyword-only and used only when the result is a grid/profile coverage
+  map.
 
 ## Value
 

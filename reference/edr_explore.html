@@ -75,7 +75,8 @@ fallback. Optionally writes a map to a self-contained HTML file.</p>
 <span>  plot_view <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"time"</span>, <span class="st">"profile"</span>, <span class="st">"grid"</span><span class="op">)</span>,</span>
 <span>  quiet <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span>,</span>
-<span>  instance_id <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  instance_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  initial <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -170,6 +171,13 @@ falling back to per-location fetches.</p></dd>
 <dd><p>Optional collection instance identifier. When supplied,
 capability planning and every locations/data request use that instance.
 This keyword-only argument leaves existing positional calls unchanged.</p></dd>
+
+
+<dt id="arg-initial">initial<a class="anchor" aria-label="anchor" href="#arg-initial"></a></dt>
+<dd><p>Named list of initial coverage-map selections, including
+friendly custom-coordinate names such as
+<code>list(realisations = "control")</code>. Keyword-only and used only when the
+result is a grid/profile coverage map.</p></dd>
 
 </dl></div>
     <div class="section level2">
