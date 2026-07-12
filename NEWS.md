@@ -1,5 +1,22 @@
 # edr4r 0.3.0 (development version)
 
+* Preserve nonstandard CoverageJSON coordinates as appended `.axis_*` columns
+  instead of silently discarding their identity. Batch deduplication now keeps
+  distinct members, plots group/facet them, and coverage maps expose selectors
+  and dimension-aware popups. A versioned `edr_covjson_metadata` attribute
+  retains effective domain, axis, and referencing metadata across package
+  binding and checkpoint/resume paths.
+* Harden spatial visualization around CRS semantics. Coverage maps reject
+  declared projected or other known non-WGS 84 CRSs and coordinates or
+  inferred cell bounds outside Leaflet longitude/latitude ranges;
+  missing/custom CoverageJSON references warn before a range-checked fallback.
+  Station `sf` geometries are transformed to WGS 84 for display without
+  changing source-CRS matching-distance behavior, and missing station CRS
+  metadata warns before plausible coordinates are used as-is. Projected source
+  coordinates remain valid in `edr_plot()` grids.
+* Advance the location-batch checkpoint schema to version 2 so checkpoints
+  written before custom-axis identity and CoverageJSON metadata preservation
+  cannot be mixed with newly parsed rows.
 * Add explicit `include_parameters = TRUE` support to
   `edr_location_batch()`. A full collection- or instance-scoped parameter
   catalog is attached once as `result$parameters`, without duplicating

@@ -36,7 +36,11 @@ construction, comma-separated parameter lists, WKT coordinate encoding,
 retries, content negotiation — and hand back something you can actually do
 data analysis with:
 
-- **CoverageJSON** → a long [`tibble`](https://tibble.tidyverse.org/) (one row per coverage × parameter × time step), via `covjson_to_tibble()`.
+- **CoverageJSON** → a long [`tibble`](https://tibble.tidyverse.org/) (one row
+  per coverage × parameter × domain position), via `covjson_to_tibble()`.
+  Nonstandard dimensions are retained as `.axis_*` columns and normalized
+  domain type, axis summaries, and effective referencing remain available in the
+  `edr_covjson_metadata` attribute.
 - **GeoJSON** → an [`sf`](https://r-spatial.github.io/sf/) object, via `geojson_to_sf()`.
 - **CSV** → a `tibble`, parsed directly by the query helper.
 
@@ -187,7 +191,7 @@ still exists, so a bounded result is never presented as complete.
 
 Once you know a station ID, ask for its values. The server returns
 CoverageJSON; `covjson_to_tibble()` flattens it into one row per
-(coverage × parameter × timestamp):
+(coverage × parameter × domain position):
 
 ```r
 station_id <- locs$id[[1]]      # USGS ids include the "USGS-" prefix
@@ -366,8 +370,8 @@ edr_explore(
 
 Gridded coverages and vertical profiles can be mapped too. `edr_map()`
 detects tidy CoverageJSON grids/profiles and puts slice selectors inside
-the leaflet widget when there are multiple parameters or datetimes; grids
-also get a `z` selector when multiple vertical levels are present:
+the leaflet widget when there are multiple parameters, datetimes, vertical
+levels, or nonstandard dimensions such as ensemble `realisations`:
 
 ```r
 grid <- covjson_to_tibble(cube)
@@ -375,6 +379,22 @@ edr_map(grid)
 
 profile <- covjson_to_tibble(profile_resp)
 edr_map(profile)
+```
+
+Coverage maps require WGS 84/CRS84 longitude/latitude coordinates. A declared
+projected or other known geographic CRS is rejected rather than passed to
+Leaflet as WGS 84 degrees. Missing or custom horizontal references are accepted only after coordinate and
+inferred cell-bound checks, with a warning; request a geographic response such
+as `crs = "CRS84"` when the endpoint supports it. Station `sf` geometries are
+transformed to WGS 84 for display while spatial matching and
+`max_match_distance` remain in the source CRS; missing `sf` CRS metadata warns
+before plausible degree-range coordinates are used as-is.
+
+When a coverage has a custom dimension, its selector can be initialized by
+the original coordinate name:
+
+```r
+edr_map(ensemble_grid, initial = list(realisations = "control"))
 ```
 
 Coverage and station layers can share one widget. Start with the coverage map,

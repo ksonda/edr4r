@@ -97,3 +97,51 @@ test_that("edr_plot auto-detects vertical profiles", {
   expect_s3_class(p, "ggplot")
   expect_true(inherits(p$layers[[1]]$geom, "GeomPath"))
 })
+
+test_that("custom axes separate grid panels and time/profile groups", {
+  skip_if_not_installed("ggplot2")
+
+  grid <- covjson_to_tibble(read_fixture("custom-axis.covjson"))
+  p_grid <- edr_plot(grid)
+  expect_setequal(
+    unique(as.character(p_grid$data$.edr_panel)),
+    c(
+      "temperature (Cel) | realisations=control",
+      "temperature (Cel) | realisations=perturbed"
+    )
+  )
+
+  time <- tibble::tibble(
+    coverage_id = "station",
+    parameter = "flow",
+    datetime = rep(
+      as.POSIXct(c("2024-01-01", "2024-01-02"), tz = "UTC"),
+      2L
+    ),
+    value = c(1, 2, 10, 20),
+    .axis_member = rep(c("control", "perturbed"), each = 2L)
+  )
+  p_time <- edr_plot(time)
+  expect_equal(edr4r:::n_present_unique(p_time$data$.edr_time_group), 2L)
+
+  profile <- tibble::tibble(
+    coverage_id = "station",
+    parameter = "temperature",
+    z = rep(c(0, 10), 2L),
+    value = c(20, 19, 21, 20),
+    .axis_member = rep(c("control", "perturbed"), each = 2L)
+  )
+  p_profile <- edr_plot(profile, view = "profile")
+  expect_equal(
+    edr4r:::n_present_unique(p_profile$data$.edr_profile_group),
+    2L
+  )
+})
+
+test_that("projected CoverageJSON remains valid for ggplot grids", {
+  skip_if_not_installed("ggplot2")
+
+  projected <- covjson_to_tibble(read_fixture("projected-grid.covjson"))
+  expect_silent(p <- edr_plot(projected))
+  expect_s3_class(p, "ggplot")
+})

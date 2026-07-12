@@ -95,8 +95,8 @@ profile markers for vertical profiles. Use \code{"stations"}, \code{"grid"},
 or \code{"profile"} to force a mode.}
 
 \item{controls}{If \code{TRUE} (default), coverage maps include in-map
-controls for available slice dimensions (\code{parameter}, \code{datetime},
-and \code{z} for grids).}
+controls for available slice dimensions (\code{parameter}, \code{datetime}, \code{z},
+and any varying \verb{.axis_*} CoverageJSON coordinates).}
 
 \item{initial}{Named list of initial coverage-map selections, e.g.
 \code{list(parameter = "temperature", datetime = "2024-01-01", z = 0)}.}

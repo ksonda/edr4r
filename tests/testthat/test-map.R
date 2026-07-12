@@ -168,6 +168,150 @@ test_that("edr_map renders gridded coverage data with slice controls", {
   expect_match(m$jsHooks$render[[1]]$code, "transformValue")
 })
 
+test_that("coverage maps slice custom axes without overlaying members", {
+  skip_if_not_installed("leaflet")
+  skip_if_not_installed("htmlwidgets")
+
+  data <- covjson_to_tibble(read_fixture("custom-axis.covjson"))
+  m <- edr_map(
+    data,
+    initial = list(realisations = "perturbed")
+  )
+  payload <- extract_render_payload(m)
+
+  expect_identical(payload$mode, "grid")
+  expect_identical(payload$axis_keys, ".axis_realisations")
+  expect_identical(
+    payload$axis_labels[[".axis_realisations"]],
+    "realisations"
+  )
+  control_keys <- vapply(payload$controls, `[[`, character(1), "key")
+  expect_true(".axis_realisations" %in% control_keys)
+  expect_identical(
+    payload$initial[[".axis_realisations"]],
+    "perturbed"
+  )
+  expect_true(all(vapply(
+    payload$rows,
+    function(row) ".axis_realisations" %in% names(row),
+    logical(1)
+  )))
+  expect_match(m$jsHooks$render[[1]]$code, "payload.axis_keys")
+  expect_match(
+    m$jsHooks$render[[1]]$code,
+    "candidate[axisKey]",
+    fixed = TRUE
+  )
+})
+
+test_that("coverage maps reject projected or implausible coordinates", {
+  skip_if_not_installed("leaflet")
+  skip_if_not_installed("htmlwidgets")
+
+  projected <- covjson_to_tibble(read_fixture("projected-grid.covjson"))
+  expect_error(
+    edr_map(projected),
+    "projected CRS.*Leaflet",
+    class = "edr_map_crs_error"
+  )
+
+  missing_reference <- read_fixture("custom-axis.covjson")
+  missing_reference$domain$referencing <- NULL
+  expect_warning(
+    edr_map(covjson_to_tibble(missing_reference)),
+    "does not provide one unambiguous horizontal CRS",
+    class = "edr_map_crs_warning"
+  )
+
+  missing_reference$domain$axes$x$values <- list(1000, 2000)
+  expect_error(
+    edr_map(covjson_to_tibble(missing_reference)),
+    "outside longitude/latitude bounds",
+    class = "edr_map_crs_error"
+  )
+
+  edge <- expand.grid(x = c(179, 180), y = c(40, 41))
+  edge$value <- seq_len(nrow(edge))
+  expect_error(
+    edr_map(tibble::as_tibble(edge), mode = "grid"),
+    "outside longitude/latitude bounds",
+    class = "edr_map_crs_error"
+  )
+
+  unsupported <- read_fixture("custom-axis.covjson")
+  unsupported$domain$referencing[[1L]]$system$id <- "EPSG:4807"
+  expect_error(
+    edr_map(covjson_to_tibble(unsupported)),
+    "not recognized as WGS 84/CRS84",
+    class = "edr_map_crs_error"
+  )
+})
+
+test_that("coverage CRS checks honor batch provenance after subsetting", {
+  geographic_cov <- read_fixture("custom-axis.covjson")
+  geographic_cov$id <- "shared"
+  projected_cov <- read_fixture("projected-grid.covjson")
+  projected_cov$id <- "shared"
+
+  geographic <- covjson_to_tibble(geographic_cov)
+  geographic <- tibble::add_column(
+    geographic, .request_id = 1L, .location_id = "geographic", .before = 1L
+  )
+  geographic <- edr4r:::add_covjson_metadata_provenance(
+    geographic, .request_id = 1L, .location_id = "geographic"
+  )
+  projected <- covjson_to_tibble(projected_cov)
+  projected <- tibble::add_column(
+    projected, .request_id = 2L, .location_id = "projected", .before = 1L
+  )
+  projected <- edr4r:::add_covjson_metadata_provenance(
+    projected, .request_id = 2L, .location_id = "projected"
+  )
+  combined <- edr4r:::bind_covjson_tibbles(list(geographic, projected))
+
+  expect_error(
+    edr4r:::check_covjson_crs_consistency(combined, map = TRUE),
+    "projected CRS",
+    class = "edr_map_crs_error"
+  )
+  geographic_only <- combined[combined$.location_id == "geographic", ]
+  expect_no_error(
+    edr4r:::check_covjson_crs_consistency(geographic_only, map = TRUE)
+  )
+})
+
+test_that("station maps transform projected sf geometry for Leaflet", {
+  skip_if_not_installed("leaflet")
+  skip_if_not_installed("sf")
+
+  original <- geojson_to_sf(read_fixture("locations.geojson"))
+  projected <- sf::st_transform(original, 3857)
+  m <- edr_map(projected, popup = "table")
+  marker_calls <- Filter(
+    function(call) identical(call$method, "addCircleMarkers"),
+    m$x$calls
+  )
+  expect_length(marker_calls, 1L)
+
+  expected <- sf::st_coordinates(original)
+  expect_equal(marker_calls[[1L]]$args[[2L]], expected[, 1L], tolerance = 1e-6)
+  expect_equal(marker_calls[[1L]]$args[[1L]], expected[, 2L], tolerance = 1e-6)
+
+  missing <- sf::st_set_crs(projected, NA)
+  expect_error(
+    edr_map(missing, popup = "table"),
+    "outside Leaflet longitude/latitude bounds",
+    class = "edr_map_crs_error"
+  )
+
+  plausible_missing <- sf::st_set_crs(original, NA)
+  expect_warning(
+    edr_map(plausible_missing, popup = "table"),
+    "has no CRS.*treated as WGS 84",
+    class = "edr_map_crs_warning"
+  )
+})
+
 test_that("grid colour transforms retain original values and validate domains", {
   skip_if_not_installed("leaflet")
   skip_if_not_installed("htmlwidgets")

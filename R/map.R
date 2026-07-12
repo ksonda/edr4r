@@ -69,8 +69,8 @@
 #'   profile markers for vertical profiles. Use `"stations"`, `"grid"`,
 #'   or `"profile"` to force a mode.
 #' @param controls If `TRUE` (default), coverage maps include in-map
-#'   controls for available slice dimensions (`parameter`, `datetime`,
-#'   and `z` for grids).
+#'   controls for available slice dimensions (`parameter`, `datetime`, `z`,
+#'   and any varying `.axis_*` CoverageJSON coordinates).
 #' @param initial Named list of initial coverage-map selections, e.g.
 #'   `list(parameter = "temperature", datetime = "2024-01-01", z = 0)`.
 #' @param grid_opacity Fill opacity for gridded coverage cells.
@@ -276,6 +276,13 @@ coverage_map_payload <- function(data, mode, controls, initial,
     cli::cli_abort("Coverage map data must include at least one non-missing x/y coordinate.")
   }
 
+  axis_columns <- covjson_axis_columns(data)
+  axis_labels <- stats::setNames(vapply(
+    axis_columns,
+    function(column) covjson_axis_label(data, column),
+    character(1)
+  ), axis_columns)
+
   data$.edr_parameter <- if ("parameter" %in% names(data)) {
     as.character(data$parameter)
   } else {
@@ -295,8 +302,15 @@ coverage_map_payload <- function(data, mode, controls, initial,
   if (mode == "grid") {
     data <- add_grid_bounds(data)
   }
+  check_leaflet_coordinate_ranges(data, mode)
+  check_covjson_crs_consistency(data, map = TRUE)
 
-  control_specs <- coverage_control_specs(data, mode)
+  control_specs <- coverage_control_specs(
+    data,
+    mode,
+    axis_columns = axis_columns,
+    axis_labels = axis_labels
+  )
   initial <- normalize_initial_selection(initial, control_specs)
 
   rows <- lapply(seq_len(nrow(data)), function(i) {
@@ -316,6 +330,14 @@ coverage_map_payload <- function(data, mode, controls, initial,
       row$ymin <- as.numeric(data$.edr_ymin[[i]])
       row$ymax <- as.numeric(data$.edr_ymax[[i]])
     }
+    for (column in axis_columns) {
+      value <- data[[column]][[i]]
+      row[[column]] <- if (length(value) == 0L || is.na(value)) {
+        ""
+      } else {
+        as.character(value)
+      }
+    }
     row
   })
 
@@ -324,6 +346,8 @@ coverage_map_payload <- function(data, mode, controls, initial,
     rows = rows,
     controls = control_specs,
     controls_enabled = isTRUE(controls),
+    axis_keys = axis_columns,
+    axis_labels = as.list(axis_labels),
     initial = initial,
     opacity = grid_opacity,
     transform = grid_transform,
@@ -337,7 +361,13 @@ coverage_map_payload <- function(data, mode, controls, initial,
   )
 }
 
-coverage_control_specs <- function(data, mode) {
+coverage_control_specs <- function(data,
+                                   mode,
+                                   axis_columns = covjson_axis_columns(data),
+                                   axis_labels = stats::setNames(
+                                     sub("^\\.axis_", "", axis_columns),
+                                     axis_columns
+                                   )) {
   specs <- list()
   add <- function(specs, key, label, values) {
     values <- unique(values[!is.na(values)])
@@ -355,6 +385,14 @@ coverage_control_specs <- function(data, mode) {
   if (mode == "grid") {
     specs <- add(specs, "z", "Z", data$.edr_z[nzchar(data$.edr_z)])
   }
+  for (column in axis_columns) {
+    specs <- add(
+      specs,
+      column,
+      axis_labels[[column]] %||% sub("^\\.axis_", "", column),
+      data[[column]]
+    )
+  }
   specs
 }
 
@@ -367,7 +405,12 @@ normalize_initial_selection <- function(initial, control_specs) {
   for (spec in control_specs) {
     key <- spec$key
     vals <- spec$values
-    selected <- initial[[key]] %||% vals[[1]]
+    friendly_key <- if (startsWith(key, ".axis_")) {
+      sub("^\\.axis_", "", key)
+    } else {
+      key
+    }
+    selected <- initial[[key]] %||% initial[[friendly_key]] %||% vals[[1]]
     selected <- as.character(selected[[1]])
     if (!selected %in% vals) selected <- vals[[1]]
     out[[key]] <- selected
@@ -457,6 +500,7 @@ popup_chart_renderer_js <- function() {
     var bits = [];
     if (edrAsText(row.parameter) !== '') bits.push(edrAsText(row.parameter));
     if (edrAsText(row.z) !== '') bits.push('z=' + edrAsText(row.z));
+    if (edrAsText(row.axes) !== '') bits.push(edrAsText(row.axes));
     if (bits.length === 0) bits.push('value');
     if (edrAsText(row.unit) !== '') bits[bits.length - 1] += ' (' + edrAsText(row.unit) + ')';
     return bits.join(' | ');
@@ -780,10 +824,14 @@ function(el, x, payload) {
 
   function popupRows(row) {
     var out = '<table style=\"border-collapse:collapse;font-size:12px\">';
-    ['parameter', 'datetime', 'z', 'coverage_id', 'value'].forEach(function(key) {
+    var keys = ['parameter', 'datetime', 'z', 'coverage_id', 'value']
+      .concat(payload.axis_keys || []);
+    keys.forEach(function(key) {
       if (asText(row[key]) !== '') {
+        var label = payload.axis_labels && payload.axis_labels[key] ?
+          payload.axis_labels[key] : key;
         out += '<tr><td style=\"color:#666;padding:2px 8px 2px 0\">' +
-          escapeHtml(key) + '</td><td style=\"padding:2px\">' +
+          escapeHtml(label) + '</td><td style=\"padding:2px\">' +
           escapeHtml(row[key]) + '</td></tr>';
       }
     });
@@ -871,6 +919,11 @@ function(el, x, payload) {
       if (asText(candidate.parameter) !== asText(targetParameter)) return false;
       if (asText(targetZ) !== '' && asText(candidate.z) !== asText(targetZ)) return false;
       if (asText(targetCoverage) !== '' && asText(candidate.coverage_id) !== asText(targetCoverage)) return false;
+      var axisKeys = payload.axis_keys || [];
+      for (var i = 0; i < axisKeys.length; i++) {
+        var axisKey = axisKeys[i];
+        if (asText(candidate[axisKey]) !== asText(row[axisKey])) return false;
+      }
       return true;
     });
     out.sort(function(a, b) {

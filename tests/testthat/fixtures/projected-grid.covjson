@@ -1,0 +1,45 @@
+{
+  "type": "Coverage",
+  "id": "projected-grid",
+  "domain": {
+    "type": "Domain",
+    "domainType": "Grid",
+    "axes": {
+      "y": {
+        "values": [40, 50]
+      },
+      "x": {
+        "values": [10, 20]
+      }
+    },
+    "referencing": [
+      {
+        "coordinates": ["x", "y"],
+        "system": {
+          "type": "ProjectedCRS",
+          "id": "http://www.opengis.net/def/crs/EPSG/0/3857"
+        }
+      }
+    ]
+  },
+  "parameters": {
+    "height": {
+      "type": "Parameter",
+      "observedProperty": {
+        "label": "Height"
+      },
+      "unit": {
+        "symbol": "m"
+      }
+    }
+  },
+  "ranges": {
+    "height": {
+      "type": "NdArray",
+      "dataType": "float",
+      "axisNames": ["y", "x"],
+      "shape": [2, 2],
+      "values": [10, 20, 30, 40]
+    }
+  }
+}

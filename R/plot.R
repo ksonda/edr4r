@@ -66,6 +66,9 @@ edr_plot <- function(data,
     }
   }
   view <- detect_plot_view(data, view)
+  if (identical(view, "grid")) {
+    check_covjson_crs_consistency(data, map = FALSE)
+  }
 
   # Facet labels that incorporate the unit, when available.
   if (isTRUE(facet_labels) && !is.null(facet) &&
@@ -124,12 +127,17 @@ time_plot <- function(data, group, facet, scales, geom) {
       "{.arg data} is missing required column{?s}: {.field {missing}}."
     )
   }
+  data$.edr_time_group <- time_group(data, group, facet)
   mapping <- if (!is.null(group) && group %in% names(data)) {
     ggplot2::aes(
-      x = .data$datetime, y = .data$value, colour = .data[[group]]
+      x = .data$datetime, y = .data$value,
+      colour = .data[[group]], group = .data$.edr_time_group
     )
   } else {
-    ggplot2::aes(x = .data$datetime, y = .data$value)
+    ggplot2::aes(
+      x = .data$datetime, y = .data$value,
+      group = .data$.edr_time_group
+    )
   }
   p <- ggplot2::ggplot(data, mapping)
 
@@ -137,6 +145,22 @@ time_plot <- function(data, group, facet, scales, geom) {
   if (geom %in% c("point", "both")) p <- p + ggplot2::geom_point(size = 0.7)
 
   finish_plot(p, data, facet, scales, colour = TRUE)
+}
+
+time_group <- function(data, group, facet) {
+  cols <- character()
+  if (!is.null(group) && group %in% names(data)) cols <- c(cols, group)
+  cols <- c(cols, covjson_axis_columns(data, varying = TRUE))
+  if (!identical(facet, "parameter") &&
+      "parameter" %in% names(data) && n_present_unique(data$parameter) > 1L) {
+    cols <- c(cols, "parameter")
+  }
+  cols <- unique(cols)
+  if (length(cols) == 0L) return(rep("series", nrow(data)))
+  do.call(
+    paste,
+    c(lapply(cols, function(col) as.character(data[[col]])), sep = "\r")
+  )
 }
 
 profile_plot <- function(data, group, facet, scales, geom) {
@@ -175,6 +199,7 @@ profile_plot <- function(data, group, facet, scales, geom) {
 profile_group <- function(data, group, facet) {
   cols <- character(0)
   if (!is.null(group) && group %in% names(data)) cols <- c(cols, group)
+  cols <- c(cols, covjson_axis_columns(data, varying = TRUE))
   if ("datetime" %in% names(data) && n_present_unique(data$datetime) > 1L) {
     cols <- c(cols, "datetime")
   }
@@ -234,6 +259,7 @@ add_grid_panel <- function(data) {
   if ("z" %in% names(data) && n_present_unique(data$z) > 1L) {
     cols <- c(cols, "z")
   }
+  cols <- c(cols, covjson_axis_columns(data, varying = TRUE))
   if (length(cols) == 0L) {
     data$.edr_panel <- "grid"
   } else {
@@ -248,6 +274,9 @@ add_grid_panel <- function(data) {
 panel_value <- function(col, x) {
   x <- as.character(x)
   if (identical(col, "z")) return(paste0("z=", x))
+  if (startsWith(col, ".axis_")) {
+    return(paste0(sub("^\\.axis_", "", col), "=", x))
+  }
   x
 }
 

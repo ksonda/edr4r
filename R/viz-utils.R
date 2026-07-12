@@ -134,14 +134,27 @@ popup_chart_height_px <- function(plot_height, plot_dpi) {
 }
 
 interactive_chart_payload <- function(df, title = NULL, width = 560, height = 300) {
+  axis_columns <- covjson_axis_columns(df)
+  axis_labels <- stats::setNames(vapply(
+    axis_columns,
+    function(column) covjson_axis_label(df, column),
+    character(1)
+  ), axis_columns)
   rows <- lapply(seq_len(nrow(df)), function(i) {
+    axis_values <- vapply(axis_columns, function(column) {
+      value <- df[[column]][[i]]
+      if (length(value) == 0L || is.na(value)) return("")
+      paste0(axis_labels[[column]], "=", as.character(value))
+    }, character(1))
+    axis_values <- axis_values[nzchar(axis_values)]
     list(
       x = if ("datetime" %in% names(df)) as.character(df$datetime[[i]]) else as.character(i),
       value = numeric_or_null(df$value[[i]]),
       parameter = if ("parameter" %in% names(df)) as.character(df$parameter[[i]]) else "value",
       unit = if ("unit" %in% names(df)) as.character(df$unit[[i]]) else "",
       coverage_id = if ("coverage_id" %in% names(df)) as.character(df$coverage_id[[i]]) else "",
-      z = if ("z" %in% names(df) && !is.na(df$z[[i]])) as.character(df$z[[i]]) else ""
+      z = if ("z" %in% names(df) && !is.na(df$z[[i]])) as.character(df$z[[i]]) else "",
+      axes = paste(axis_values, collapse = ", ")
     )
   })
   list(

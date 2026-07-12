@@ -148,7 +148,7 @@ test_that("checkpoint controls are keyword-only and preserve public structure", 
     )
   )
   expect_identical(manifest$magic, "edr4r_location_batch_checkpoint")
-  expect_identical(manifest$schema_version, 1L)
+  expect_identical(manifest$schema_version, 2L)
   expect_type(manifest$fingerprint, "character")
   expect_equal(nchar(manifest$fingerprint), 32L)
   expect_type(manifest$created_at, "character")
@@ -172,7 +172,7 @@ test_that("checkpoint controls are keyword-only and preserve public structure", 
   expect_identical(names(success_record), record_names)
   expect_identical(names(empty_record), record_names)
   expect_identical(success_record$magic, "edr4r_location_batch_result")
-  expect_identical(success_record$schema_version, 1L)
+  expect_identical(success_record$schema_version, 2L)
   expect_identical(success_record$fingerprint, manifest$fingerprint)
   expect_identical(success_record$request_id, 1L)
   expect_identical(success_record$status, "success")
@@ -263,6 +263,15 @@ test_that("CoverageJSON terminal data and typed empties round-trip through RDS",
   expect_equal(calls, 1L)
   expect_equal(first$requests$status, "success")
   expect_s3_class(first$data$datetime, "POSIXct")
+  first_metadata <- attr(first$data, "edr_covjson_metadata")$coverages
+  expect_equal(first_metadata$.request_id, 1L)
+  expect_equal(first_metadata$.location_id, "with-data")
+
+  stored <- readRDS(checkpoint_test_result_path(checkpoint, 1L))$data
+  stored_metadata <- attr(stored, "edr_covjson_metadata")$coverages
+  expect_false(".request_id" %in% names(stored_metadata))
+  expect_false(".location_id" %in% names(stored_metadata))
+  expect_equal(stored_metadata$coverage_id, "08313000")
 
   resumed_calls <- 0L
   httr2::local_mocked_responses(function(req) {
@@ -281,6 +290,10 @@ test_that("CoverageJSON terminal data and typed empties round-trip through RDS",
   expect_equal(resumed$requests, first$requests)
   expect_equal(resumed$data, first$data)
   expect_equal(resumed$errors, first$errors)
+  expect_equal(
+    attr(resumed$data, "edr_covjson_metadata"),
+    attr(first$data, "edr_covjson_metadata")
+  )
   checkpoint_test_expect_unlocked(checkpoint)
 
   empty_checkpoint <- tempfile("edr4r-checkpoint-empty-covjson-")
@@ -1026,10 +1039,32 @@ test_that("corrupt and malformed manifests abort before network", {
   expect_match(conditionMessage(condition), "manifest.rds|manifest")
   checkpoint_test_expect_unlocked(corrupt)
 
+  old_schema <- checkpoint_test_copy(seed)
+  old_schema_path <- file.path(old_schema, "manifest.rds")
+  old_manifest <- readRDS(old_schema_path)
+  old_manifest$schema_version <- 1L
+  saveRDS(old_manifest, old_schema_path)
+  old_condition <- expect_error(
+    edr_location_batch(
+      test_client(), "demo", "station",
+      datetime = "2024-01-01/2024-01-02",
+      format = "csv",
+      chunk = "1 day",
+      max_requests = 1L,
+      progress = FALSE,
+      checkpoint = old_schema,
+      resume = TRUE,
+      include_parameters = TRUE
+    ),
+    "schema 1.*incompatible",
+    class = "edr_batch_checkpoint_schema_error"
+  )
+  expect_match(conditionMessage(old_condition), "new checkpoint directory")
+  checkpoint_test_expect_unlocked(old_schema)
+
   malformed_cases <- list(
     missing_magic = function(x) { x$magic <- NULL; x },
     wrong_magic = function(x) { x$magic <- "other"; x },
-    wrong_schema = function(x) { x$schema_version <- 2L; x },
     bad_fingerprint = function(x) { x$fingerprint <- "short"; x },
     missing_endpoint = function(x) { x$endpoint <- NULL; x },
     malformed_plan = function(x) { x$plan$datetime <- NULL; x },
@@ -1094,7 +1129,7 @@ test_that("corrupt and inconsistent terminal records abort before network", {
   malformed_cases <- list(
     missing_magic = function(x) { x$magic <- NULL; x },
     wrong_magic = function(x) { x$magic <- "other"; x },
-    wrong_schema = function(x) { x$schema_version <- 2L; x },
+    wrong_schema = function(x) { x$schema_version <- 1L; x },
     wrong_fingerprint = function(x) {
       x$fingerprint <- paste(rep("0", 32L), collapse = "")
       x

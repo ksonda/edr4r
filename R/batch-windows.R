@@ -359,5 +359,5 @@ deduplicate_batch_window_rows <- function(data) {
     earliest_request <- min(data$.request_id[rows])
     keep[rows[data$.request_id[rows] == earliest_request]] <- TRUE
   }
-  data[keep, , drop = FALSE]
+  trim_covjson_metadata(data[keep, , drop = FALSE])
 }

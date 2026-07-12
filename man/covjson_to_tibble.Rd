@@ -15,14 +15,19 @@ covjson_to_tibble(x, datetime_as_posix = TRUE)
 time axis to \code{POSIXct} (UTC). Falls back to character on failure.}
 }
 \value{
-A tibble with columns \code{coverage_id}, \code{parameter},
+A tibble whose first columns are \code{coverage_id}, \code{parameter},
 \code{parameter_label}, \code{unit}, \code{datetime}, \code{x}, \code{y}, \code{z}, and \code{value}.
-Columns that are absent from the source are filled with \code{NA}.
+Columns that are absent from the source are filled with \code{NA}. Nonstandard
+CoverageJSON coordinates are appended without changing row cardinality,
+using names such as \code{.axis_realisations}. The tibble carries an
+\code{edr_covjson_metadata} attribute with versioned, per-coverage domain,
+axis, and effective referencing metadata.
 }
 \description{
 Flattens a CoverageJSON \code{Coverage} or \code{CoverageCollection} into a
 long tibble with one row per (coverage, parameter, domain position).
 Handles primitive, regularly spaced, and composite tuple axes, including
 the axes used by \code{Grid}, \code{PointSeries}, \code{MultiPointSeries}, and \code{Trajectory}
-domains. Inline \code{NdArray} ranges are validated before they are flattened.
+domains. Additional coordinate dimensions are appended as \verb{.axis_*}
+columns. Inline \code{NdArray} ranges are validated before they are flattened.
 }
