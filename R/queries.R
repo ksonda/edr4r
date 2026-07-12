@@ -27,6 +27,10 @@
 #'   Must be a finite positive integer; defaults to 100.
 #' @param max_features Maximum combined feature count when `paginate = TRUE`.
 #'   Must be a finite positive integer; defaults to 100,000.
+#' @param f Optional server-advertised output-format token sent as the EDR
+#'   `f` query parameter. This is separate from `format`, which selects the
+#'   client-side parser. For example, a strict coverage endpoint can use
+#'   `edr_position(..., format = "covjson", f = "CoverageJSON")`.
 #'
 #' @return When the server returns GeoJSON, an `sf` object if the `sf`
 #'   package is installed, otherwise an `edr_response` wrapping the raw
@@ -46,7 +50,8 @@ edr_locations <- function(client,
                           instance_id = NULL,
                           paginate = FALSE,
                           max_pages = 100L,
-                          max_features = 100000L) {
+                          max_features = 100000L,
+                          f = NULL) {
   check_client(client)
   path <- collection_query_path(collection_id, "locations", instance_id)
   format <- match.arg(format)
@@ -54,7 +59,7 @@ edr_locations <- function(client,
 
   query <- common_query(
     bbox = bbox, datetime = datetime, parameter_name = parameter_name,
-    crs = crs, limit = limit, ...
+    crs = crs, limit = limit, f = f, ...
   )
   resp <- if (isTRUE(paginate)) {
     paginated_feature_collection_request(
@@ -95,7 +100,8 @@ edr_location <- function(client,
                          crs = NULL,
                          format = c("covjson", "geojson", "csv", "json"),
                          ...,
-                         instance_id = NULL) {
+                         instance_id = NULL,
+                         f = NULL) {
   check_client(client)
   path <- collection_query_path(collection_id, "locations", instance_id)
   loc <- check_path_id(location_id, "location_id")
@@ -103,7 +109,7 @@ edr_location <- function(client,
 
   query <- common_query(
     datetime = datetime, parameter_name = parameter_name,
-    z = z, crs = crs, ...
+    z = z, crs = crs, f = f, ...
   )
   edr_request(
     client,
@@ -136,14 +142,15 @@ edr_items <- function(client,
                       instance_id = NULL,
                       paginate = FALSE,
                       max_pages = 100L,
-                      max_features = 100000L) {
+                      max_features = 100000L,
+                      f = NULL) {
   check_client(client)
   path <- collection_query_path(collection_id, "items", instance_id)
   format <- match.arg(format)
   check_pagination_args(paginate, max_pages, max_features)
 
   query <- common_query(
-    bbox = bbox, datetime = datetime, limit = limit, ...
+    bbox = bbox, datetime = datetime, limit = limit, f = f, ...
   )
   resp <- if (isTRUE(paginate)) {
     paginated_feature_collection_request(
@@ -164,7 +171,8 @@ edr_item <- function(client,
                      item_id,
                      format = c("geojson", "json"),
                      ...,
-                     instance_id = NULL) {
+                     instance_id = NULL,
+                     f = NULL) {
   check_client(client)
   path <- collection_query_path(collection_id, "items", instance_id)
   it <- check_path_id(item_id, "item_id")
@@ -172,7 +180,7 @@ edr_item <- function(client,
   resp <- edr_request(
     client,
     paste0(path, "/", it),
-    query  = list(...),
+    query  = common_query(f = f, ...),
     format = format
   )
   promote_geojson(resp)
@@ -180,12 +188,12 @@ edr_item <- function(client,
 
 #' Position query (data at a point)
 #'
-#' Calls `GET /collections/{collection_id}/position` with a WKT POINT
-#' in the `coords` parameter.
+#' Calls `GET /collections/{collection_id}/position` with a WKT POINT or
+#' MULTIPOINT in the `coords` parameter.
 #'
 #' @inheritParams edr_location
 #' @param coords Either a length-2 numeric vector `c(lon, lat)`, a
-#'   length-3 vector `c(lon, lat, z)`, or a WKT POINT string.
+#'   length-3 vector `c(lon, lat, z)`, or a WKT POINT/MULTIPOINT string.
 #' @param format `"covjson"` (default) or `"json"`.
 #' @return An `edr_response` containing the server's CoverageJSON response.
 #'   Convert it with [covjson_to_tibble()].
@@ -199,7 +207,8 @@ edr_position <- function(client,
                          crs = NULL,
                          format = c("covjson", "json"),
                          ...,
-                         instance_id = NULL) {
+                         instance_id = NULL,
+                         f = NULL) {
   check_client(client)
   path <- collection_query_path(collection_id, "position", instance_id)
   format <- match.arg(format)
@@ -210,6 +219,7 @@ edr_position <- function(client,
     parameter_name = parameter_name,
     z              = z,
     crs            = crs,
+    f              = f,
     ...
   )
   edr_request(
@@ -222,12 +232,12 @@ edr_position <- function(client,
 
 #' Area query (data inside a polygon)
 #'
-#' Calls `GET /collections/{collection_id}/area` with a WKT POLYGON in
-#' the `coords` parameter.
+#' Calls `GET /collections/{collection_id}/area` with a WKT POLYGON or
+#' MULTIPOLYGON in the `coords` parameter.
 #'
 #' @inheritParams edr_position
 #' @inherit edr_position return
-#' @param coords WKT polygon string, or a matrix / data.frame of
+#' @param coords WKT POLYGON/MULTIPOLYGON string, or a matrix / data.frame of
 #'   `(lon, lat)` rows that will be closed into a POLYGON. May also be
 #'   an `sf` / `sfc` polygon if `sf` is installed.
 #' @export
@@ -240,7 +250,8 @@ edr_area <- function(client,
                      crs = NULL,
                      format = c("covjson", "json"),
                      ...,
-                     instance_id = NULL) {
+                     instance_id = NULL,
+                     f = NULL) {
   check_client(client)
   path <- collection_query_path(collection_id, "area", instance_id)
   format <- match.arg(format)
@@ -251,6 +262,7 @@ edr_area <- function(client,
     parameter_name = parameter_name,
     z              = z,
     crs            = crs,
+    f              = f,
     ...
   )
   edr_request(
@@ -278,7 +290,8 @@ edr_cube <- function(client,
                      crs = NULL,
                      format = c("covjson", "json"),
                      ...,
-                     instance_id = NULL) {
+                     instance_id = NULL,
+                     f = NULL) {
   check_client(client)
   path <- collection_query_path(collection_id, "cube", instance_id)
   format <- match.arg(format)
@@ -290,6 +303,7 @@ edr_cube <- function(client,
     parameter_name = parameter_name,
     z              = z,
     crs            = crs,
+    f              = f,
     ...
   )
   edr_request(
@@ -320,7 +334,8 @@ edr_radius <- function(client,
                        crs = NULL,
                        format = c("covjson", "json"),
                        ...,
-                       instance_id = NULL) {
+                       instance_id = NULL,
+                       f = NULL) {
   check_client(client)
   path <- collection_query_path(collection_id, "radius", instance_id)
   format <- match.arg(format)
@@ -335,6 +350,7 @@ edr_radius <- function(client,
     parameter_name = parameter_name,
     z              = z,
     crs            = crs,
+    f              = f,
     ...
   )
   edr_request(
@@ -351,7 +367,7 @@ edr_radius <- function(client,
 #'
 #' @inheritParams edr_position
 #' @inherit edr_position return
-#' @param coords WKT LINESTRING, a matrix / data.frame of `(lon, lat)`
+#' @param coords WKT LINESTRING/MULTILINESTRING, a matrix / data.frame of `(lon, lat)`
 #'   rows, or an `sfc` linestring.
 #' @export
 edr_trajectory <- function(client,
@@ -363,7 +379,8 @@ edr_trajectory <- function(client,
                            crs = NULL,
                            format = c("covjson", "json"),
                            ...,
-                           instance_id = NULL) {
+                           instance_id = NULL,
+                           f = NULL) {
   check_client(client)
   path <- collection_query_path(collection_id, "trajectory", instance_id)
   format <- match.arg(format)
@@ -374,6 +391,7 @@ edr_trajectory <- function(client,
     parameter_name = parameter_name,
     z              = z,
     crs            = crs,
+    f              = f,
     ...
   )
   edr_request(
@@ -409,7 +427,8 @@ edr_corridor <- function(client,
                          crs = NULL,
                          format = c("covjson", "json"),
                          ...,
-                         instance_id = NULL) {
+                         instance_id = NULL,
+                         f = NULL) {
   check_client(client)
   path <- collection_query_path(collection_id, "corridor", instance_id)
   format <- match.arg(format)
@@ -428,6 +447,7 @@ edr_corridor <- function(client,
     parameter_name    = parameter_name,
     z                 = z,
     crs               = crs,
+    f                 = f,
     ...
   )
   edr_request(
@@ -474,6 +494,9 @@ common_query <- function(...) {
   # datetime can be a 2-vector or a single string with "/".
   if (!is.null(args$datetime) && length(args$datetime) == 2L) {
     args$datetime <- paste(args$datetime, collapse = "/")
+  }
+  if (!is.null(args$f)) {
+    args$f <- check_format_token(args$f)
   }
   args
 }

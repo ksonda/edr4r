@@ -44,6 +44,12 @@
 #'   `checkpoint` and request only unresolved rows. If the directory does not
 #'   yet exist, it is initialized, which supports rerunnable scripts. An
 #'   existing checkpoint requires `resume = TRUE`. Defaults to `FALSE`.
+#' @param include_parameters If `TRUE`, fetch the collection's full parameter
+#'   catalog with [edr_parameters()] and attach it once as `parameters` on the
+#'   result. This is an explicit, cacheable discovery request in addition to
+#'   the planned data requests. For an instance-scoped batch, metadata comes
+#'   from that instance. Defaults to `FALSE`, which performs no metadata
+#'   request and stores `NULL` in `parameters`.
 #' @param max_requests Finite positive integer limiting the number of logical
 #'   [edr_location()] calls in the complete plan. Transport-level retries do
 #'   not increase this count. Defaults to 100.
@@ -54,12 +60,17 @@
 #'   batches. Defaults to [interactive()].
 #' @param instance_id Optional collection instance identifier. Every request
 #'   remains beneath that instance path.
+#' @param f Optional server-advertised output-format token sent as the EDR
+#'   `f` query parameter. This is separate from `format`, which controls
+#'   client-side parsing.
 #'
 #' @return An object of class `edr_location_batch` and `edr_batch`. It contains
 #'   `requests`, a typed request-status tibble whose `n_rows` values describe
 #'   raw responses before cross-window deduplication; `data`, a combined data
-#'   tibble; and `errors`, a typed tibble of collected conditions. The object
-#'   also records `collection_id`, `instance_id`, and `format`.
+#'   tibble; `errors`, a typed tibble of collected conditions; and `parameters`,
+#'   either the nonduplicated collection/instance parameter catalog or `NULL`
+#'   when it was not requested. The object also records `collection_id`,
+#'   `instance_id`, and `format`.
 #'
 #' @details
 #' Checkpoint requests remain sequential. Result files are written atomically
@@ -71,6 +82,14 @@
 #' Checkpointed clients must use an absolute HTTP(S) base URL without an
 #' embedded query, fragment, username, or password; rotating credentials
 #' belong in `client` headers and are not written to the checkpoint.
+#'
+#' `max_requests` counts data requests only. When `include_parameters = TRUE`,
+#' the additional discovery request is made after an existing checkpoint has
+#' been validated and restored. The catalog is not stored in the checkpoint,
+#' so a resumed call obtains current metadata (subject to the client's cache)
+#' even when every data response is restored. Parameter-discovery failures are
+#' not collected by `on_error`; they abort the call because the requested
+#' result metadata would be incomplete.
 #' @export
 edr_location_batch <- function(client,
                                collection_id,
@@ -85,10 +104,12 @@ edr_location_batch <- function(client,
                                deduplicate = TRUE,
                                checkpoint = NULL,
                                resume = FALSE,
+                               include_parameters = FALSE,
                                max_requests = 100L,
                                on_error = c("stop", "collect"),
                                progress = interactive(),
-                               instance_id = NULL) {
+                               instance_id = NULL,
+                               f = NULL) {
   check_client(client)
   format <- match.arg(format)
   on_error <- match.arg(on_error)
@@ -97,6 +118,7 @@ edr_location_batch <- function(client,
   check_batch_max_requests(max_requests)
   check_batch_datetime_missing(datetime)
   check_batch_checkpoint_args(checkpoint, resume)
+  check_batch_flag(include_parameters, "include_parameters")
 
   location_id <- check_batch_location_ids(location_id)
   n_locations <- length(location_id)
@@ -120,6 +142,7 @@ edr_location_batch <- function(client,
   ))
 
   dots <- list(...)
+  if (!is.null(f)) dots$f <- f
   query <- do.call(
     common_query,
     c(
@@ -185,6 +208,18 @@ edr_location_batch <- function(client,
     initial_results <- restored$results
   }
 
+  # Validate and restore an existing checkpoint before the optional metadata
+  # request so incompatible or corrupt checkpoints still abort without HTTP.
+  parameter_catalog <- if (isTRUE(include_parameters)) {
+    edr_parameters(
+      client,
+      collection_id = collection_id,
+      instance_id = instance_id
+    )
+  } else {
+    NULL
+  }
+
   executed <- run_location_batch_plan(
     client = client,
     collection_id = collection_id,
@@ -213,7 +248,9 @@ edr_location_batch <- function(client,
         format = format,
         deduplicate = !is.null(chunk) && isTRUE(deduplicate)
       ),
-      errors = executed$errors
+      errors = executed$errors,
+      # Append-only to preserve positional access to the original six fields.
+      parameters = parameter_catalog
     ),
     class = c("edr_location_batch", "edr_batch", "list")
   )
@@ -586,11 +623,17 @@ format.edr_batch <- function(x, ...) {
   } else {
     cli::format_inline("  instance:   {.val {x$instance_id}}")
   }
+  parameters <- if (is.null(x$parameters)) {
+    NULL
+  } else {
+    cli::format_inline("  parameters: {nrow(x$parameters)} definition{?s}")
+  }
   c(
     cli::format_inline("<edr_location_batch>"),
     cli::format_inline("  collection: {.val {x$collection_id}}"),
     instance,
     cli::format_inline("  format:     {x$format}"),
+    parameters,
     cli::format_inline(
       "  requests:   {nrow(requests)} ({successes} success, {empty} empty, {errors} error{?s})"
     ),

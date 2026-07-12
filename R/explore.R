@@ -364,11 +364,12 @@ fetch_explore_data <- function(method, client, collection_id,
 }
 
 coords_looks_point <- function(coords) {
-  is_wkt_type(coords, "POINT") ||
+  point_types <- c("POINT", "MULTIPOINT")
+  is_wkt_type(coords, point_types) ||
     (is.numeric(coords) && length(coords) %in% c(2L, 3L)) ||
     (inherits(coords, c("sf", "sfc", "sfg")) &&
        rlang::is_installed("sf") &&
-       is_wkt_type(sf_to_wkt(coords), "POINT"))
+       is_wkt_type(sf_to_wkt(coords), point_types))
 }
 
 explore_coverage_map_mode <- function(data, plot_view) {

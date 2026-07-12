@@ -40,7 +40,8 @@ edr_conformance <- function(client, refresh = FALSE) {
 #'   `output_formats`, `parameters`, `data_queries`, `query_details`,
 #'   `query_error`, `has_instances`, and `links` columns. `extent_bbox` is a
 #'   convenience view of the first bounding box; all spatial extents are
-#'   retained in `extent_bboxes` and `extent_spatial` list columns.
+#'   retained in `extent_bboxes` and `extent_spatial` list columns. EDR 1.1
+#'   custom dimensions are retained in the `extent_custom` list column.
 #' @export
 edr_collections <- function(client, refresh = FALSE) {
   check_client(client)
@@ -122,10 +123,10 @@ edr_queryables <- function(client, collection_id, refresh = FALSE) {
 
 #' List the data parameters a collection serves
 #'
-#' Pulls the `parameter_names` block out of the collection document
-#' (`GET /collections/{id}`) and flattens it into a tidy tibble. These
-#' are the observed properties you can pass to `parameter_name =` on the
-#' query verbs ([edr_location()], [edr_cube()], etc.).
+#' Pulls the `parameter_names` block out of a collection or instance document
+#' and flattens it into a tidy tibble. These are the observed properties you
+#' can pass to `parameter_name =` on the query verbs ([edr_location()],
+#' [edr_cube()], etc.).
 #'
 #' EDR servers vary in how they key the `parameter_names` dictionary
 #' (numeric IDs, short codes, etc.). The `id` column in the returned
@@ -133,13 +134,29 @@ edr_queryables <- function(client, collection_id, refresh = FALSE) {
 #' column is the human-readable label.
 #'
 #' @inheritParams edr_collection
-#' @return A tibble with one row per parameter. Columns:
-#'   `id`, `name`, `description`, unit and observed-property metadata,
+#' @param instance_id Optional collection instance identifier. When supplied,
+#'   parameter metadata is read from that instance document rather than the
+#'   parent collection document.
+#' @return A tibble with one row per parameter. Columns include `id`, `name`,
+#'   `description`, `parameter_type`, `unit_symbol`, `unit_symbol_type`,
+#'   `unit_label`, `unit_definition`, `unit_id`, observed-property metadata,
 #'   `data_type`, `measurement_type`, `extent`, category metadata, and `raw`.
 #' @export
-edr_parameters <- function(client, collection_id, refresh = FALSE) {
+edr_parameters <- function(client,
+                           collection_id,
+                           refresh = FALSE,
+                           instance_id = NULL) {
   collection_id <- check_collection_id(collection_id)
-  body <- edr_collection(client, collection_id, refresh = refresh)
+  body <- if (is.null(instance_id)) {
+    edr_collection(client, collection_id, refresh = refresh)
+  } else {
+    edr_instance(
+      client,
+      collection_id = collection_id,
+      instance_id = instance_id,
+      refresh = refresh
+    )
+  }
   parameters_tibble(body)
 }
 
@@ -189,12 +206,19 @@ parameter_row <- function(p, key) {
     observed_property = first_character(obs$id),
     observed_property_label = localized(obs$label) %||% NA_character_,
     observed_property_description = localized(obs$description) %||% NA_character_,
-    data_type          = first_character(p$dataType),
+    data_type          = first_character(p[["data-type"]] %||% p$dataType),
     measurement_type   = list(p$measurementType %||% list()),
     extent             = list(p$extent %||% list()),
     categories         = list(obs$categories %||% list()),
     category_encoding  = list(p$categoryEncoding %||% list()),
-    raw                = list(p)
+    raw                = list(p),
+    # Append new normalized fields so existing positional columns stay stable.
+    unit_symbol_type  = if (is.list(symbol)) {
+      first_character(symbol$type)
+    } else {
+      NA_character_
+    },
+    unit_definition   = first_character(unit$definition)
   )
 }
 
@@ -226,7 +250,9 @@ empty_parameters_tibble <- function() {
     extent             = list(),
     categories         = list(),
     category_encoding  = list(),
-    raw                = list()
+    raw                = list(),
+    unit_symbol_type  = character(),
+    unit_definition   = character()
   )
 }
 
@@ -309,7 +335,9 @@ collection_row <- function(c) {
     has_instances = has_instances,
     keywords = list(character_values(c$keywords)),
     links = list(links),
-    raw = list(c)
+    raw = list(c),
+    # Append EDR 1.1 metadata without shifting established columns.
+    extent_custom = list(extent$custom %||% list())
   )
 }
 
@@ -334,7 +362,8 @@ empty_collections_tibble <- function() {
     has_instances = logical(),
     keywords = list(),
     links = list(),
-    raw = list()
+    raw = list(),
+    extent_custom = list()
   )
 }
 

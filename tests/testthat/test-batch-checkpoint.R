@@ -114,8 +114,12 @@ test_that("checkpoint controls are keyword-only and preserve public structure", 
   expect_s3_class(first, "edr_batch")
   expect_identical(
     names(first),
-    c("collection_id", "instance_id", "format", "requests", "data", "errors")
+    c(
+      "collection_id", "instance_id", "format", "requests", "data", "errors",
+      "parameters"
+    )
   )
+  expect_null(first$parameters)
   expect_identical(
     names(first$requests),
     c("request_id", "location_id", "datetime", "status", "n_rows")
@@ -204,6 +208,40 @@ test_that("checkpoint controls are keyword-only and preserve public structure", 
   expect_equal(resumed$requests, first$requests)
   expect_equal(resumed$data, first$data)
   expect_equal(nrow(resumed$errors), 0L)
+  checkpoint_test_expect_unlocked(checkpoint)
+})
+
+test_that("completed checkpoints can attach fresh parameter metadata only", {
+  checkpoint <- tempfile("edr4r-checkpoint-metadata-")
+  seeded <- checkpoint_test_seed(checkpoint)
+  expect_equal(seeded$calls, 2L)
+
+  calls <- character()
+  httr2::local_mocked_responses(function(req) {
+    calls <<- c(calls, req$url)
+    mock_json_response(list(
+      id = "demo",
+      parameter_names = list(
+        flow = list(
+          label = "Streamflow",
+          unit = list(symbol = "m3/s")
+        )
+      )
+    ))
+  })
+  args <- checkpoint_test_override(seeded$args, list(
+    resume = TRUE,
+    include_parameters = TRUE
+  ))
+
+  resumed <- do.call(edr_location_batch, args)
+
+  expect_equal(length(calls), 1L)
+  expect_match(calls, "/collections/demo[?]f=json$", perl = TRUE)
+  expect_equal(resumed$requests$status, rep("success", 2L))
+  expect_equal(resumed$parameters$id, "flow")
+  expect_equal(resumed$parameters$unit_symbol, "m3/s")
+  expect_equal(resumed$data, seeded$result$data)
   checkpoint_test_expect_unlocked(checkpoint)
 })
 
@@ -622,6 +660,7 @@ test_that("fingerprints reject request identity changes before network", {
     z = list(z = "10"),
     crs = list(crs = "EPSG:4326"),
     format = list(format = "covjson"),
+    f = list(f = "CoverageJSON"),
     dots = list(limit = 11L)
   )
 
@@ -979,7 +1018,8 @@ test_that("corrupt and malformed manifests abort before network", {
       max_requests = 1L,
       progress = FALSE,
       checkpoint = corrupt,
-      resume = TRUE
+      resume = TRUE,
+      include_parameters = TRUE
     ),
     "manifest|checkpoint|corrupt|read"
   )
@@ -1009,7 +1049,8 @@ test_that("corrupt and malformed manifests abort before network", {
         max_requests = 1L,
         progress = FALSE,
         checkpoint = checkpoint,
-        resume = TRUE
+        resume = TRUE,
+        include_parameters = TRUE
       ),
       "manifest|checkpoint|schema|fingerprint|plan"
     )

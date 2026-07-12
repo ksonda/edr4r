@@ -89,8 +89,8 @@ really needs:
 library(edr4r)
 
 client <- edr_client("https://api.waterdata.usgs.gov/ogcapi/beta")
-# or "https://api.wwdh.internetofwater.app"
-# or "http://localhost:5005" if you're running pygeoapi locally
+wwdh <- edr_client("https://api.wwdh.internetofwater.app")
+# or use "http://localhost:5005" for a local pygeoapi deployment
 
 collections <- edr_collections(client)
 collections[, c("id", "title", "data_queries", "output_formats")]
@@ -165,12 +165,15 @@ promoted to an `sf` object automatically. For a complete result from a server
 that advertises `rel = "next"`, opt into bounded pagination:
 
 ```r
+piedmont_bbox <- c(-78.60, 36.04, -78.28, 36.22)
+
 locs <- edr_locations(
-  client, "monitoring-locations",
-  limit = 500,              # server page size
+  client, "daily-edr",
+  bbox = piedmont_bbox,
+  limit = 100,              # server page size
   paginate = TRUE,
-  max_pages = 20,
-  max_features = 10000
+  max_pages = 10,
+  max_features = 100
 )
 locs                            # sf POINTs with station attributes
 plot(sf::st_geometry(locs))
@@ -187,21 +190,23 @@ CoverageJSON; `covjson_to_tibble()` flattens it into one row per
 (coverage × parameter × timestamp):
 
 ```r
+station_id <- locs$id[[1]]      # USGS ids include the "USGS-" prefix
+
 resp <- edr_location(
-  client, "daily-values",
-  location_id    = "08313000",
-  datetime       = "2020-01-01/2020-12-31",
-  parameter_name = c("discharge", "gage_height")
+  client, "daily-edr",
+  location_id    = station_id,
+  parameter_name = "00060",    # daily discharge
+  limit          = 200
 )
 
 df <- covjson_to_tibble(resp)
-df
-#> # A tibble: 732 × 9
-#>   coverage_id parameter   parameter_label  unit  datetime                x     y     z value
-#>   <chr>       <chr>       <chr>            <chr> <dttm>              <dbl> <dbl> <dbl> <dbl>
-#> 1 08313000    discharge   Discharge        ft3/s 2020-01-01 00:00:00 -109.  37.0    NA   240
-#> ...
+df[, c("datetime", "value", "unit")]
 ```
+
+The USGS beta location endpoint currently ignores `datetime` and returns its
+latest `limit` records, so filter the resulting tibble client-side when you
+need a shorter period. Other EDR implementations, including WWDH, honor
+bounded intervals.
 
 ### Pull several station time series safely
 
@@ -210,12 +215,14 @@ sequential `edr_location()` request per ID and keeps request provenance and
 failures visible:
 
 ```r
+selected_ids <- head(locs$id, 10)
+
 pull <- edr_location_batch(
-  client, "daily-values",
-  location_id    = locs$id[1:10],
-  datetime       = "2020-01-01/2020-12-31",
-  parameter_name = "discharge",
-  max_requests   = 10,
+  client, "daily-edr",
+  location_id    = selected_ids,
+  parameter_name = "00060",
+  limit           = 200,
+  max_requests   = length(selected_ids),
   on_error       = "collect"
 )
 
@@ -233,8 +240,6 @@ station-by-window plan, so ten stations over twelve monthly windows requires a
 cap of at least 120:
 
 ```r
-wwdh <- edr_client("https://api.wwdh.internetofwater.app")
-
 monthly_pull <- edr_location_batch(
   wwdh, "rise-edr",
   location_id    = "3514",
@@ -243,9 +248,15 @@ monthly_pull <- edr_location_batch(
   chunk           = "1 month",
   checkpoint      = "lake-mead-2023-checkpoint",
   resume          = TRUE,
+  include_parameters = TRUE,
   max_requests    = 12,
   on_error        = "collect"
 )
+
+monthly_pull$parameters[
+  monthly_pull$parameters$id == "3",
+  c("id", "name", "description", "unit_symbol", "unit_definition")
+]
 ```
 
 Adjacent windows share their boundary because EDR intervals are closed and
@@ -261,6 +272,13 @@ disk and retry only unresolved work. The expanded plan still has to satisfy
 observations, but do not store client headers, query URLs, or error conditions;
 protect the directory like any other local data extract.
 
+`include_parameters = TRUE` makes one explicit, cacheable discovery request
+and attaches the full collection parameter catalog once at
+`monthly_pull$parameters`; definitions and units are not repeated on every
+observation row. This discovery request is not counted by `max_requests`, is
+not persisted in the checkpoint, and is not collected by `on_error` if it
+fails.
+
 The USGS beta location endpoint currently ignores `datetime` and returns its
 latest records. Chunking is therefore useful only for endpoints that honor the
 requested interval; it is not a workaround for retrieving USGS history.
@@ -271,10 +289,10 @@ To grab everything inside a rectangle, use `edr_cube()`:
 
 ```r
 cube <- edr_cube(
-  client, "daily-values",
-  bbox           = c(-120, 39, -118, 41),
+  wwdh, "rise-edr",
+  bbox           = c(-115.5, 35.5, -114.5, 36.5),
   datetime       = "2023-01-01/2023-03-31",
-  parameter_name = "discharge"
+  parameter_name = "3"
 )
 covjson_to_tibble(cube)
 ```
@@ -284,11 +302,15 @@ matrix of `(lon, lat)` rows (it'll close the ring for you):
 
 ```r
 ring <- matrix(
-  c(-109, 47, -104, 47, -104, 49, -109, 49),
+  c(-115.5, 35.5, -114.5, 35.5, -114.5, 36.5, -115.5, 36.5),
   ncol = 2, byrow = TRUE
 )
-area <- edr_area(client, "monitoring-locations", coords = ring,
-                 datetime = "2022-01-01/..")
+area <- edr_area(
+  wwdh, "rise-edr",
+  coords = ring,
+  datetime = "2023-01-01/2023-03-31",
+  parameter_name = "3"
+)
 covjson_to_tibble(area)
 ```
 
@@ -323,10 +345,9 @@ for that station's data — embedded as a `data:` URI so the saved HTML
 is selfcontained:
 
 ```r
-stations <- edr_locations(client, "monitoring-locations",
-                          bbox = c(-116, 35.5, -114, 36.5))
-data_list <- list("3514" = covjson_to_tibble(resp))
-m <- edr_map(stations, data = data_list, popup = "plot+csv")
+station <- locs[locs$id == station_id, ]
+data_list <- stats::setNames(list(df), station_id)
+m <- edr_map(station, data = data_list, popup = "plot+csv")
 edr_save_html(m, "stations.html")
 ```
 
@@ -335,10 +356,9 @@ does the fetch + plot + map in one call:
 
 ```r
 edr_explore(
-  client, "daily-values",
-  bbox           = c(-116, 35.5, -114, 36.5),
-  datetime       = "2024-01-01/2024-03-31",
-  parameter_name = "discharge",
+  client, "daily-edr",
+  bbox           = piedmont_bbox,
+  parameter_name = "00060",
   limit          = 25,
   file           = "snapshot.html"
 )
@@ -378,32 +398,31 @@ m <- edr_add_stations(
 edr_explore(client, "gridded-collection",
             bbox = c(-120, 39, -118, 41),
             method = "cube")
-
-edr_explore(client, "profile-collection",
-            coords = c(-119, 40),
-            method = "position")
-
-edr_explore(client, "profile-collection",
-            coords = c(-119, 40),
-            method = "position", output = "plot")
 ```
+
+Here `"gridded-collection"` is intentionally schematic: substitute a
+collection whose `data_queries` metadata advertises `cube`. The concrete WWDH
+`rise-edr` cube above and the Met Office examples in the cross-endpoint
+vignette are runnable counterparts.
 
 ### Weird IDs, CSV, and an escape hatch
 
 Some monitoring networks use compound station IDs — colon-separated
-triplets are a common pattern. The client URL-encodes reserved
-characters for you:
+triplets are a common pattern. The client URL-encodes reserved characters for
+you. Because the identifier field varies by deployment, this call is
+schematic and must use an ID advertised by that collection:
 
 ```r
-edr_location(client, "station-network", "1185:CO:SNTL",
-             datetime = "2024-01-01/..")
+edr_location(your_client, "station-network", "1185:CO:SNTL",
+             datetime = "2024-01-01/2024-01-03")
 ```
 
-If the server advertises CSV, you can ask for it instead of CovJSON:
+If a collection advertises CSV, ask for it instead of CoverageJSON by setting
+the parser format. Collection IDs and format support are server-specific, so
+this low-level form is deliberately schematic:
 
 ```r
-edr_location(client, "daily-values", "08313000",
-             datetime = "2010-01-01/..", format = "csv")
+edr_location(client, "collection-id", "location-id", format = "csv")
 ```
 
 And if you need to hit an endpoint or encoding the package doesn't wrap,
@@ -463,6 +482,9 @@ Every query verb accepts the standard EDR filters:
 - `bbox` — numeric length-4 (`minx, miny, maxx, maxy`) or length-6 (with z).
 - `coords` — for `position`/`area`/`radius`/`trajectory`/`corridor`: a WKT string, a numeric vector / 2-column matrix of lon-lat, or an `sf`/`sfc` geometry.
 - `z`, `crs`, `limit` — passed through when supplied.
+- `f` — an exact server-advertised EDR output token. Keep `format` as the
+  client-side parser selector; for example, pair `format = "covjson"` with
+  `f = "CoverageJSON"` when a strict endpoint requires that token.
 - `instance_id` — named, optional model-run/version identifier; inserts the
   standard `/instances/{id}` path segment before the query type.
 - `...` — any extra query parameter is forwarded verbatim.

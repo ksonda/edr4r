@@ -23,9 +23,12 @@ or vectors; vectors are joined with \code{","}. \code{NULL} entries are
 dropped.}
 
 \item{format}{Response format: one of \code{"json"} (default), \code{"geojson"},
-\code{"covjson"}, \code{"csv"}, \code{"html"}, or \code{"raw"}. Passed as \verb{?f=} (except
-\code{"covjson"}, which is sent as \code{?f=json} with a CoverageJSON
-\code{Accept} hint, since EDR servers return CovJSON via JSON).}
+\code{"covjson"}, \code{"csv"}, \code{"html"}, or \code{"raw"}. For compatibility with
+current pygeoapi deployments, JSON, GeoJSON, and CoverageJSON default to
+\code{?f=json} and use the \code{Accept} header plus response body to distinguish
+encodings. An explicit \code{query$f} is always honored, so a strict endpoint's
+advertised token can be requested with, for example,
+\code{query = list(f = "CoverageJSON")} while retaining CoverageJSON parsing.}
 
 \item{parse}{If \code{TRUE} (default), parses JSON / GeoJSON / CovJSON
 bodies into R structures. If \code{FALSE}, returns the raw \code{httr2}

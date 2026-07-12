@@ -15,9 +15,13 @@ is_wkt <- function(x) {
 is_wkt_type <- function(x, types) {
   is.character(x) && length(x) == 1L &&
     grepl(
-      paste0("^\\s*(", paste(types, collapse = "|"), ")\\s*\\("),
+      paste0(
+        "^\\s*(", paste(types, collapse = "|"), ")",
+        "\\s*(?:ZM|Z|M)?\\s*\\("
+      ),
       x,
-      ignore.case = TRUE
+      ignore.case = TRUE,
+      perl = TRUE
     )
 }
 
@@ -41,35 +45,52 @@ sf_to_wkt <- function(x, call = rlang::caller_env()) {
 
 #' @keywords internal
 to_wkt_point <- function(coords, call = rlang::caller_env()) {
-  if (is_wkt_type(coords, "POINT")) return(coords)
+  point_types <- c("POINT", "MULTIPOINT")
+  if (is_wkt_type(coords, point_types)) return(coords)
   if (is_wkt(coords)) {
-    cli::cli_abort("{.arg coords} must be a WKT POINT string.", call = call)
+    cli::cli_abort(
+      "{.arg coords} must be a WKT POINT or MULTIPOINT string.",
+      call = call
+    )
   }
   if (inherits(coords, c("sf", "sfc", "sfg"))) {
     wkt <- sf_to_wkt(coords, call = call)
-    if (is_wkt_type(wkt, "POINT")) return(wkt)
-    cli::cli_abort("{.arg coords} must be an sf POINT geometry.", call = call)
+    if (is_wkt_type(wkt, point_types)) return(wkt)
+    cli::cli_abort(
+      "{.arg coords} must be an sf POINT or MULTIPOINT geometry.",
+      call = call
+    )
   }
   if (is.numeric(coords) && length(coords) %in% c(2L, 3L)) {
     check_coord_values(coords, call = call)
     return(sprintf("POINT(%s)", paste(fmt_coord(coords), collapse = " ")))
   }
   cli::cli_abort(
-    "{.arg coords} must be a WKT POINT string, a length-2/3 numeric vector, or an sf point.",
+    paste0(
+      "{.arg coords} must be a WKT POINT/MULTIPOINT string, ",
+      "a length-2/3 numeric vector, or an sf point geometry."
+    ),
     call = call
   )
 }
 
 #' @keywords internal
 to_wkt_polygon <- function(coords, call = rlang::caller_env()) {
-  if (is_wkt_type(coords, "POLYGON")) return(coords)
+  polygon_types <- c("POLYGON", "MULTIPOLYGON")
+  if (is_wkt_type(coords, polygon_types)) return(coords)
   if (is_wkt(coords)) {
-    cli::cli_abort("{.arg coords} must be a WKT POLYGON string.", call = call)
+    cli::cli_abort(
+      "{.arg coords} must be a WKT POLYGON or MULTIPOLYGON string.",
+      call = call
+    )
   }
   if (inherits(coords, c("sf", "sfc", "sfg"))) {
     wkt <- sf_to_wkt(coords, call = call)
-    if (is_wkt_type(wkt, "POLYGON")) return(wkt)
-    cli::cli_abort("{.arg coords} must be an sf POLYGON geometry.", call = call)
+    if (is_wkt_type(wkt, polygon_types)) return(wkt)
+    cli::cli_abort(
+      "{.arg coords} must be an sf POLYGON or MULTIPOLYGON geometry.",
+      call = call
+    )
   }
   ring <- as_coord_matrix(coords, min_rows = 3L, call = call)
   # Close the ring if needed.
@@ -82,14 +103,21 @@ to_wkt_polygon <- function(coords, call = rlang::caller_env()) {
 
 #' @keywords internal
 to_wkt_linestring <- function(coords, call = rlang::caller_env()) {
-  if (is_wkt_type(coords, "LINESTRING")) return(coords)
+  linestring_types <- c("LINESTRING", "MULTILINESTRING")
+  if (is_wkt_type(coords, linestring_types)) return(coords)
   if (is_wkt(coords)) {
-    cli::cli_abort("{.arg coords} must be a WKT LINESTRING string.", call = call)
+    cli::cli_abort(
+      "{.arg coords} must be a WKT LINESTRING or MULTILINESTRING string.",
+      call = call
+    )
   }
   if (inherits(coords, c("sf", "sfc", "sfg"))) {
     wkt <- sf_to_wkt(coords, call = call)
-    if (is_wkt_type(wkt, "LINESTRING")) return(wkt)
-    cli::cli_abort("{.arg coords} must be an sf LINESTRING geometry.", call = call)
+    if (is_wkt_type(wkt, linestring_types)) return(wkt)
+    cli::cli_abort(
+      "{.arg coords} must be an sf LINESTRING or MULTILINESTRING geometry.",
+      call = call
+    )
   }
   m <- as_coord_matrix(coords, min_rows = 2L, call = call)
   verts <- apply(m, 1L, function(r) paste(fmt_coord(r), collapse = " "))
