@@ -369,6 +369,81 @@ test_that("geojson_props_tibble works without dplyr/sf (no map_dfr regression)",
   expect_true("id" %in% names(tb))
 })
 
+test_that("GeoJSON Feature property fallback retains one feature", {
+  feature <- list(
+    type = "Feature",
+    id = "station-1",
+    geometry = list(type = "Point", coordinates = list(-110, 40)),
+    properties = list(name = "Station 1", status = NULL)
+  )
+
+  tb <- edr4r:::geojson_props_tibble(feature)
+  expect_s3_class(tb, "tbl_df")
+  expect_equal(nrow(tb), 1L)
+  expect_identical(tb$id, "station-1")
+  expect_identical(tb$name, "Station 1")
+  expect_true(is.na(tb$status))
+
+  feature$properties$id <- "property-id"
+  duplicate_id <- edr4r:::geojson_props_tibble(feature)
+  expect_identical(names(duplicate_id), c("name", "status", "id"))
+  expect_identical(duplicate_id$id, "property-id")
+})
+
+test_that("geojson_to_sf returns one Feature row when sf is unavailable", {
+  feature <- list(
+    type = "Feature",
+    id = "station-1",
+    geometry = list(type = "Point", coordinates = list(-110, 40)),
+    properties = list(name = "Station 1")
+  )
+  original_is_installed <- rlang::is_installed
+
+  local({
+    testthat::local_mocked_bindings(
+      is_installed = function(package, ...) {
+        if (identical(package, "sf")) return(FALSE)
+        original_is_installed(package, ...)
+      },
+      .package = "rlang"
+    )
+    expect_warning(
+      out <- geojson_to_sf(feature),
+      "sf.*is not installed"
+    )
+    expect_s3_class(out, "tbl_df")
+    expect_equal(nrow(out), 1L)
+    expect_identical(out$id, "station-1")
+    expect_identical(out$name, "Station 1")
+  })
+})
+
+test_that("geojson_to_sf falls back to Feature properties after geometry failure", {
+  skip_if_not_installed("sf")
+  feature <- list(
+    type = "Feature",
+    id = "station-1",
+    geometry = list(type = "Point", coordinates = list(-110, 40)),
+    properties = list(name = "Station 1")
+  )
+
+  local({
+    testthat::local_mocked_bindings(
+      read_sf = function(...) stop("simulated geometry parse failure"),
+      .package = "sf"
+    )
+    expect_warning(
+      out <- geojson_to_sf(feature),
+      "Could not parse GeoJSON geometry"
+    )
+    expect_s3_class(out, "tbl_df")
+    expect_false(inherits(out, "sf"))
+    expect_equal(nrow(out), 1L)
+    expect_identical(out$id, "station-1")
+    expect_identical(out$name, "Station 1")
+  })
+})
+
 test_that("Met Office single-point CoverageJSON preserves advertised metadata", {
   cov <- read_fixture("metoffice-terrain.covjson")
   tb <- covjson_to_tibble(cov)

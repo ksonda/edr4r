@@ -44,18 +44,18 @@ CRAN currently provides the stable `0.1.1` release:
 install.packages("edr4r")
 ```
 
-The upcoming `0.2.0` API is available as a GitHub-only release candidate with
-[pak](https://pak.r-lib.org/):
+The `0.3.0` release candidate is available from GitHub with
+[pak](https://pak.r-lib.org/). It has not been submitted to CRAN:
 
 
 ``` r
-pak::pak("ksonda/edr4r@v0.2.0-rc.1")
+pak::pak("ksonda/edr4r@v0.3.0-rc.1")
 ```
 
-This preview has not been submitted to CRAN and intentionally reports
-development version `0.1.1.9000` inside R. Use `pak::pak("ksonda/edr4r")`
-instead when you want the mutable post-candidate development branch, which
-currently reports `0.2.0.9000`.
+The tag is a frozen candidate and intentionally reports development version
+`0.2.99.9000` inside R. Use `pak::pak("ksonda/edr4r")` instead when you want
+the mutable development branch. The earlier `v0.2.0-rc.1` was a GitHub-only
+preview and was never submitted to CRAN.
 
 ## 1. Create a client
 
@@ -68,7 +68,7 @@ client <- edr_client("https://api.wwdh.internetofwater.app")
 client
 #> <edr_client>
 #>   base_url:   <https://api.wwdh.internetofwater.app>
-#>   user_agent: edr4r/0.2.0.9000 (+https://github.com/ksonda/edr4r)
+#>   user_agent: edr4r/0.2.99.9000 (+https://github.com/ksonda/edr4r)
 #>   timeout:    60s
 #>   max_tries:  3
 #>   retry transport failures: TRUE

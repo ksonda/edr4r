@@ -1,33 +1,52 @@
+## Release status
+
+This file records the pre-submission state for the `v0.3.0-rc.1` GitHub
+release candidate. Check results and the package version will be refreshed
+after the candidate soak and before the final CRAN submission.
+
+## Submission
+
+This is a planned feature update from CRAN version 0.1.1. The 0.2.0 line was
+available only as a GitHub release candidate and was never submitted to CRAN;
+version 0.3.0 supersedes that preview.
+
+Major additions include:
+
+* cached capability, collection-instance, and parameter discovery;
+* bounded GeoJSON pagination and finite sequential multi-location pulls with
+  calendar time windows, checkpoint/resume, and request provenance;
+* richer EDR 1.1 parameter, unit, format, geometry, and custom-dimension
+  support; and
+* CoverageJSON custom-axis/CRS preservation plus interactive coverage and
+  station visualization.
+
+No existing exported query verb has been removed.
+
 ## Test environments
 
 * Local: macOS Sequoia 15.3.2, R 4.5.2
-* win-builder: R-devel, Windows Server 2022 x64, R Under development
-  (2026-06-03 r90099 ucrt)
+* GitHub Actions:
+  * macOS, R-release
+  * Windows, R-release
+  * Ubuntu, R-devel
+  * Ubuntu, R-release
+  * Ubuntu, R-oldrel-1
 
-## Resubmission
+## Current release-candidate check results
 
-This resubmission fixes the Debian R-devel incoming pretest failure in
-`tests/testthat/test-queries.R`. URL construction now preserves
-percent-encoded path identifiers when query parameters are added, so reserved
-characters in location/item ids remain inside the intended path segment across
-curl/httr2 builds.
+The exact results from the final `0.3.0` source tarball will replace this
+section before submission.
 
-## R CMD check results
+## Network access
 
-0 errors | 0 warnings | 2 notes
+Package tests and vignette builds do not contact external EDR services. Tests
+use frozen fixtures, mocked `httr2` responses, and a local `webfakes` server.
+Network-dependent vignette results are precomputed.
 
-* This is a new submission.
-* HTML manual validation was skipped locally because the system `tidy`
-  executable is not recent enough. The PDF manual builds successfully.
+Small live interoperability probes against USGS waterdata, the Western Water
+Datahub, and the non-operational Met Office Labs demonstrator run separately
+in a scheduled/manual GitHub Actions workflow and are not part of CRAN checks.
 
 ## Downstream dependencies
 
-There are no downstream dependencies; this is a new submission.
-
-## win-builder results
-
-0 errors | 0 warnings | 1 note
-
-* New submission.
-* Possibly misspelled words in DESCRIPTION are domain acronyms, product names,
-  or service names: Datahub, EDR, OGC, USGS, waterdata.
+There are currently no known downstream CRAN dependencies.

@@ -921,14 +921,24 @@ as_geojson <- function(x) {
 }
 
 geojson_props_tibble <- function(gj) {
-  features <- gj$features %||% list()
+  features <- if (identical(gj$type, "Feature")) {
+    list(gj)
+  } else {
+    gj$features %||% list()
+  }
   if (length(features) == 0L) return(tibble::tibble())
   # vec_rbind, not map_dfr: see note in edr_collections().
   rows <- lapply(features, function(f) {
     props <- f$properties %||% list()
     props <- lapply(props, function(v) if (is.null(v)) NA else v)
-    id <- f$id %||% NA
-    tibble::as_tibble(c(list(id = id), props))
+    # Match sf/GDAL when a server supplies both a top-level feature id and an
+    # `id` property: the property is the visible `id` column. Endpoint identity
+    # can be preserved separately without making the no-sf fallback fail on a
+    # duplicate column name.
+    if (!"id" %in% names(props)) {
+      props <- c(list(id = f$id %||% NA), props)
+    }
+    tibble::as_tibble(props)
   })
   vctrs::vec_rbind(!!!rows)
 }
