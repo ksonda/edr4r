@@ -418,6 +418,9 @@ sidecar <- file.path(
 if (!file.exists(sidecar)) {
   stop("Committed Lake Mead widget is missing: ", sidecar, call. = FALSE)
 }
+# The self-contained widget is large enough to keep CI Chrome busy beyond
+# Chromote's 10-second command default while its inline assets are evaluated.
+browser$default_timeout <- 60
 invisible(browser$go_to(
   paste0("file://", normalizePath(sidecar, winslash = "/", mustWork = TRUE)),
   wait_ = FALSE
@@ -430,7 +433,7 @@ wait_until(
     "document.querySelectorAll('.edr-coverage-control select').length === 1"
   ),
   "the committed Lake Mead widget",
-  timeout = 30
+  timeout = 60
 )
 sidecar_parameters <- evaluate(paste0(
   "Array.from(document.querySelector(",
