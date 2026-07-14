@@ -1,22 +1,25 @@
-# Layering EDR data: Lake Mead
+# Mapping Lake Mead data across three EDR services
 
-This example layers data from three EDR implementations in one Leaflet
-map:
+Lake Mead sits within reach of several EDR services that describe the
+area in different ways. This workflow combines:
 
-- a 2015 population-density `Grid` from the Met Office Labs
+- population density and elevation grids from the Met Office Labs
   demonstrator;
-- two USGS daily-value `PointSeries`; and
-- USBR Lake Mead reservoir storage exposed through the Western Water
-  Datahub (WWDH) as a `CoverageCollection`.
+- stage and discharge series from USGS waterdata; and
+- USBR Lake Mead reservoir storage from the Western Water Datahub
+  (WWDH).
 
-The population grid is the background layer. USGS and USBR stations sit
-above it as separate toggleable groups, and each station popup contains
-an interactive time-series chart and CSV download. The displayed data
-were precomputed from the live endpoints on 2026-07-10, so building the
-package does not issue EDR requests. Met Office Labs is a technical
-demonstrator and may change independently of `edr4r`.
+The interactive map uses a Parameter control to switch between
+population and elevation without rebuilding the widget. USGS and USBR
+stations remain above either grid, and each marker opens a time-series
+chart with a CSV download. A faceted plot compares the three water
+variables on separate y-scales.
 
-## 1. Connect to the three services
+The saved data were retrieved on 2026-07-14. Package builds use this
+snapshot and do not contact the live services. Met Office Labs is a
+technical demonstrator and may change independently of `edr4r`.
+
+## 1. Create the clients and check the collections
 
 ``` r
 
@@ -45,17 +48,21 @@ study_bbox <- c(-115.30, 35.75, -114.55, 36.30)
 #                    minx   miny     maxx   maxy
 ```
 
-The box covers Las Vegas, Hoover Dam, and the western part of Lake Mead.
-Each collection advertises a different useful query path:
+The study area covers Las Vegas, Hoover Dam, and the western part of
+Lake Mead. Before downloading data, check that each collection still
+advertises the query used below:
 
 ``` r
 
 capability_check <- data.frame(
-  endpoint = c("Met Office Labs", "USGS waterdata", "WWDH"),
-  collection = c("global_pop_density", "daily-edr", "rise-edr"),
-  query = c("area", "locations", "locations"),
+  endpoint = c("Met Office Labs", "Met Office Labs", "USGS waterdata", "WWDH"),
+  collection = c(
+    "global_pop_density", "copernicus_dem", "daily-edr", "rise-edr"
+  ),
+  query = c("area", "area", "locations", "locations"),
   supported = c(
     edr_supports(met, "global_pop_density", query = "area"),
+    edr_supports(met, "copernicus_dem", query = "area"),
     edr_supports(usgs, "daily-edr", query = "locations"),
     edr_supports(wwdh, "rise-edr", query = "locations")
   )
@@ -67,10 +74,11 @@ knitr::kable(capability_check)
 | endpoint        | collection         | query     | supported |
 |:----------------|:-------------------|:----------|:----------|
 | Met Office Labs | global_pop_density | area      | TRUE      |
+| Met Office Labs | copernicus_dem     | area      | TRUE      |
 | USGS waterdata  | daily-edr          | locations | TRUE      |
 | WWDH            | rise-edr           | locations | TRUE      |
 
-## 2. Retrieve the population grid
+## 2. Build two grid facets
 
 The population collection requires an explicit CRS on its `area` query.
 The four-row matrix is closed into a WKT polygon by
@@ -94,6 +102,7 @@ population_response <- edr_area(
 )
 
 population <- covjson_to_tibble(population_response)
+population$coverage_id <- "global_pop_density"
 population$parameter_code <- population$parameter
 population$parameter <- "2015 population density"
 population$unit <- "people/km2"
@@ -105,10 +114,91 @@ stopifnot(
 )
 ```
 
-The result is a regular 90 by 66 grid with 5,940 cells.
-[`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md)
-handles the cell bounds, palette, legend, and map extent directly from
-the tidy rows.
+The population response is a regular 90 by 66 grid with 5,940 cells. The
+Copernicus DEM is much finer, so the refresh step samples its nearest
+cell at each population-grid center. The saved widget therefore carries
+two equally sized facets instead of millions of elevation cells.
+
+``` r
+
+elevation_response <- edr_area(
+  met,
+  "copernicus_dem",
+  coords = population_ring,
+  parameter_name = "Height",
+  crs = "EPSG:4326"
+)
+elevation_full <- covjson_to_tibble(elevation_response)
+
+elevation_signature <- data.frame(
+  source = "Met Office / Copernicus elevation",
+  container = elevation_response$covjson$type,
+  domain = elevation_response$covjson$domain$domainType,
+  axes = paste(names(elevation_response$covjson$domain$axes), collapse = ", "),
+  coverages = 1L
+)
+
+nearest_grid_values <- function(source, target_x, target_y) {
+  source_x <- sort(unique(source$x))
+  source_y <- sort(unique(source$y))
+  ordered <- source[order(source$y, source$x), , drop = FALSE]
+  stopifnot(nrow(ordered) == length(source_x) * length(source_y))
+
+  value_matrix <- matrix(
+    ordered$value,
+    nrow = length(source_y),
+    ncol = length(source_x),
+    byrow = TRUE
+  )
+  target_x_unique <- unique(target_x)
+  target_y_unique <- unique(target_y)
+  source_x_index <- vapply(
+    target_x_unique,
+    function(value) which.min(abs(source_x - value)),
+    integer(1)
+  )
+  source_y_index <- vapply(
+    target_y_unique,
+    function(value) which.min(abs(source_y - value)),
+    integer(1)
+  )
+
+  value_matrix[cbind(
+    source_y_index[match(target_y, target_y_unique)],
+    source_x_index[match(target_x, target_x_unique)]
+  )]
+}
+
+elevation <- population
+elevation$coverage_id <- "copernicus_dem"
+elevation$parameter_code <- "Height"
+elevation$parameter <- "Elevation above mean sea level"
+elevation$parameter_label <- "Elevation above mean sea level"
+elevation$unit <- "m"
+elevation$value <- nearest_grid_values(
+  elevation_full,
+  population$x,
+  population$y
+)
+
+grid_facets <- rbind(population, elevation)
+rm(elevation_full, elevation_response)
+invisible(gc())
+
+stopifnot(
+  nrow(elevation) == nrow(population),
+  all(is.finite(elevation$value)),
+  identical(sort(unique(grid_facets$parameter)), sort(c(
+    "2015 population density",
+    "Elevation above mean sea level"
+  )))
+)
+```
+
+Because both facets share the same `x` and `y` centers,
+[`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md) can
+switch between them with its built-in Parameter selector while keeping
+the station layers and map extent fixed.
 
 ## 3. Retrieve the station series
 
@@ -232,9 +322,56 @@ usbr_popup_data <- list(
 )
 ```
 
-## 4. Inspect the coverage shapes
+## 4. Compare the water variables in separate facets
 
-The map combines one gridded coverage with three temporal point
+Stage, discharge, and storage have different units and ranges.
+[`edr_plot()`](https://ksonda.github.io/edr4r/reference/edr_plot.md)
+uses the parameter metadata to put each variable in its own panel and
+include the unit in the strip label. The shared date axis still makes it
+easy to see which observations cover the same period.
+
+``` r
+
+series_for_plot <- function(data, station) {
+  out <- data[, c(
+    "coverage_id", "parameter", "unit", "datetime", "value"
+  )]
+  out$station <- station
+  out
+}
+
+water_series <- rbind(
+  series_for_plot(hoover_stage, "USGS below Hoover Dam"),
+  series_for_plot(wash_flow, "USGS Las Vegas Wash"),
+  series_for_plot(storage, "USBR Lake Mead")
+)
+
+water_facets <- edr_plot(
+  water_series,
+  group = "station",
+  facet = "parameter",
+  scales = "free_y",
+  geom = "line",
+  view = "time"
+) +
+  labs(
+    title = "Water conditions around Lake Mead",
+    subtitle = "Each parameter keeps its own unit and y-axis",
+    colour = "Station"
+  )
+
+water_facets
+```
+
+![Stage, discharge, and reservoir storage use separate panels and y-axis
+scales.](cross-endpoint-water-context-figs/water-series-facets-1.png)
+
+Stage, discharge, and reservoir storage use separate panels and y-axis
+scales.
+
+## 5. Inspect the coverage shapes
+
+The map combines two gridded coverages with three temporal point
 coverages. The container and domain metadata come directly from the
 responses:
 
@@ -276,6 +413,7 @@ coverage_signature <- function(source, response) {
 
 signatures <- rbind(
   coverage_signature("Met Office population", population_response),
+  elevation_signature,
   coverage_signature("USGS Hoover stage", hoover_response),
   coverage_signature("USGS Las Vegas Wash", wash_response),
   coverage_signature("WWDH / USBR storage", storage_response)
@@ -284,42 +422,48 @@ signatures <- rbind(
 knitr::kable(signatures)
 ```
 
-| source                | container          | domain      | axes    | coverages |
-|:----------------------|:-------------------|:------------|:--------|----------:|
-| Met Office population | Coverage           | Grid        | x, y    |         1 |
-| USGS Hoover stage     | Coverage           | PointSeries | t, x, y |         1 |
-| USGS Las Vegas Wash   | Coverage           | PointSeries | t, x, y |         1 |
-| WWDH / USBR storage   | CoverageCollection | PointSeries | x, y, t |         1 |
+| source | container | domain | axes | coverages |
+|:---|:---|:---|:---|---:|
+| Met Office population | Coverage | Grid | x, y | 1 |
+| Met Office / Copernicus elevation | Coverage | Grid | x, y | 1 |
+| USGS Hoover stage | Coverage | PointSeries | t, x, y | 1 |
+| USGS Las Vegas Wash | Coverage | PointSeries | t, x, y | 1 |
+| WWDH / USBR storage | CoverageCollection | PointSeries | x, y, t | 1 |
 
 ``` r
 
 snapshot <- data.frame(
   layer = c(
     "Met Office population",
+    "Met Office / Copernicus elevation",
     "USGS Hoover stage",
     "USGS Las Vegas Wash",
     "WWDH / USBR storage"
   ),
   rows = c(
     nrow(population),
+    nrow(elevation),
     nrow(hoover_stage),
     nrow(wash_flow),
     nrow(storage)
   ),
   start = c(
     "static 2015",
+    "static elevation",
     format(min(hoover_stage$datetime), "%Y-%m-%d", tz = "UTC"),
     format(min(wash_flow$datetime), "%Y-%m-%d", tz = "UTC"),
     format(min(storage$datetime), "%Y-%m-%d", tz = "UTC")
   ),
   end = c(
     "static 2015",
+    "static elevation",
     format(max(hoover_stage$datetime), "%Y-%m-%d", tz = "UTC"),
     format(max(wash_flow$datetime), "%Y-%m-%d", tz = "UTC"),
     format(max(storage$datetime), "%Y-%m-%d", tz = "UTC")
   ),
   unit = c(
     "people/km2",
+    "m",
     unique(hoover_stage$unit)[1],
     unique(wash_flow$unit)[1],
     unique(storage$unit)[1]
@@ -329,30 +473,30 @@ snapshot <- data.frame(
 knitr::kable(snapshot)
 ```
 
-| layer                 | rows | start       | end         | unit       |
-|:----------------------|-----:|:------------|:------------|:-----------|
+| layer | rows | start | end | unit |
+|:---|---:|:---|:---|:---|
 | Met Office population | 5940 | static 2015 | static 2015 | people/km2 |
-| USGS Hoover stage     |   31 | 2026-06-09  | 2026-07-09  | ft         |
-| USGS Las Vegas Wash   |   31 | 2026-06-09  | 2026-07-09  | ft3/s      |
-| WWDH / USBR storage   |   31 | 2026-06-09  | 2026-07-09  | af         |
+| Met Office / Copernicus elevation | 5940 | static elevation | static elevation | m |
+| USGS Hoover stage | 31 | 2026-06-13 | 2026-07-13 | ft |
+| USGS Las Vegas Wash | 31 | 2026-06-13 | 2026-07-13 | ft3/s |
+| WWDH / USBR storage | 30 | 2026-06-13 | 2026-07-12 | af |
 
-## 5. Build the layered interactive map
+## 6. Build the map with selectable grid facets
 
 [`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md)
-creates the population grid.
+recognizes the two parameter values and adds a selector for them.
 [`edr_add_stations()`](https://ksonda.github.io/edr4r/reference/edr_add_stations.md)
-reuses the station matching and popup machinery from
-[`edr_map()`](https://ksonda.github.io/edr4r/reference/edr_map.md) to
-add independently styled source groups. Coverage cells live in a lower
-Leaflet pane, so the station markers stay visible and clickable above
-the raster.
+then places independently styled source groups above the active grid.
+Coverage cells live in a lower Leaflet pane, so the station markers stay
+visible and clickable while the grid facet changes.
 
 ``` r
 
 lake_mead_map <- edr_map(
-  population,
+  grid_facets,
   mode = "grid",
-  controls = FALSE,
+  controls = TRUE,
+  initial = list(parameter = "2015 population density"),
   grid_opacity = 0.58,
   grid_transform = "sqrt",
   tile_provider = "CartoDB.Positron"
@@ -395,7 +539,8 @@ lake_mead_map <- leaflet::addControl(
   html = paste0(
     "<div style='background:rgba(255,255,255,.92);padding:7px;",
     "border-radius:4px;font:12px system-ui,sans-serif'>",
-    "<strong>Water stations</strong><br>Click a marker for its time series",
+    "<strong>Lake Mead context</strong><br>",
+    "Choose a grid facet above<br>Click a station for its time series",
     "</div>"
   ),
   position = "bottomleft"
@@ -414,11 +559,13 @@ edr_save_html(
 ```
 
 The website build renders the interactive widget below. The package
-vignette uses a static preview of the same precomputed layers.
+vignette uses a faceted static preview of the same precomputed layers.
 
-The larger blue USBR/WWDH marker and the smaller orange USGS marker near
-Hoover Dam overlap at the initial extent. Use the layer control or zoom
-in to open each popup. The Las Vegas Wash gauge is farther west.
+Use the Parameter selector to change the grid while leaving the station
+layers in place. The larger blue USBR/WWDH marker and the smaller orange
+USGS marker near Hoover Dam overlap at the initial extent; the layer
+control or a closer zoom makes each one easier to open. The Las Vegas
+Wash gauge is farther west.
 
 The same widget can be written anywhere with:
 
@@ -427,7 +574,7 @@ The same widget can be written anywhere with:
 edr_save_html(lake_mead_map, "lake-mead-edr-layers.html")
 ```
 
-The executable source for this article is retained at
+The executable source is retained at
 `vignettes/cross-endpoint-water-context.Rmd.orig`. Refresh the baked
 data, static preview, and site widget deliberately with:
 
