@@ -418,18 +418,77 @@ sidecar <- file.path(
 if (!file.exists(sidecar)) {
   stop("Committed Lake Mead widget is missing: ", sidecar, call. = FALSE)
 }
-browser$go_to(
+# The self-contained widget is large enough to keep CI Chrome busy beyond
+# Chromote's 10-second command default while its inline assets are evaluated.
+browser$default_timeout <- 60
+invisible(browser$go_to(
   paste0("file://", normalizePath(sidecar, winslash = "/", mustWork = TRUE)),
-  wait_ = TRUE
-)
+  wait_ = FALSE
+))
 wait_until(
   paste0(
     "document.readyState === 'complete' && ",
     "document.querySelectorAll('.edr-coverage-cell').length === 5940 && ",
-    "document.querySelectorAll('.edr-station-marker').length === 3"
+    "document.querySelectorAll('.edr-station-marker').length === 3 && ",
+    "document.querySelectorAll('.edr-coverage-control select').length === 1"
   ),
   "the committed Lake Mead widget",
-  timeout = 30
+  timeout = 60
+)
+sidecar_parameters <- evaluate(paste0(
+  "Array.from(document.querySelector(",
+  "'.edr-coverage-control select').options).map(function(option) {",
+  "  return option.value;",
+  "})"
+))
+expected_parameters <- c(
+  "2015 population density",
+  "Elevation above mean sea level"
+)
+if (!all(expected_parameters %in% sidecar_parameters)) {
+  stop("Committed Lake Mead widget is missing a grid facet.", call. = FALSE)
+}
+sidecar_initial <- evaluate(
+  "document.querySelector('.edr-coverage-control select').value"
+)
+if (!identical(sidecar_initial, "2015 population density")) {
+  stop("Committed Lake Mead widget did not open on population.", call. = FALSE)
+}
+
+invisible(evaluate(paste0(
+  "(function() {",
+  "  var select = document.querySelector('.edr-coverage-control select');",
+  "  select.value = 'Elevation above mean sea level';",
+  "  select.dispatchEvent(new Event('change', { bubbles: true }));",
+  "  return true;",
+  "})()"
+)))
+wait_until(
+  paste0(
+    "document.querySelector('.edr-coverage-control select').value === ",
+    "'Elevation above mean sea level' && ",
+    "document.querySelectorAll('.edr-coverage-cell').length === 5940"
+  ),
+  "the Lake Mead elevation facet"
+)
+invisible(evaluate(paste0(
+  "(function() {",
+  "  var cell = document.querySelector('.edr-coverage-cell');",
+  "  if (!cell) return false;",
+  "  cell.dispatchEvent(new MouseEvent('click', ",
+  "    { bubbles: true, cancelable: true }));",
+  "  return true;",
+  "})()"
+)))
+wait_until(
+  paste0(
+    "(function() {",
+    "  var popup = document.querySelector('.leaflet-popup-content');",
+    "  return popup !== null && ",
+    "    popup.innerText.indexOf('Elevation above mean sea level') >= 0;",
+    "})()"
+  ),
+  "an elevation-cell popup"
 )
 sidecar_groups <- evaluate(paste0(
   "Array.from(document.querySelectorAll(",
@@ -474,4 +533,7 @@ if (length(errors) > 0L) {
     call. = FALSE
   )
 }
-message("Committed Lake Mead widget browser smoke passed.")
+message(
+  "Committed Lake Mead widget browser smoke passed: facet switch, ",
+  "station groups, chart/CSV popups, no JS errors."
+)
