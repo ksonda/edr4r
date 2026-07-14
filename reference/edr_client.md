@@ -81,7 +81,7 @@ usgs <- edr_client("https://api.waterdata.usgs.gov/ogcapi/beta")
 usgs
 #> <edr_client>
 #>   base_url:   <https://api.waterdata.usgs.gov/ogcapi/beta>
-#>   user_agent: edr4r/0.2.99.9000 (+https://github.com/ksonda/edr4r)
+#>   user_agent: edr4r/0.3.0 (+https://github.com/ksonda/edr4r)
 #>   timeout:    60s
 #>   max_tries:  3
 #>   retry transport failures: TRUE

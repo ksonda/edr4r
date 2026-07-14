@@ -1,11 +1,9 @@
 # Changelog
 
-## edr4r 0.3.0 (release candidate 1)
+## edr4r 0.3.0
 
-- Supersede the GitHub-only `v0.2.0-rc.1` preview with the first
-  complete release candidate for 0.3.0. The candidate reports
-  development version `0.2.99.9000` inside R until the final release is
-  prepared.
+- Supersede the GitHub-only `v0.2.0-rc.1` and `v0.3.0-rc.1` previews
+  with the final 0.3.0 release.
 - Preserve the id and properties of a top-level GeoJSON `Feature` when
   geometry conversion is unavailable, instead of returning an empty
   fallback tibble. An `id` property continues to take precedence over
@@ -95,10 +93,12 @@
   identify the active parameter/unit, and grid colour scales support
   identity, square-root, and `log1p` transforms.
 - Upgrade the cross-endpoint Lake Mead vignette to a precomputed
-  interactive map: a Met Office population `Grid` beneath toggleable
-  USGS and USBR/WWDH station groups with time-series popups. The full
-  widget is deployed only on the pkgdown site; package builds retain a
-  small static fallback.
+  interactive map that switches between Met Office population and
+  Copernicus elevation grids beneath toggleable USGS and USBR/WWDH
+  station groups with time-series popups. A companion plot facets
+  discharge, gage height, and reservoir storage by parameter and unit.
+  The full widget is deployed only on the pkgdown site; package builds
+  retain a small faceted static fallback.
 - Remove a precomputed base64 map from the USGS vignette, reducing that
   source file by about 1 MB while retaining the runnable interactive-map
   example.

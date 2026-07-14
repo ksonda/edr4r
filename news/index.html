@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">edr4r</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.99.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,8 +40,8 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.3.0" id="edr4r-030-release-candidate-1">edr4r 0.3.0 (release candidate 1)<a class="anchor" aria-label="anchor" href="#edr4r-030-release-candidate-1"></a></h2>
-<ul><li>Supersede the GitHub-only <code>v0.2.0-rc.1</code> preview with the first complete release candidate for 0.3.0. The candidate reports development version <code>0.2.99.9000</code> inside R until the final release is prepared.</li>
+<h2 class="pkg-version" data-toc-text="0.3.0" id="edr4r-030">edr4r 0.3.0<a class="anchor" aria-label="anchor" href="#edr4r-030"></a></h2>
+<ul><li>Supersede the GitHub-only <code>v0.2.0-rc.1</code> and <code>v0.3.0-rc.1</code> previews with the final 0.3.0 release.</li>
 <li>Preserve the id and properties of a top-level GeoJSON <code>Feature</code> when geometry conversion is unavailable, instead of returning an empty fallback tibble. An <code>id</code> property continues to take precedence over the top-level id, matching <code>sf</code>/GDAL conversion behavior.</li>
 <li>Add structured service and collection capability discovery, support checks, endpoint diagnostics, and per-client TTL caching for discovery metadata.</li>
 <li>Add collection-instance discovery and optional instance-scoped paths across all query verbs and <code><a href="../reference/edr_explore.html">edr_explore()</a></code>.</li>
@@ -59,7 +59,7 @@
 <li>Reuse the batch execution engine inside per-location <code><a href="../reference/edr_explore.html">edr_explore()</a></code> while preserving its existing output and summary-warning contract.</li>
 <li>Accept finite, safely representable numeric strings in CoverageJSON ranges that declare a numeric <code>dataType</code>, as currently emitted by USGS waterdata, while rejecting text, overflow/underflow, and unsafe declared integers.</li>
 <li>Add <code><a href="../reference/edr_add_stations.html">edr_add_stations()</a></code> for composing one or more independently styled station groups over an existing coverage map, reusing interactive chart and CSV popups. Coverage layers now render in a lower Leaflet pane, grid legends identify the active parameter/unit, and grid colour scales support identity, square-root, and <code>log1p</code> transforms.</li>
-<li>Upgrade the cross-endpoint Lake Mead vignette to a precomputed interactive map: a Met Office population <code>Grid</code> beneath toggleable USGS and USBR/WWDH station groups with time-series popups. The full widget is deployed only on the pkgdown site; package builds retain a small static fallback.</li>
+<li>Upgrade the cross-endpoint Lake Mead vignette to a precomputed interactive map that switches between Met Office population and Copernicus elevation grids beneath toggleable USGS and USBR/WWDH station groups with time-series popups. A companion plot facets discharge, gage height, and reservoir storage by parameter and unit. The full widget is deployed only on the pkgdown site; package builds retain a small faceted static fallback.</li>
 <li>Remove a precomputed base64 map from the USGS vignette, reducing that source file by about 1 MB while retaining the runnable interactive-map example.</li>
 </ul></div>
     <div class="section level2">

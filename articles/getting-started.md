@@ -28,25 +28,24 @@ The USGS example lives in its own article,
 
 ## Installation
 
-CRAN currently provides the stable `0.1.1` release:
+Install the current stable release from CRAN:
 
 ``` r
 
 install.packages("edr4r")
 ```
 
-The `0.3.0` release candidate is available from GitHub with
-[pak](https://pak.r-lib.org/). It has not been submitted to CRAN:
+The `0.3.0` source release is also available from GitHub with
+[pak](https://pak.r-lib.org/):
 
 ``` r
 
-pak::pak("ksonda/edr4r@v0.3.0-rc.1")
+pak::pak("ksonda/edr4r@v0.3.0")
 ```
 
-The tag is a frozen candidate and intentionally reports development
-version `0.2.99.9000` inside R. Use `pak::pak("ksonda/edr4r")` instead
-when you want the mutable development branch. The earlier `v0.2.0-rc.1`
-was a GitHub-only preview and was never submitted to CRAN.
+The `v0.2.0-rc.1` and `v0.3.0-rc.1` tags were GitHub-only previews. Use
+`pak::pak("ksonda/edr4r")` instead when you want the mutable development
+branch.
 
 ## 1. Create a client
 
@@ -59,7 +58,7 @@ client <- edr_client("https://api.wwdh.internetofwater.app")
 client
 #> <edr_client>
 #>   base_url:   <https://api.wwdh.internetofwater.app>
-#>   user_agent: edr4r/0.2.99.9000 (+https://github.com/ksonda/edr4r)
+#>   user_agent: edr4r/0.3.0 (+https://github.com/ksonda/edr4r)
 #>   timeout:    60s
 #>   max_tries:  3
 #>   retry transport failures: TRUE
