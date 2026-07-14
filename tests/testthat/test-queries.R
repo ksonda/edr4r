@@ -61,6 +61,23 @@ test_that("edr_location rejects ids containing '/'", {
   )
 })
 
+test_that("edr_item promotes a single GeoJSON Feature to one sf row", {
+  skip_if_not_installed("sf")
+  feature <- list(
+    type = "Feature",
+    id = "station-1",
+    geometry = list(type = "Point", coordinates = list(-110, 40)),
+    properties = list(name = "Station 1")
+  )
+  httr2::local_mocked_responses(function(req) mock_json_response(feature))
+
+  out <- edr_item(test_client(), "demo", item_id = "station-1")
+  expect_s3_class(out, "sf")
+  expect_equal(nrow(out), 1L)
+  expect_identical(out$id, "station-1")
+  expect_identical(out$name, "Station 1")
+})
+
 test_that("edr_cube serializes bbox and validates it", {
   captured <- NULL
   cov <- read_fixture("pointseries.covjson")

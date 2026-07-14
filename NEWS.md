@@ -1,5 +1,18 @@
-# edr4r 0.3.0 (development version)
+# edr4r 0.3.0 (release candidate 1)
 
+* Supersede the GitHub-only `v0.2.0-rc.1` preview with the first complete
+  release candidate for 0.3.0. The candidate reports development version
+  `0.2.99.9000` inside R until the final release is prepared.
+* Preserve the id and properties of a top-level GeoJSON `Feature` when
+  geometry conversion is unavailable, instead of returning an empty fallback
+  tibble. An `id` property continues to take precedence over the top-level id,
+  matching `sf`/GDAL conversion behavior.
+* Add structured service and collection capability discovery, support checks,
+  endpoint diagnostics, and per-client TTL caching for discovery metadata.
+* Add collection-instance discovery and optional instance-scoped paths across
+  all query verbs and `edr_explore()`.
+* Add a documented compatibility contract plus frozen Met Office Labs
+  metadata/terrain fixtures for deterministic cross-server tests.
 * Preserve nonstandard CoverageJSON coordinates as appended `.axis_*` columns
   instead of silently discarding their identity. Batch deduplication now keeps
   distinct members, plots group/facet them, and coverage maps expose selectors
@@ -63,15 +76,6 @@
   the pkgdown site; package builds retain a small static fallback.
 * Remove a precomputed base64 map from the USGS vignette, reducing that source
   file by about 1 MB while retaining the runnable interactive-map example.
-
-# edr4r 0.2.0 (development version)
-
-* Add structured service and collection capability discovery, support checks,
-  endpoint diagnostics, and per-client TTL caching for discovery metadata.
-* Add collection-instance discovery and optional instance-scoped paths across
-  all query verbs and `edr_explore()`.
-* Add a documented compatibility contract plus frozen Met Office Labs
-  metadata/terrain fixtures for deterministic cross-server tests.
 
 # edr4r 0.1.1
 

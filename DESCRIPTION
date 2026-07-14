@@ -1,6 +1,6 @@
 Package: edr4r
 Title: Client for OGC API - Environmental Data Retrieval (EDR)
-Version: 0.2.0.9000
+Version: 0.2.99.9000
 Authors@R:
     person("Kyle", "Onda", role = c("aut", "cre", "cph"),
            email = "konda@lincolninst.edu")
@@ -42,7 +42,7 @@ Suggests:
     rmarkdown,
     sf,
     svglite,
-    testthat (>= 3.0.0),
+    testthat (>= 3.1.7),
     webfakes
 Config/testthat/edition: 3
 RoxygenNote: 7.3.3
