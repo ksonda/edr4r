@@ -1,8 +1,6 @@
 ## Release status
 
-This file records the pre-submission state for the `v0.3.0-rc.1` GitHub
-release candidate. Check results and the package version will be refreshed
-after the candidate soak and before the final CRAN submission.
+This is the final 0.3.0 source prepared for CRAN submission.
 
 ## Submission
 
@@ -32,10 +30,21 @@ No existing exported query verb has been removed.
   * Ubuntu, R-release
   * Ubuntu, R-oldrel-1
 
-## Current release-candidate check results
+## R CMD check results
 
-The exact results from the final `0.3.0` source tarball will replace this
-section before submission.
+0 errors | 0 warnings | 1 note
+
+The final source tarball was checked locally with `--as-cran`. The same source
+also passed the GitHub Actions matrix listed above, including package checks on
+R-devel, R-release, and R-oldrel-1.
+
+The single CRAN incoming-feasibility note is:
+
+> Days since last update: 4
+
+Version 0.3.0 is an intentional feature update following the 0.1.1 correctness
+release. The 0.2.0 line remained a GitHub-only preview and was not submitted to
+CRAN.
 
 ## Network access
 

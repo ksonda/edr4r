@@ -46,31 +46,29 @@ data analysis with:
 
 ## Installation
 
-CRAN currently provides the stable `0.1.1` release:
+Install the current stable release from CRAN:
 
 ```r
 install.packages("edr4r")
 ```
 
-The `0.3.0` release candidate is available from GitHub. It has not been
-submitted to CRAN:
+The `0.3.0` source release is also available from GitHub:
 
 ```r
 # install.packages("pak")
-pak::pak("ksonda/edr4r@v0.3.0-rc.1")
+pak::pak("ksonda/edr4r@v0.3.0")
 
 # Follow the mutable development branch instead:
 pak::pak("ksonda/edr4r")
 
 # or
 # install.packages("remotes")
-remotes::install_github("ksonda/edr4r@v0.3.0-rc.1")
+remotes::install_github("ksonda/edr4r@v0.3.0")
 ```
 
-The tag is a frozen candidate for `0.3.0`; the default branch remains mutable.
-The candidate intentionally reports development version `0.2.99.9000` inside
-R so it remains distinguishable from the eventual final package. The earlier
-`v0.2.0-rc.1` was a GitHub-only preview and was never submitted to CRAN.
+The `v0.2.0-rc.1` and `v0.3.0-rc.1` tags were GitHub-only previews. Use the
+final `v0.3.0` tag for a reproducible installation or the default branch to
+follow ongoing development.
 
 For local development:
 
