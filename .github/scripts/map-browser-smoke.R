@@ -418,10 +418,10 @@ sidecar <- file.path(
 if (!file.exists(sidecar)) {
   stop("Committed Lake Mead widget is missing: ", sidecar, call. = FALSE)
 }
-browser$go_to(
+invisible(browser$go_to(
   paste0("file://", normalizePath(sidecar, winslash = "/", mustWork = TRUE)),
-  wait_ = TRUE
-)
+  wait_ = FALSE
+))
 wait_until(
   paste0(
     "document.readyState === 'complete' && ",
