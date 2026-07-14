@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">edr4r</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.99.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -99,15 +99,16 @@ USGS example lives in its own article,
 <p>CRAN currently provides the stable <code>0.1.1</code> release:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"edr4r"</span><span class="op">)</span></span></code></pre></div>
-<p>The upcoming <code>0.2.0</code> API is available as a GitHub-only
-release candidate with <a href="https://pak.r-lib.org/" class="external-link">pak</a>:</p>
+<p>The <code>0.3.0</code> release candidate is available from GitHub
+with <a href="https://pak.r-lib.org/" class="external-link">pak</a>. It has not been submitted
+to CRAN:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"ksonda/edr4r@v0.2.0-rc.1"</span><span class="op">)</span></span></code></pre></div>
-<p>This preview has not been submitted to CRAN and intentionally reports
-development version <code>0.1.1.9000</code> inside R. Use
+<code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"ksonda/edr4r@v0.3.0-rc.1"</span><span class="op">)</span></span></code></pre></div>
+<p>The tag is a frozen candidate and intentionally reports development
+version <code>0.2.99.9000</code> inside R. Use
 <code>pak::pak("ksonda/edr4r")</code> instead when you want the mutable
-post-candidate development branch, which currently reports
-<code>0.2.0.9000</code>.</p>
+development branch. The earlier <code>v0.2.0-rc.1</code> was a
+GitHub-only preview and was never submitted to CRAN.</p>
 </div>
 <div class="section level2">
 <h2 id="create-a-client">1. Create a client<a class="anchor" aria-label="anchor" href="#create-a-client"></a>
@@ -120,7 +121,7 @@ post-candidate development branch, which currently reports
 <span><span class="va">client</span></span>
 <span><span class="co">#&gt; &lt;edr_client&gt;</span></span>
 <span><span class="co">#&gt;   base_url:   &lt;https://api.wwdh.internetofwater.app&gt;</span></span>
-<span><span class="co">#&gt;   user_agent: edr4r/0.2.0.9000 (+https://github.com/ksonda/edr4r)</span></span>
+<span><span class="co">#&gt;   user_agent: edr4r/0.2.99.9000 (+https://github.com/ksonda/edr4r)</span></span>
 <span><span class="co">#&gt;   timeout:    60s</span></span>
 <span><span class="co">#&gt;   max_tries:  3</span></span>
 <span><span class="co">#&gt;   retry transport failures: TRUE</span></span>

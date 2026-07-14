@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">edr4r</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.99.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,8 +40,13 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.3.0" id="edr4r-030-development-version">edr4r 0.3.0 (development version)<a class="anchor" aria-label="anchor" href="#edr4r-030-development-version"></a></h2>
-<ul><li>Preserve nonstandard CoverageJSON coordinates as appended <code>.axis_*</code> columns instead of silently discarding their identity. Batch deduplication now keeps distinct members, plots group/facet them, and coverage maps expose selectors and dimension-aware popups. A versioned <code>edr_covjson_metadata</code> attribute retains effective domain, axis, and referencing metadata across package binding and checkpoint/resume paths.</li>
+<h2 class="pkg-version" data-toc-text="0.3.0" id="edr4r-030-release-candidate-1">edr4r 0.3.0 (release candidate 1)<a class="anchor" aria-label="anchor" href="#edr4r-030-release-candidate-1"></a></h2>
+<ul><li>Supersede the GitHub-only <code>v0.2.0-rc.1</code> preview with the first complete release candidate for 0.3.0. The candidate reports development version <code>0.2.99.9000</code> inside R until the final release is prepared.</li>
+<li>Preserve the id and properties of a top-level GeoJSON <code>Feature</code> when geometry conversion is unavailable, instead of returning an empty fallback tibble. An <code>id</code> property continues to take precedence over the top-level id, matching <code>sf</code>/GDAL conversion behavior.</li>
+<li>Add structured service and collection capability discovery, support checks, endpoint diagnostics, and per-client TTL caching for discovery metadata.</li>
+<li>Add collection-instance discovery and optional instance-scoped paths across all query verbs and <code><a href="../reference/edr_explore.html">edr_explore()</a></code>.</li>
+<li>Add a documented compatibility contract plus frozen Met Office Labs metadata/terrain fixtures for deterministic cross-server tests.</li>
+<li>Preserve nonstandard CoverageJSON coordinates as appended <code>.axis_*</code> columns instead of silently discarding their identity. Batch deduplication now keeps distinct members, plots group/facet them, and coverage maps expose selectors and dimension-aware popups. A versioned <code>edr_covjson_metadata</code> attribute retains effective domain, axis, and referencing metadata across package binding and checkpoint/resume paths.</li>
 <li>Harden spatial visualization around CRS semantics. Coverage maps reject declared projected or other known non-WGS 84 CRSs and coordinates or inferred cell bounds outside Leaflet longitude/latitude ranges; missing/custom CoverageJSON references warn before a range-checked fallback. Station <code>sf</code> geometries are transformed to WGS 84 for display without changing source-CRS matching-distance behavior, and missing station CRS metadata warns before plausible coordinates are used as-is. Projected source coordinates remain valid in <code><a href="../reference/edr_plot.html">edr_plot()</a></code> grids.</li>
 <li>Advance the location-batch checkpoint schema to version 2 so checkpoints written before custom-axis identity and CoverageJSON metadata preservation cannot be mixed with newly parsed rows.</li>
 <li>Add explicit <code>include_parameters = TRUE</code> support to <code><a href="../reference/edr_location_batch.html">edr_location_batch()</a></code>. A full collection- or instance-scoped parameter catalog is attached once as <code>result$parameters</code>, without duplicating definitions on observation rows or silently adding discovery calls to the default batch path. Resumed checkpoints validate before metadata access and can attach fresh cached metadata without repeating completed data requests.</li>
@@ -56,12 +61,6 @@
 <li>Add <code><a href="../reference/edr_add_stations.html">edr_add_stations()</a></code> for composing one or more independently styled station groups over an existing coverage map, reusing interactive chart and CSV popups. Coverage layers now render in a lower Leaflet pane, grid legends identify the active parameter/unit, and grid colour scales support identity, square-root, and <code>log1p</code> transforms.</li>
 <li>Upgrade the cross-endpoint Lake Mead vignette to a precomputed interactive map: a Met Office population <code>Grid</code> beneath toggleable USGS and USBR/WWDH station groups with time-series popups. The full widget is deployed only on the pkgdown site; package builds retain a small static fallback.</li>
 <li>Remove a precomputed base64 map from the USGS vignette, reducing that source file by about 1 MB while retaining the runnable interactive-map example.</li>
-</ul></div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.2.0" id="edr4r-020-development-version">edr4r 0.2.0 (development version)<a class="anchor" aria-label="anchor" href="#edr4r-020-development-version"></a></h2>
-<ul><li>Add structured service and collection capability discovery, support checks, endpoint diagnostics, and per-client TTL caching for discovery metadata.</li>
-<li>Add collection-instance discovery and optional instance-scoped paths across all query verbs and <code><a href="../reference/edr_explore.html">edr_explore()</a></code>.</li>
-<li>Add a documented compatibility contract plus frozen Met Office Labs metadata/terrain fixtures for deterministic cross-server tests.</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.1" id="edr4r-011">edr4r 0.1.1<a class="anchor" aria-label="anchor" href="#edr4r-011"></a></h2><p class="text-muted">CRAN release: 2026-07-10</p>

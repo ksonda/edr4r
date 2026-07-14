@@ -10,12 +10,13 @@ Source:
 [`DESCRIPTION`](https://github.com/ksonda/edr4r/blob/main/DESCRIPTION)
 
 Onda K (2026). *edr4r: Client for OGC API - Environmental Data Retrieval
-(EDR)*. R package version 0.2.0.9000, <https://github.com/ksonda/edr4r>.
+(EDR)*. R package version 0.2.99.9000,
+<https://github.com/ksonda/edr4r>.
 
     @Manual{,
       title = {edr4r: Client for OGC API - Environmental Data Retrieval (EDR)},
       author = {Kyle Onda},
       year = {2026},
-      note = {R package version 0.2.0.9000},
+      note = {R package version 0.2.99.9000},
       url = {https://github.com/ksonda/edr4r},
     }

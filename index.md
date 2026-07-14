@@ -50,27 +50,27 @@ CRAN currently provides the stable `0.1.1` release:
 install.packages("edr4r")
 ```
 
-The upcoming `0.2.0` API is available as a GitHub-only release
-candidate. It has not been submitted to CRAN:
+The `0.3.0` release candidate is available from GitHub. It has not been
+submitted to CRAN:
 
 ``` r
 
 # install.packages("pak")
-pak::pak("ksonda/edr4r@v0.2.0-rc.1")
+pak::pak("ksonda/edr4r@v0.3.0-rc.1")
 
 # Follow the mutable development branch instead:
 pak::pak("ksonda/edr4r")
 
 # or
 # install.packages("remotes")
-remotes::install_github("ksonda/edr4r@v0.2.0-rc.1")
+remotes::install_github("ksonda/edr4r@v0.3.0-rc.1")
 ```
 
-The release-candidate package intentionally reports development version
-`0.1.1.9000` inside R. The final version will become `0.2.0` only when
-that release is prepared for CRAN. The mutable default branch may also
-contain post-candidate `0.3.0` development and currently reports
-`0.2.0.9000`; use the tag when you need the frozen `0.2.0-rc.1` code.
+The tag is a frozen candidate for `0.3.0`; the default branch remains
+mutable. The candidate intentionally reports development version
+`0.2.99.9000` inside R so it remains distinguishable from the eventual
+final package. The earlier `v0.2.0-rc.1` was a GitHub-only preview and
+was never submitted to CRAN.
 
 For local development:
 
