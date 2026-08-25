@@ -43,7 +43,11 @@ Public EDR services can change or become temporarily unavailable. Render the not
 options(width = 100, scipen = 6)
 
 find_project_root <- function() {
-  input <- tryCatch(knitr::current_input(dir = TRUE), error = function(e) "")
+  input <- tryCatch(
+    knitr::current_input(dir = TRUE),
+    error = function(e) character()
+  )
+  input <- if (length(input)) input[[1]] else ""
   candidates <- unique(c(
     getwd(),
     dirname(getwd()),
