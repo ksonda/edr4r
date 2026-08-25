@@ -245,6 +245,19 @@ test_that("coverage maps reject projected or implausible coordinates", {
     "not recognized as WGS 84/CRS84",
     class = "edr_map_crs_error"
   )
+
+  wkt <- read_fixture("custom-axis.covjson")
+  wkt$domain$referencing[[1L]]$system$id <- paste0(
+    "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",",
+    "SPHEROID[\"WGS 84\",6378137,298.257223563,",
+    "AUTHORITY[\"EPSG\",\"7030\"]],",
+    "AUTHORITY[\"EPSG\",\"6326\"]],",
+    "PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],",
+    "UNIT[\"degree\",0.01745329251994328,",
+    "AUTHORITY[\"EPSG\",\"9122\"]],",
+    "AUTHORITY[\"EPSG\",\"4326\"]]"
+  )
+  expect_no_error(edr_map(covjson_to_tibble(wkt)))
 })
 
 test_that("coverage CRS checks honor batch provenance after subsetting", {

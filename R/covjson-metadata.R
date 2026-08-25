@@ -300,12 +300,16 @@ trim_covjson_metadata <- function(data) {
 
 canonical_covjson_horizontal_crs <- function(reference) {
   id <- reference$id
-  if (identical(reference$status, "geographic") && !is.na(id) && grepl(
+  short_wgs84 <- !is.na(id) && grepl(
     "(?:CRS84h?|EPSG(?:(?:/0)?/|:{1,2})(?:4326|4979))$",
-    id,
-    ignore.case = TRUE,
-    perl = TRUE
-  )) {
+    id, ignore.case = TRUE, perl = TRUE
+  )
+  wkt_wgs84 <- !is.na(id) && grepl(
+    "AUTHORITY\\s*\\[\\s*[\"']EPSG[\"']\\s*,\\s*[\"'](?:4326|4979)[\"']\\s*\\]\\s*\\]$",
+    id, ignore.case = TRUE, perl = TRUE
+  )
+  if (identical(reference$status, "geographic") &&
+      (short_wgs84 || wkt_wgs84)) {
     return("WGS84")
   }
   paste(reference$status, reference$type %||% "", id %||% "", sep = "|")

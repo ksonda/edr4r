@@ -39,9 +39,11 @@ Suggests:
     htmlwidgets,
     knitr,
     leaflet,
+    pkgload,
     rmarkdown,
     sf,
     svglite,
+    terra,
     testthat (>= 3.1.7),
     webfakes
 Config/testthat/edition: 3

@@ -12,6 +12,18 @@ An R client for
 [OGC API - Environmental Data Retrieval](https://ogcapi.ogc.org/edr/) (EDR)
 services that expose JSON discovery metadata and CoverageJSON, GeoJSON, or
 CSV query responses.
+
+## Interactive live demo
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/ksonda/edr4r?quickstart=1)
+
+The Codespaces environment opens a browser-based RStudio IDE and installs the
+packages needed by the live EDR walkthrough. In RStudio, open
+`demo/edr4r-full-demo.qmd`. You can run or edit each code block, or select
+Render to rebuild the complete notebook from the current USGS, Western Water
+Datahub, and Met Office EDR responses. The notebook does not use synthetic or
+saved observation data.
+
 The spec is general, but in practice this package gets the most use against
 **in-situ monitoring networks** — stream gauges, weather stations, snow
 telemetry, reservoir telemetry — that expose their stations and time series

@@ -1,0 +1,713 @@
+---
+title: "edr4r: a live environmental data walkthrough"
+subtitle: "Vector features, time series, rasters, trajectories, plots, and maps from three EDR services"
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    code-fold: false
+    code-tools: true
+    embed-resources: true
+    smooth-scroll: true
+    link-external-newwindow: true
+execute:
+  echo: true
+  warning: false
+  message: false
+  fig-width: 9
+  fig-height: 5
+---
+
+## What this notebook does
+
+Every dataset in this document is requested from a live EDR endpoint when the notebook renders. There are no generated observations, saved fixtures, or local data snapshots. If an endpoint is unavailable, the render stops instead of substituting another dataset.
+
+The walkthrough uses one small study area in the northern North Carolina Piedmont and three services:
+
+1. USGS waterdata for streamgage vectors and recent daily discharge;
+2. the Western Water Datahub for PRISM precipitation grids and a monthly temperature series;
+3. Met Office Labs for a population grid and an elevation trajectory.
+
+The common extent makes it possible to compare the returned data and place the station observations over both live raster sources.
+
+::: {.callout-warning title="This notebook makes network requests"}
+Public EDR services can change or become temporarily unavailable. Render the notebook shortly before a presentation. The request bounds, record limits, page limits, and batch limits below keep each pull explicit.
+:::
+
+```{r}
+#| label: setup
+#| include: false
+
+options(width = 100, scipen = 6)
+
+find_project_root <- function() {
+  input <- tryCatch(knitr::current_input(dir = TRUE), error = function(e) "")
+  candidates <- unique(c(
+    getwd(),
+    dirname(getwd()),
+    if (nzchar(input)) dirname(input) else character(),
+    if (nzchar(input)) file.path(dirname(input), "..") else character()
+  ))
+  candidates <- normalizePath(candidates, mustWork = FALSE)
+  hit <- candidates[file.exists(file.path(candidates, "DESCRIPTION"))]
+  if (!length(hit)) stop("Could not find the edr4r project root.")
+  hit[[1]]
+}
+
+project_root <- find_project_root()
+
+# Use the package source in this checkout, which may be newer than CRAN.
+if (requireNamespace("pkgload", quietly = TRUE)) {
+  pkgload::load_all(project_root, export_all = FALSE, quiet = TRUE)
+} else {
+  library(edr4r)
+}
+
+library(ggplot2)
+library(sf)
+
+theme_set(theme_minimal(base_size = 12))
+
+study_bbox <- c(-79.00, 35.70, -78.00, 36.30)
+study_ring <- rbind(
+  c(study_bbox[1], study_bbox[2]),
+  c(study_bbox[3], study_bbox[2]),
+  c(study_bbox[3], study_bbox[4]),
+  c(study_bbox[1], study_bbox[4])
+)
+
+render_started <- Sys.time()
+```
+
+## 1. Connect to three live services
+
+Creating a client does not contact the service. It records the base URL, timeout, retry policy, headers, and discovery-cache settings that every later request will use.
+
+```{r}
+#| label: clients
+
+usgs <- edr_client(
+  "https://api.waterdata.usgs.gov/ogcapi/beta",
+  timeout = 60,
+  max_tries = 2,
+  cache_ttl = 300
+)
+
+wwdh <- edr_client(
+  "https://api.wwdh.internetofwater.app",
+  timeout = 60,
+  max_tries = 2,
+  cache_ttl = 300
+)
+
+met <- edr_client(
+  "https://labs.metoffice.gov.uk/edr",
+  timeout = 60,
+  max_tries = 1,
+  cache_ttl = 300
+)
+
+usgs
+wwdh
+met
+```
+
+## 2. Discover before retrieving data
+
+The collection documents tell us which query types and parameters each service currently advertises. These are live metadata requests.
+
+```{r}
+#| label: live-discovery
+
+usgs_collections <- edr_collections(usgs, refresh = TRUE)
+prism_capabilities <- edr_capabilities(wwdh, "usgs-prism", refresh = TRUE)
+population_capabilities <- edr_capabilities(
+  met,
+  "global_pop_density",
+  refresh = TRUE
+)
+terrain_capabilities <- edr_capabilities(
+  met,
+  "copernicus_dem",
+  refresh = TRUE
+)
+
+collection_summary <- data.frame(
+  service = c("USGS waterdata", "Western Water Datahub", "Met Office Labs", "Met Office Labs"),
+  collection = c("daily-edr", "usgs-prism", "global_pop_density", "copernicus_dem"),
+  query_used = c("locations", "cube and position", "area", "trajectory"),
+  stringsAsFactors = FALSE
+)
+
+knitr::kable(collection_summary)
+```
+
+The PRISM collection advertises three parameters. We will use precipitation for a cube and maximum temperature for a position time series.
+
+```{r}
+knitr::kable(
+  prism_capabilities$parameters[, c("id", "name", "unit_symbol")],
+  col.names = c("Parameter ID", "Name", "Unit")
+)
+```
+
+The query metadata can be checked before any data request.
+
+```{r}
+query_checks <- data.frame(
+  collection = c("daily-edr", "usgs-prism", "usgs-prism", "global_pop_density", "copernicus_dem"),
+  query = c("locations", "cube", "position", "area", "trajectory"),
+  advertised = c(
+    edr_supports(usgs, "daily-edr", query = "locations"),
+    edr_supports(prism_capabilities, query = "cube"),
+    edr_supports(prism_capabilities, query = "position"),
+    edr_supports(population_capabilities, query = "area"),
+    edr_supports(terrain_capabilities, query = "trajectory")
+  )
+)
+knitr::kable(query_checks)
+```
+
+## 3. Live vector features from USGS
+
+`edr_locations()` requests a GeoJSON station index and promotes it to `sf`. Pagination is allowed only inside the page and feature caps supplied here.
+
+```{r}
+#| label: live-usgs-locations
+
+all_gauges <- edr_locations(
+  usgs,
+  "daily-edr",
+  bbox = study_bbox,
+  limit = 100,
+  paginate = TRUE,
+  max_pages = 10,
+  max_features = 500
+)
+
+stream_candidates <- all_gauges[
+  grepl("Stream", all_gauges$site_type, ignore.case = TRUE) &
+    is.finite(all_gauges$drainage_area),
+]
+selection_index <- unique(round(seq(
+  1,
+  nrow(stream_candidates),
+  length.out = min(12, nrow(stream_candidates))
+)))
+gauges <- stream_candidates[selection_index, ]
+
+gauge_columns <- intersect(
+  c("id", "monitoring_location_name", "county_name", "drainage_area", "geometry"),
+  names(gauges)
+)
+cat(nrow(all_gauges), "locations were returned across the expanded study area.\n")
+cat(nrow(gauges), "stream sites were selected for bounded observation requests.\n")
+gauges[, gauge_columns]
+```
+
+This is a regular `sf` object. No spatial conversion is needed before using `ggplot2` or another `sf`-aware package.
+
+```{r}
+#| label: live-vector-plot
+
+ggplot(gauges) +
+  geom_sf(data = all_gauges, color = "#b8c2cc", size = 1.4, alpha = 0.6) +
+  geom_sf(aes(size = drainage_area), color = "#236192", alpha = 0.9) +
+  geom_sf_text(
+    aes(label = sub(", NC$", "", monitoring_location_name)),
+    nudge_y = 0.008,
+    size = 2.8,
+    check_overlap = TRUE
+  ) +
+  scale_size_continuous(range = c(2.5, 7)) +
+  coord_sf(expand = FALSE) +
+  labs(
+    title = "USGS monitoring locations returned by EDR",
+    subtitle = "Blue sites are selected for time-series retrieval",
+    size = "Drainage area",
+    x = NULL,
+    y = NULL
+  )
+```
+
+## 4. Live station time series from USGS
+
+USGS currently ignores `datetime` on individual `daily-edr` location requests and returns the latest `limit` observations. The batch helper makes one bounded request per station and records the outcome of each request.
+
+```{r}
+#| label: live-usgs-series
+
+streamflow_batch <- edr_location_batch(
+  usgs,
+  "daily-edr",
+  location_id = gauges$id,
+  parameter_name = "00060",
+  limit = 90,
+  max_requests = nrow(gauges),
+  on_error = "collect",
+  progress = FALSE
+)
+
+streamflow_batch$requests
+streamflow_batch$errors
+
+streamflow <- streamflow_batch$data
+successful_ids <- streamflow_batch$requests$location_id[
+  streamflow_batch$requests$status == "success"
+]
+gauges_with_data <- gauges[gauges$id %in% successful_ids, ]
+streamflow$station <- gauges$monitoring_location_name[
+  match(streamflow$.location_id, gauges$id)
+]
+
+streamflow[1:10, c(".location_id", "station", "parameter", "unit", "datetime", "value")]
+```
+
+`edr_plot()` detects the temporal domain and returns a regular `ggplot` object.
+
+```{r}
+#| label: live-usgs-series-plot
+
+edr_plot(
+  streamflow,
+  parameter = "00060",
+  group = "station",
+  facet = NULL,
+  geom = "line"
+) +
+  labs(
+    title = "Recent daily discharge from USGS",
+    subtitle = paste(length(successful_ids), "successful live station requests"),
+    x = NULL,
+    y = "Discharge (ft3/s)",
+    color = "Station"
+  )
+```
+
+## 5. Live PRISM raster request from WWDH
+
+The `cube` query returns five full years of monthly precipitation grids from the live `usgs-prism` collection. This is 60 raster slices over the expanded study area, while the explicit bounds keep the request suitable for an interactive demonstration.
+
+```{r}
+#| label: live-prism-cube
+
+prism_response <- edr_cube(
+  wwdh,
+  "usgs-prism",
+  bbox = study_bbox,
+  datetime = "2016-01-01/2020-12-01",
+  parameter_name = "ppt"
+)
+
+prism_grid <- covjson_to_tibble(prism_response)
+
+prism_response
+prism_grid[1:10, c("parameter", "unit", "datetime", "x", "y", "value")]
+```
+
+The returned rows can be summarized without knowing the grid dimensions in advance. This table reports the actual temporal coverage and cells per monthly slice.
+
+```{r}
+prism_monthly <- aggregate(
+  value ~ datetime + parameter + unit,
+  data = prism_grid,
+  FUN = function(x) mean(x, na.rm = TRUE)
+)
+names(prism_monthly)[names(prism_monthly) == "value"] <- "spatial_mean"
+
+prism_summary <- data.frame(
+  first_month = min(prism_grid$datetime),
+  last_month = max(prism_grid$datetime),
+  monthly_slices = length(unique(prism_grid$datetime)),
+  cells_per_slice = nrow(prism_grid) / length(unique(prism_grid$datetime)),
+  total_rows = nrow(prism_grid)
+)
+knitr::kable(prism_summary)
+```
+
+The spatial mean condenses each returned raster to one value, making the five-year time pattern easy to inspect while the full cell-level series remains available for mapping and analysis.
+
+```{r}
+#| label: live-prism-raster-series
+
+ggplot(prism_monthly, aes(datetime, spatial_mean)) +
+  geom_line(color = "#236192", linewidth = 0.75) +
+  geom_point(color = "#236192", size = 1.4) +
+  labs(
+    title = "Five years of monthly PRISM raster slices",
+    subtitle = "Each point is the spatial mean of one live raster response slice",
+    x = NULL,
+    y = "Study-area mean precipitation (mm/month)"
+  )
+```
+
+### Static raster visualization
+
+Selecting one returned month gives a conventional raster view.
+
+```{r}
+#| label: live-prism-static
+
+prism_first_month <- prism_grid[
+  prism_grid$datetime == min(prism_grid$datetime),
+]
+
+edr_plot(prism_first_month, view = "grid") +
+  labs(
+    title = "PRISM mean monthly precipitation",
+    subtitle = format(min(prism_grid$datetime), "%B %Y", tz = "UTC"),
+    x = "Longitude",
+    y = "Latitude"
+  )
+```
+
+### `terra` interoperability
+
+The live tidy grid can be converted to a `SpatRaster` for raster algebra.
+
+```{r}
+#| label: live-prism-terra
+
+if (requireNamespace("terra", quietly = TRUE)) {
+  prism_raster <- terra::rast(
+    prism_first_month[, c("x", "y", "value")],
+    type = "xyz",
+    crs = "EPSG:4326"
+  )
+  prism_raster
+  terra::plot(
+    prism_raster,
+    col = hcl.colors(30, "Blues 3", rev = TRUE),
+    main = "Live PRISM cells as a terra SpatRaster"
+  )
+} else {
+  cat("Install terra to run this interoperability step.\n")
+}
+```
+
+## 6. Live PRISM point time series
+
+The same collection supports a `position` query. This request retrieves twelve monthly maximum-temperature observations at the center of the study area.
+
+```{r}
+#| label: live-prism-position
+
+study_center <- c(
+  mean(study_bbox[c(1, 3)]),
+  mean(study_bbox[c(2, 4)])
+)
+
+prism_point_response <- edr_position(
+  wwdh,
+  "usgs-prism",
+  coords = study_center,
+  datetime = "2020-01-01/2020-12-01",
+  parameter_name = "tmx"
+)
+
+prism_temperature <- covjson_to_tibble(prism_point_response)
+prism_temperature[, c("parameter", "unit", "datetime", "x", "y", "value")]
+```
+
+```{r}
+#| label: live-prism-position-plot
+
+edr_plot(
+  prism_temperature,
+  group = NULL,
+  facet = NULL,
+  geom = "both"
+) +
+  labs(
+    title = "Monthly maximum temperature from PRISM",
+    subtitle = sprintf("Position %.2f, %.2f", study_center[1], study_center[2]),
+    x = NULL,
+    y = "Maximum temperature (degC)"
+  )
+```
+
+## 7. Live population raster from Met Office Labs
+
+The Met Office Labs `global_pop_density` collection supports an `area` query. `edr_area()` closes the coordinate matrix into a WKT polygon and sends it with an explicit response CRS.
+
+```{r}
+#| label: live-met-population
+
+population_response <- edr_area(
+  met,
+  "global_pop_density",
+  coords = study_ring,
+  parameter_name = "Pop_Density",
+  crs = "EPSG:4326"
+)
+
+population_grid <- covjson_to_tibble(population_response)
+
+population_response
+population_grid[1:10, c("parameter", "unit", "x", "y", "value")]
+```
+
+```{r}
+#| label: live-met-population-plot
+
+edr_plot(population_grid, view = "grid") +
+  labs(
+    title = "Population density from Met Office Labs",
+    subtitle = paste(sum(is.finite(population_grid$value)), "returned cells with values"),
+    x = "Longitude",
+    y = "Latitude"
+  )
+```
+
+## 8. Live elevation trajectory from Met Office Labs
+
+The path is built from three live USGS station coordinates. The `copernicus_dem` trajectory query samples elevation along that path and returns a CoverageJSON `MultiPoint` domain.
+
+```{r}
+#| label: live-met-trajectory
+
+gauge_xy <- st_coordinates(gauges_with_data)
+gauge_xy <- gauge_xy[order(gauge_xy[, "X"]), , drop = FALSE]
+path_index <- unique(round(seq(1, nrow(gauge_xy), length.out = 3)))
+path_coords <- gauge_xy[path_index, c("X", "Y"), drop = FALSE]
+
+terrain_response <- edr_trajectory(
+  met,
+  "copernicus_dem",
+  coords = path_coords,
+  parameter_name = "Height",
+  crs = "EPSG:4326"
+)
+
+terrain_path <- covjson_to_tibble(terrain_response)
+
+terrain_response
+terrain_path[c(1:5, (nrow(terrain_path) - 4):nrow(terrain_path)),
+             c("parameter", "unit", "x", "y", "value")]
+```
+
+Distance along the path is derived from the returned coordinates after projection to a metric CRS.
+
+```{r}
+#| label: live-met-trajectory-plot
+
+terrain_sf <- st_as_sf(
+  terrain_path,
+  coords = c("x", "y"),
+  crs = 4326,
+  remove = FALSE
+)
+terrain_xy_m <- st_coordinates(st_transform(terrain_sf, 5070))
+terrain_path$distance_km <- c(
+  0,
+  cumsum(sqrt(rowSums(diff(terrain_xy_m)^2))) / 1000
+)
+
+ggplot(terrain_path, aes(distance_km, value)) +
+  geom_area(fill = "#8c6d31", alpha = 0.35) +
+  geom_line(color = "#5c3b16", linewidth = 0.7) +
+  labs(
+    title = "Copernicus elevation along a live EDR trajectory",
+    x = "Distance along path (km)",
+    y = "Elevation above mean sea level (m)"
+  )
+```
+
+## 9. Interactive maps
+
+### USGS stations with time-series and CSV popups
+
+Click a station to inspect its returned daily discharge or download its rows as CSV.
+
+```{r}
+#| label: live-station-map
+
+station_map <- edr_map(
+  gauges,
+  data = streamflow,
+  popup = "all",
+  id_col = "id",
+  label_col = "monitoring_location_name",
+  location_col = ".location_id",
+  parameter = "00060"
+)
+station_map
+```
+
+### PRISM grid with a month selector
+
+Every returned month stays in this widget. Use the datetime control to switch slices and click a cell for its values.
+
+```{r}
+#| label: live-prism-map
+
+prism_map <- edr_map(
+  prism_grid,
+  initial = list(
+    parameter = "ppt",
+    datetime = "2016-01-01 00:00:00"
+  ),
+  grid_transform = "sqrt",
+  grid_opacity = 0.82
+)
+prism_map
+```
+
+### PRISM grid and USGS stations together
+
+The grid and station series come from different live services. `edr_add_stations()` keeps the grid cells below the monitoring markers and gives the station layer its own control.
+
+```{r}
+#| label: live-composite-map
+
+composite_map <- edr_map(
+  prism_grid,
+  initial = list(
+    parameter = "ppt",
+    datetime = "2016-01-01 00:00:00"
+  ),
+  grid_transform = "sqrt"
+)
+
+composite_map <- edr_add_stations(
+  composite_map,
+  locations = gauges,
+  data = streamflow,
+  popup = "plot+csv",
+  id_col = "id",
+  label_col = "monitoring_location_name",
+  location_col = ".location_id",
+  parameter = "00060",
+  group = "USGS streamgages"
+)
+
+composite_map
+```
+
+### Met Office population grid and USGS stations
+
+This second cross-service map uses the live Met Office population coverage as its raster layer.
+
+```{r}
+#| label: live-population-station-map
+
+population_station_map <- edr_map(
+  population_grid,
+  parameter = "Pop_Density",
+  grid_transform = "sqrt",
+  grid_opacity = 0.78
+)
+
+population_station_map <- edr_add_stations(
+  population_station_map,
+  locations = gauges,
+  data = streamflow,
+  popup = "plot+csv",
+  id_col = "id",
+  label_col = "monitoring_location_name",
+  location_col = ".location_id",
+  parameter = "00060",
+  group = "USGS streamgages"
+)
+
+population_station_map
+```
+
+Each widget can be written as a separate, self-contained HTML file.
+
+```{r}
+#| eval: false
+
+edr_save_html(composite_map, "prism-and-streamgages.html")
+edr_save_html(population_station_map, "population-and-streamgages.html")
+```
+
+## 10. What was retrieved
+
+This table is calculated from the live responses in this render.
+
+```{r}
+#| label: live-provenance-summary
+
+retrieval_summary <- data.frame(
+  service = c(
+    "USGS waterdata",
+    "USGS waterdata",
+    "Western Water Datahub",
+    "Western Water Datahub",
+    "Met Office Labs",
+    "Met Office Labs"
+  ),
+  collection = c(
+    "daily-edr", "daily-edr", "usgs-prism", "usgs-prism",
+    "global_pop_density", "copernicus_dem"
+  ),
+  query = c("locations", "location batch", "cube", "position", "area", "trajectory"),
+  rows = c(
+    nrow(all_gauges), nrow(streamflow), nrow(prism_grid), nrow(prism_temperature),
+    nrow(population_grid), nrow(terrain_path)
+  ),
+  parameter = c("station metadata", "00060", "ppt", "tmx", "Pop_Density", "Height"),
+  stringsAsFactors = FALSE
+)
+
+knitr::kable(retrieval_summary)
+cat("Render started:", format(render_started, tz = "UTC", usetz = TRUE), "\n")
+```
+
+## 11. The rest of the EDR query vocabulary
+
+The package also supports items, radius, and corridor queries. Whether a call works depends on the collection metadata, so check `edr_capabilities()` or `edr_supports()` first.
+
+```{r}
+query_reference <- data.frame(
+  function_name = c(
+    "edr_locations() / edr_location()",
+    "edr_items() / edr_item()",
+    "edr_position()",
+    "edr_area()",
+    "edr_cube()",
+    "edr_radius()",
+    "edr_trajectory()",
+    "edr_corridor()"
+  ),
+  selection = c(
+    "station index or one station id",
+    "feature index or one feature id",
+    "point or multipoint",
+    "polygon or multipolygon",
+    "2D or 3D bounding box",
+    "point plus radius",
+    "path through space",
+    "path plus corridor width and height"
+  ),
+  common_result = c(
+    "GeoJSON index, then CoverageJSON or CSV observations",
+    "GeoJSON",
+    "CoverageJSON point or profile",
+    "CoverageJSON subset",
+    "CoverageJSON grid or collection",
+    "CoverageJSON subset",
+    "CoverageJSON trajectory",
+    "CoverageJSON corridor"
+  )
+)
+
+knitr::kable(query_reference, col.names = c("Function", "Selection", "Common result"))
+```
+
+## Suggested walk-through
+
+A 35-minute presentation can follow this order:
+
+1. Show the three clients and the advertised capability checks.
+2. Follow the USGS location response from GeoJSON to `sf` and a station map.
+3. Pull the bounded station batch and open one time-series popup.
+4. Run the WWDH PRISM cube request, inspect its tidy cells, and move through the map's monthly slices.
+5. Convert one returned PRISM slice to `terra`.
+6. Compare the Met Office population raster with the USGS station layer.
+7. Finish with the elevation trajectory and the retrieval summary.
+
+The document demonstrates the complete path from live service discovery to retrieval, parsing, analysis, plotting, and interactive mapping without introducing local observation data.

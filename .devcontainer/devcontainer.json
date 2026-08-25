@@ -1,0 +1,38 @@
+{
+  "name": "edr4r live EDR demo",
+  "image": "ghcr.io/rocker-org/devcontainer/geospatial:4.5",
+  "features": {
+    "ghcr.io/rocker-org/devcontainer-features/quarto-cli:1": {},
+    "ghcr.io/rocker-org/devcontainer-features/r-dependent-packages:0": {
+      "dependencyTypes": "all"
+    }
+  },
+  "containerEnv": {
+    "PKG_CRAN_MIRROR": "https://cloud.r-project.org/",
+    "PKG_SYSREQS": "true"
+  },
+  "postAttachCommand": {
+    "rstudio-start": "rserver"
+  },
+  "forwardPorts": [8787],
+  "portsAttributes": {
+    "8787": {
+      "label": "RStudio IDE",
+      "onAutoForward": "openBrowser",
+      "protocol": "http"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "REditorSupport.r",
+        "quarto.quarto"
+      ],
+      "settings": {
+        "files.associations": {
+          "*.qmd": "quarto"
+        }
+      }
+    }
+  }
+}
