@@ -9,7 +9,7 @@ but the package itself is generic.
 
 Two example endpoints you can point it at right now:
 
-- [USGS waterdata OGC API](https://api.waterdata.usgs.gov/ogcapi/beta/)
+- [USGS waterdata OGC API](https://api.waterdata.usgs.gov/ogcapi/v1/)
 - [Western Water Datahub](https://api.wwdh.internetofwater.app)
 
 The [Met Office Labs EDR

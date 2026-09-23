@@ -10,8 +10,8 @@ stations and time series through EDR.
 
 Two known-good places to point it:
 
-- [USGS waterdata OGC API](https://api.waterdata.usgs.gov/ogcapi/beta/)
-  — stream gauges and water-quality stations from the U.S. Geological
+- [USGS waterdata OGC API](https://api.waterdata.usgs.gov/ogcapi/v1/) —
+  stream gauges and water-quality stations from the U.S. Geological
   Survey.
 - [Western Water Datahub](https://api.wwdh.internetofwater.app) — a
   [pygeoapi](https://pygeoapi.io) deployment that wraps RISE, SNOTEL,
@@ -89,13 +89,19 @@ it really needs:
 
 library(edr4r)
 
-client <- edr_client("https://api.waterdata.usgs.gov/ogcapi/beta")
+client <- edr_client("https://api.waterdata.usgs.gov/ogcapi/v1")
 wwdh <- edr_client("https://api.wwdh.internetofwater.app")
 # or use "http://localhost:5005" for a local pygeoapi deployment
 
 collections <- edr_collections(client)
 collections[, c("id", "title", "data_queries", "output_formats")]
 ```
+
+USGS daily values use the collection ID `"edr/daily"`, which resolves to
+[`https://api.waterdata.usgs.gov/ogcapi/v1/collections/edr/daily`](https://api.waterdata.usgs.gov/ogcapi/v1/collections/edr/daily).
+Pass the service root to
+[`edr_client()`](https://ksonda.github.io/edr4r/reference/edr_client.md)
+and the collection ID to query functions.
 
 Collection IDs are service-specific. The first thing to do against a new
 service is run
@@ -108,9 +114,9 @@ before issuing data queries:
 
 ``` r
 
-edr_capabilities(client, "daily-edr")
-edr_supports(client, "daily-edr", query = "locations")
-edr_diagnose(client, "daily-edr")
+edr_capabilities(client, "edr/daily")
+edr_supports(client, "edr/daily", query = "locations")
+edr_diagnose(client, "edr/daily")
 ```
 
 [`edr_supports()`](https://ksonda.github.io/edr4r/reference/edr_supports.md)
@@ -179,7 +185,7 @@ advertises `rel = "next"`, opt into bounded pagination:
 piedmont_bbox <- c(-78.60, 36.04, -78.28, 36.22)
 
 locs <- edr_locations(
-  client, "daily-edr",
+  client, "edr/daily",
   bbox = piedmont_bbox,
   limit = 100,              # server page size
   paginate = TRUE,
@@ -207,7 +213,7 @@ flattens it into one row per (coverage × parameter × domain position):
 station_id <- locs$id[[1]]      # USGS ids include the "USGS-" prefix
 
 resp <- edr_location(
-  client, "daily-edr",
+  client, "edr/daily",
   location_id    = station_id,
   parameter_name = "00060",    # daily discharge
   limit          = 200
@@ -217,10 +223,10 @@ df <- covjson_to_tibble(resp)
 df[, c("datetime", "value", "unit")]
 ```
 
-The USGS beta location endpoint currently ignores `datetime` and returns
-its latest `limit` records, so filter the resulting tibble client-side
-when you need a shorter period. Other EDR implementations, including
-WWDH, honor bounded intervals.
+The USGS v1 location endpoint supports `datetime` intervals. For a
+historical period, pass an interval such as
+`datetime = "2026-01-01/2026-05-31"` and a `limit` large enough to cover
+it. Without `datetime`, it returns the latest `limit` records.
 
 ### Pull several station time series safely
 
@@ -235,7 +241,7 @@ request per ID and keeps request provenance and failures visible:
 selected_ids <- head(locs$id, 10)
 
 pull <- edr_location_batch(
-  client, "daily-edr",
+  client, "edr/daily",
   location_id    = selected_ids,
   parameter_name = "00060",
   limit           = 200,
@@ -300,10 +306,9 @@ every observation row. This discovery request is not counted by
 `max_requests`, is not persisted in the checkpoint, and is not collected
 by `on_error` if it fails.
 
-The USGS beta location endpoint currently ignores `datetime` and returns
-its latest records. Chunking is therefore useful only for endpoints that
-honor the requested interval; it is not a workaround for retrieving USGS
-history.
+USGS v1 also supports bounded `datetime` intervals, so this windowed
+workflow can be used with `"edr/daily"`. Set `limit` high enough to
+cover each window.
 
 ### Spatial filters — bbox and polygon
 
@@ -390,7 +395,7 @@ does the fetch + plot + map in one call:
 ``` r
 
 edr_explore(
-  client, "daily-edr",
+  client, "edr/daily",
   bbox           = piedmont_bbox,
   parameter_name = "00060",
   limit          = 25,

@@ -1,5 +1,12 @@
 # Changelog
 
+## edr4r (development version)
+
+- Update USGS examples and live smoke checks to the v1 API and its
+  `edr/daily` collection. Collection IDs can contain slash-separated
+  path segments; empty segments and `.` or `..` are rejected. Document
+  v1 support for `datetime` intervals on individual location requests.
+
 ## edr4r 0.3.0
 
 - Supersede the GitHub-only `v0.2.0-rc.1` and `v0.3.0-rc.1` previews

@@ -1,8 +1,7 @@
 # USGS streamgages: bounded discovery and mapping
 
-The [USGS waterdata OGC
-API](https://api.waterdata.usgs.gov/ogcapi/beta/) is a clean, real-world
-EDR endpoint with one collection (`daily-edr`) that exposes every USGS
+The [USGS waterdata OGC API](https://api.waterdata.usgs.gov/ogcapi/v1/)
+has a daily-values EDR collection (`edr/daily`) that exposes every USGS
 station’s daily-value time series. It’s a good target for learning
 `edr4r` because the API surface is small and the data is familiar
 (stream gauges).
@@ -21,20 +20,21 @@ offline.
 library(edr4r)
 library(ggplot2)
 
-usgs <- edr_client("https://api.waterdata.usgs.gov/ogcapi/beta")
-edr_collections(usgs)[, c("id", "title", "data_queries")]
+usgs <- edr_client("https://api.waterdata.usgs.gov/ogcapi/v1")
+collections <- edr_collections(usgs)
+collections[collections$id == "edr/daily", c("id", "title", "data_queries")]
 #> # A tibble: 1 × 3
-#>   id        title                                           data_queries
-#>   <chr>     <chr>                                           <list>      
-#> 1 daily-edr Daily values environmental data retrieval (EDR) <chr [1]>
+#>   id        title                                          data_queries
+#>   <chr>     <chr>                                          <list>
+#> 1 edr/daily Daily values environmental data retrieval (EDR) <chr [1]>
 ```
 
-USGS exposes a single collection, `daily-edr`. The `data_queries` column
-tells us what query verbs it supports:
+The `edr/daily` collection supports the `locations` query. Select it by
+ID because the service also lists collections for other OGC APIs:
 
 ``` r
 
-edr_collections(usgs)$data_queries[[1]]
+collections$data_queries[[match("edr/daily", collections$id)]]
 #> [1] "locations"
 ```
 
@@ -56,7 +56,7 @@ instead to see what filter properties the server exposes:
 
 ``` r
 
-q <- edr_queryables(usgs, "daily-edr")
+q <- edr_queryables(usgs, "edr/daily")
 names(q$properties)
 #>  [1] "geometry"                      "id"                           
 #>  [3] "unit_of_measure"               "parameter_name"               
@@ -68,6 +68,7 @@ names(q$properties)
 #> [15] "sublocation_identifier"        "primary"                      
 #> [17] "monitoring_location_id"        "web_description"              
 #> [19] "parameter_description"         "parent_time_series_id"
+#> [21] "data_gap_interval"
 ```
 
 `parameter_code` is the filter you’d pass as `parameter_name =` in a
@@ -105,7 +106,7 @@ is an `sf` object with one point per gauge:
 ``` r
 
 gauges <- edr_locations(
-  usgs, "daily-edr",
+  usgs, "edr/daily",
   bbox = piedmont_bbox,
   limit = 2,
   paginate = TRUE,
@@ -138,12 +139,10 @@ familiar 8-digit NWIS site number). That’s what you pass back as
 
 ## 3. Pull streamflow for one station
 
-A USGS quirk to flag up front: when you ask for a specific station with
-[`edr_location()`](https://ksonda.github.io/edr4r/reference/edr_location.md),
-the server **ignores the `datetime` interval and just returns the most
-recent `limit` records** (`limit` defaults to 10). To get five months of
-daily data, pass a `limit` that comfortably covers the window – say 200
-days – and filter to the target window client-side.
+USGS v1 supports `datetime` intervals on individual location requests.
+For January through May 2026, supply that interval and request up to 200
+records so the response can cover all five months. Without `datetime`,
+the endpoint returns the latest `limit` records.
 
 ``` r
 
@@ -151,9 +150,10 @@ example_id   <- gauges$id[[1]]
 example_name <- gauges$monitoring_location_name[[1]]
 
 resp <- edr_location(
-  usgs, "daily-edr",
+  usgs, "edr/daily",
   location_id    = example_id,
   parameter_name = "00060",
+  datetime       = "2026-01-01/2026-05-31",
   limit          = 200
 )
 df <- covjson_to_tibble(resp)
@@ -194,9 +194,10 @@ parallelizing anything:
 ``` r
 
 all_streamflow <- edr_location_batch(
-  usgs, "daily-edr",
+  usgs, "edr/daily",
   location_id    = gauges$id,
   parameter_name = "00060",
+  datetime       = "2026-01-01/2026-05-31",
   limit           = 200,
   max_requests    = nrow(gauges),
   on_error        = "collect",
@@ -208,10 +209,9 @@ all_streamflow$data
 all_streamflow$errors
 ```
 
-USGS beta currently ignores `datetime` on these individual location
-queries and returns the latest records. Do not add `chunk` here
-expecting historical windows: chunking is intended for EDR
-implementations that honor the requested interval.
+For longer historical pulls, use `chunk` to split the `datetime`
+interval into bounded windows. Set `limit` high enough for each window
+and `max_requests` high enough for the full station-by-window plan.
 
 ## 4. Map every gauge with per-station popups
 
@@ -224,10 +224,11 @@ gauge.
 ``` r
 
 m <- edr_explore(
-  usgs, "daily-edr",
+  usgs, "edr/daily",
   bbox           = piedmont_bbox,
   parameter_name = "00060",
-  record_limit   = 200,                 # ~6 months of daily values per station
+  datetime       = "2026-01-01/2026-05-31",
+  record_limit   = 200,
   popup          = "plot+csv",
   label_col      = "monitoring_location_name",
   quiet          = TRUE
@@ -248,13 +249,12 @@ edr_save_html(m, "piedmont-streamgages.html")
 
 ## A few things worth knowing about the USGS endpoint
 
-- `daily-edr` only advertises the `locations` query. The other EDR verbs
+- `edr/daily` only advertises the `locations` query. The other EDR verbs
   (`cube`, `area`, `position`, …) return HTTP errors. The per-station
   fallback works fine for tens of gauges; for hundreds consider
   pre-filtering aggressively with `bbox =`.
-- `datetime` is **not honoured** on `/locations/{id}` requests – the
-  server returns the latest `limit` records regardless. Pass enough
-  `limit` to cover your window, then filter client-side.
+- `datetime` filters `/locations/{id}` requests to the requested
+  interval. Set `limit` high enough to cover the window.
 - The station id format is `"USGS-<NWIS-id>"`. The bare NWIS id
   (`"02087500"`) doesn’t work; pass the full `"USGS-..."` form, which is
   what

@@ -25,12 +25,14 @@ edr_client(
 
   Base URL of an [OGC API - EDR](https://ogcapi.ogc.org/edr/) service.
   Examples: the [USGS waterdata OGC
-  API](https://api.waterdata.usgs.gov/ogcapi/beta/) at
-  `"https://api.waterdata.usgs.gov/ogcapi/beta"`, the [Western Water
+  API](https://api.waterdata.usgs.gov/ogcapi/v1/) at
+  `"https://api.waterdata.usgs.gov/ogcapi/v1"`, the [Western Water
   Datahub](https://api.wwdh.internetofwater.app) at
   `"https://api.wwdh.internetofwater.app"`, or `"http://localhost:5005"`
   for a local [pygeoapi](https://pygeoapi.io) dev server. A trailing
-  slash is optional.
+  slash is optional. Supply the service root; for USGS daily values,
+  pass `"edr/daily"` as the `collection_id` to discovery and query
+  functions.
 
 - user_agent:
 
@@ -77,10 +79,10 @@ An object of class `edr_client`.
 ## Examples
 
 ``` r
-usgs <- edr_client("https://api.waterdata.usgs.gov/ogcapi/beta")
+usgs <- edr_client("https://api.waterdata.usgs.gov/ogcapi/v1")
 usgs
 #> <edr_client>
-#>   base_url:   <https://api.waterdata.usgs.gov/ogcapi/beta>
+#>   base_url:   <https://api.waterdata.usgs.gov/ogcapi/v1>
 #>   user_agent: edr4r/0.3.0 (+https://github.com/ksonda/edr4r)
 #>   timeout:    60s
 #>   max_tries:  3

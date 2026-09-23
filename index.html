@@ -64,7 +64,7 @@
 <p>Two known-good places to point it:</p>
 <ul>
 <li>
-<a href="https://api.waterdata.usgs.gov/ogcapi/beta/" class="external-link">USGS waterdata OGC API</a> — stream gauges and water-quality stations from the U.S. Geological Survey.</li>
+<a href="https://api.waterdata.usgs.gov/ogcapi/v1/" class="external-link">USGS waterdata OGC API</a> — stream gauges and water-quality stations from the U.S. Geological Survey.</li>
 <li>
 <a href="https://api.wwdh.internetofwater.app" class="external-link">Western Water Datahub</a> — a <a href="https://pygeoapi.io" class="external-link">pygeoapi</a> deployment that wraps RISE, SNOTEL, USACE, AWDB and other monitoring sources behind a single EDR endpoint.</li>
 </ul>
@@ -109,18 +109,19 @@
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/ksonda/edr4r" class="external-link">edr4r</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_client.html">edr_client</a></span><span class="op">(</span><span class="st">"https://api.waterdata.usgs.gov/ogcapi/beta"</span><span class="op">)</span></span>
+<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_client.html">edr_client</a></span><span class="op">(</span><span class="st">"https://api.waterdata.usgs.gov/ogcapi/v1"</span><span class="op">)</span></span>
 <span><span class="va">wwdh</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_client.html">edr_client</a></span><span class="op">(</span><span class="st">"https://api.wwdh.internetofwater.app"</span><span class="op">)</span></span>
 <span><span class="co"># or use "http://localhost:5005" for a local pygeoapi deployment</span></span>
 <span></span>
 <span><span class="va">collections</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_collections.html">edr_collections</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span></span>
 <span><span class="va">collections</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"title"</span>, <span class="st">"data_queries"</span>, <span class="st">"output_formats"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<p>USGS daily values use the collection ID <code>"edr/daily"</code>, which resolves to <a href="https://api.waterdata.usgs.gov/ogcapi/v1/collections/edr/daily" class="external-link"><code>https://api.waterdata.usgs.gov/ogcapi/v1/collections/edr/daily</code></a>. Pass the service root to <code><a href="reference/edr_client.html">edr_client()</a></code> and the collection ID to query functions.</p>
 <p>Collection IDs are service-specific. The first thing to do against a new service is run <code><a href="reference/edr_collections.html">edr_collections()</a></code> and read the <code>data_queries</code> column to see which EDR endpoints each collection supports.</p>
 <p>For a new or unfamiliar implementation, inspect its advertised support before issuing data queries:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="reference/edr_capabilities.html">edr_capabilities</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"daily-edr"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/edr_supports.html">edr_supports</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"daily-edr"</span>, query <span class="op">=</span> <span class="st">"locations"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/edr_diagnose.html">edr_diagnose</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"daily-edr"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="reference/edr_capabilities.html">edr_capabilities</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"edr/daily"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/edr_supports.html">edr_supports</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"edr/daily"</span>, query <span class="op">=</span> <span class="st">"locations"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/edr_diagnose.html">edr_diagnose</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"edr/daily"</span><span class="op">)</span></span></code></pre></div>
 <p><code><a href="reference/edr_supports.html">edr_supports()</a></code> reports what metadata advertises; <code>FALSE</code> is not proof that a partially conformant server cannot handle the request.</p>
 <p>Discovery metadata is cached per client for a short, configurable period. Use <code>refresh = TRUE</code> when current server state matters, or <code>edr_cache_clear(client)</code> to clear it explicitly.</p>
 <p>To try the non-operational Met Office demonstrator with a deliberately small request, query one terrain point rather than a forecast collection:</p>
@@ -162,7 +163,7 @@
 <code class="sourceCode R"><span><span class="va">piedmont_bbox</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">78.60</span>, <span class="fl">36.04</span>, <span class="op">-</span><span class="fl">78.28</span>, <span class="fl">36.22</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">locs</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_locations.html">edr_locations</a></span><span class="op">(</span></span>
-<span>  <span class="va">client</span>, <span class="st">"daily-edr"</span>,</span>
+<span>  <span class="va">client</span>, <span class="st">"edr/daily"</span>,</span>
 <span>  bbox <span class="op">=</span> <span class="va">piedmont_bbox</span>,</span>
 <span>  limit <span class="op">=</span> <span class="fl">100</span>,              <span class="co"># server page size</span></span>
 <span>  paginate <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -181,7 +182,7 @@
 <code class="sourceCode R"><span><span class="va">station_id</span> <span class="op">&lt;-</span> <span class="va">locs</span><span class="op">$</span><span class="va">id</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>      <span class="co"># USGS ids include the "USGS-" prefix</span></span>
 <span></span>
 <span><span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_location.html">edr_location</a></span><span class="op">(</span></span>
-<span>  <span class="va">client</span>, <span class="st">"daily-edr"</span>,</span>
+<span>  <span class="va">client</span>, <span class="st">"edr/daily"</span>,</span>
 <span>  location_id    <span class="op">=</span> <span class="va">station_id</span>,</span>
 <span>  parameter_name <span class="op">=</span> <span class="st">"00060"</span>,    <span class="co"># daily discharge</span></span>
 <span>  limit          <span class="op">=</span> <span class="fl">200</span></span>
@@ -189,7 +190,7 @@
 <span></span>
 <span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span></span>
 <span><span class="va">df</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"datetime"</span>, <span class="st">"value"</span>, <span class="st">"unit"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
-<p>The USGS beta location endpoint currently ignores <code>datetime</code> and returns its latest <code>limit</code> records, so filter the resulting tibble client-side when you need a shorter period. Other EDR implementations, including WWDH, honor bounded intervals.</p>
+<p>The USGS v1 location endpoint supports <code>datetime</code> intervals. For a historical period, pass an interval such as <code>datetime = "2026-01-01/2026-05-31"</code> and a <code>limit</code> large enough to cover it. Without <code>datetime</code>, it returns the latest <code>limit</code> records.</p>
 </div>
 <div class="section level3">
 <h3 id="pull-several-station-time-series-safely">Pull several station time series safely<a class="anchor" aria-label="anchor" href="#pull-several-station-time-series-safely"></a>
@@ -199,7 +200,7 @@
 <code class="sourceCode R"><span><span class="va">selected_ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">locs</span><span class="op">$</span><span class="va">id</span>, <span class="fl">10</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">pull</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/edr_location_batch.html">edr_location_batch</a></span><span class="op">(</span></span>
-<span>  <span class="va">client</span>, <span class="st">"daily-edr"</span>,</span>
+<span>  <span class="va">client</span>, <span class="st">"edr/daily"</span>,</span>
 <span>  location_id    <span class="op">=</span> <span class="va">selected_ids</span>,</span>
 <span>  parameter_name <span class="op">=</span> <span class="st">"00060"</span>,</span>
 <span>  limit           <span class="op">=</span> <span class="fl">200</span>,</span>
@@ -233,7 +234,7 @@
 <p>Adjacent windows share their boundary because EDR intervals are closed and server inclusivity varies. By default, exact observations repeated across windows for the same station are retained only from the earliest request; <code>deduplicate = FALSE</code> preserves the raw responses. <code>requests$n_rows</code> records the pre-deduplication row count for each request.</p>
 <p><code>resume = TRUE</code> initializes a missing checkpoint on the first run. Later runs with the same effective request plan load successful and empty windows from disk and retry only unresolved work. The expanded plan still has to satisfy <code>max_requests</code> before the checkpoint is opened. Checkpoints contain parsed observations, but do not store client headers, query URLs, or error conditions; protect the directory like any other local data extract.</p>
 <p><code>include_parameters = TRUE</code> makes one explicit, cacheable discovery request and attaches the full collection parameter catalog once at <code>monthly_pull$parameters</code>; definitions and units are not repeated on every observation row. This discovery request is not counted by <code>max_requests</code>, is not persisted in the checkpoint, and is not collected by <code>on_error</code> if it fails.</p>
-<p>The USGS beta location endpoint currently ignores <code>datetime</code> and returns its latest records. Chunking is therefore useful only for endpoints that honor the requested interval; it is not a workaround for retrieving USGS history.</p>
+<p>USGS v1 also supports bounded <code>datetime</code> intervals, so this windowed workflow can be used with <code>"edr/daily"</code>. Set <code>limit</code> high enough to cover each window.</p>
 </div>
 <div class="section level3">
 <h3 id="spatial-filters--bbox-and-polygon">Spatial filters — bbox and polygon<a class="anchor" aria-label="anchor" href="#spatial-filters--bbox-and-polygon"></a>
@@ -289,7 +290,7 @@
 <p>For a quick exploratory pass over a whole collection, <code><a href="reference/edr_explore.html">edr_explore()</a></code> does the fetch + plot + map in one call:</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/edr_explore.html">edr_explore</a></span><span class="op">(</span></span>
-<span>  <span class="va">client</span>, <span class="st">"daily-edr"</span>,</span>
+<span>  <span class="va">client</span>, <span class="st">"edr/daily"</span>,</span>
 <span>  bbox           <span class="op">=</span> <span class="va">piedmont_bbox</span>,</span>
 <span>  parameter_name <span class="op">=</span> <span class="st">"00060"</span>,</span>
 <span>  limit          <span class="op">=</span> <span class="fl">25</span>,</span>

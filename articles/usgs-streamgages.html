@@ -62,18 +62,17 @@
       <h1>USGS streamgages: bounded discovery and mapping</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/v0.3.0/vignettes/usgs-streamgages.Rmd" class="external-link"><code>vignettes/usgs-streamgages.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/main/vignettes/usgs-streamgages.Rmd" class="external-link"><code>vignettes/usgs-streamgages.Rmd</code></a></small>
       <div class="d-none name"><code>usgs-streamgages.Rmd</code></div>
     </div>
 
     
     
-<p>The <a href="https://api.waterdata.usgs.gov/ogcapi/beta/" class="external-link">USGS
-waterdata OGC API</a> is a clean, real-world EDR endpoint with one
-collection (<code>daily-edr</code>) that exposes every USGS station’s
-daily-value time series. It’s a good target for learning
-<code>edr4r</code> because the API surface is small and the data is
-familiar (stream gauges).</p>
+<p>The <a href="https://api.waterdata.usgs.gov/ogcapi/v1/" class="external-link">USGS
+waterdata OGC API</a> has a daily-values EDR collection
+(<code>edr/daily</code>) that exposes every USGS station’s daily-value
+time series. It’s a good target for learning <code>edr4r</code> because
+the API surface is small and the data is familiar (stream gauges).</p>
 <p>This vignette walks through a typical streamgage exploration:
 discover what’s on offer, follow every advertised location page inside a
 small northern North Carolina Piedmont study area, pull recent
@@ -87,17 +86,18 @@ package checks remain offline.</p>
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/ksonda/edr4r" class="external-link">edr4r</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">usgs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_client.html">edr_client</a></span><span class="op">(</span><span class="st">"https://api.waterdata.usgs.gov/ogcapi/beta"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/edr_collections.html">edr_collections</a></span><span class="op">(</span><span class="va">usgs</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"title"</span>, <span class="st">"data_queries"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="va">usgs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_client.html">edr_client</a></span><span class="op">(</span><span class="st">"https://api.waterdata.usgs.gov/ogcapi/v1"</span><span class="op">)</span></span>
+<span><span class="va">collections</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_collections.html">edr_collections</a></span><span class="op">(</span><span class="va">usgs</span><span class="op">)</span></span>
+<span><span class="va">collections</span><span class="op">[</span><span class="va">collections</span><span class="op">$</span><span class="va">id</span> <span class="op">==</span> <span class="st">"edr/daily"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"title"</span>, <span class="st">"data_queries"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt; # A tibble: 1 × 3</span></span>
-<span><span class="co">#&gt;   id        title                                           data_queries</span></span>
-<span><span class="co">#&gt;   &lt;chr&gt;     &lt;chr&gt;                                           &lt;list&gt;      </span></span>
-<span><span class="co">#&gt; 1 daily-edr Daily values environmental data retrieval (EDR) &lt;chr [1]&gt;</span></span></code></pre></div>
-<p>USGS exposes a single collection, <code>daily-edr</code>. The
-<code>data_queries</code> column tells us what query verbs it
-supports:</p>
+<span><span class="co">#&gt;   id        title                                          data_queries</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;     &lt;chr&gt;                                          &lt;list&gt;</span></span>
+<span><span class="co">#&gt; 1 edr/daily Daily values environmental data retrieval (EDR) &lt;chr [1]&gt;</span></span></code></pre></div>
+<p>The <code>edr/daily</code> collection supports the
+<code>locations</code> query. Select it by ID because the service also
+lists collections for other OGC APIs:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/edr_collections.html">edr_collections</a></span><span class="op">(</span><span class="va">usgs</span><span class="op">)</span><span class="op">$</span><span class="va">data_queries</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span>
+<code class="sourceCode R"><span><span class="va">collections</span><span class="op">$</span><span class="va">data_queries</span><span class="op">[[</span><span class="fu"><a href="https://rdrr.io/r/base/match.html" class="external-link">match</a></span><span class="op">(</span><span class="st">"edr/daily"</span>, <span class="va">collections</span><span class="op">$</span><span class="va">id</span><span class="op">)</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="co">#&gt; [1] "locations"</span></span></code></pre></div>
 <p>Just <code>locations</code>. No <code>cube</code>, no
 <code>area</code>, no <code>position</code>. That matters:
@@ -114,7 +114,7 @@ block from the collection document – but USGS doesn’t populate it. Use
 <code><a href="../reference/edr_queryables.html">edr_queryables()</a></code> instead to see what filter properties the
 server exposes:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">q</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_queryables.html">edr_queryables</a></span><span class="op">(</span><span class="va">usgs</span>, <span class="st">"daily-edr"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">q</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_queryables.html">edr_queryables</a></span><span class="op">(</span><span class="va">usgs</span>, <span class="st">"edr/daily"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">q</span><span class="op">$</span><span class="va">properties</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  [1] "geometry"                      "id"                           </span></span>
 <span><span class="co">#&gt;  [3] "unit_of_measure"               "parameter_name"               </span></span>
@@ -125,7 +125,8 @@ server exposes:</p>
 <span><span class="co">#&gt; [13] "computation_identifier"        "thresholds"                   </span></span>
 <span><span class="co">#&gt; [15] "sublocation_identifier"        "primary"                      </span></span>
 <span><span class="co">#&gt; [17] "monitoring_location_id"        "web_description"              </span></span>
-<span><span class="co">#&gt; [19] "parameter_description"         "parent_time_series_id"</span></span></code></pre></div>
+<span><span class="co">#&gt; [19] "parameter_description"         "parent_time_series_id"</span></span>
+<span><span class="co">#&gt; [21] "data_gap_interval"</span></span></code></pre></div>
 <p><code>parameter_code</code> is the filter you’d pass as
 <code>parameter_name =</code> in a query. USGS uses the standard <a href="https://waterdata.usgs.gov/code-dictionary" class="external-link">NWIS parameter
 codes</a> – a few common ones for streamgages:</p>
@@ -183,7 +184,7 @@ the combined response is an <code>sf</code> object with one point per
 gauge:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">gauges</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_locations.html">edr_locations</a></span><span class="op">(</span></span>
-<span>  <span class="va">usgs</span>, <span class="st">"daily-edr"</span>,</span>
+<span>  <span class="va">usgs</span>, <span class="st">"edr/daily"</span>,</span>
 <span>  bbox <span class="op">=</span> <span class="va">piedmont_bbox</span>,</span>
 <span>  limit <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>  paginate <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -216,21 +217,20 @@ a query.</p>
 <div class="section level2">
 <h2 id="pull-streamflow-for-one-station">3. Pull streamflow for one station<a class="anchor" aria-label="anchor" href="#pull-streamflow-for-one-station"></a>
 </h2>
-<p>A USGS quirk to flag up front: when you ask for a specific station
-with <code><a href="../reference/edr_location.html">edr_location()</a></code>, the server <strong>ignores the
-<code>datetime</code> interval and just returns the most recent
-<code>limit</code> records</strong> (<code>limit</code> defaults to 10).
-To get five months of daily data, pass a <code>limit</code> that
-comfortably covers the window – say 200 days – and filter to the target
-window client-side.</p>
+<p>USGS v1 supports <code>datetime</code> intervals on individual
+location requests. For January through May 2026, supply that interval
+and request up to 200 records so the response can cover all five months.
+Without <code>datetime</code>, the endpoint returns the latest
+<code>limit</code> records.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">example_id</span>   <span class="op">&lt;-</span> <span class="va">gauges</span><span class="op">$</span><span class="va">id</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="va">example_name</span> <span class="op">&lt;-</span> <span class="va">gauges</span><span class="op">$</span><span class="va">monitoring_location_name</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span>
 <span></span>
 <span><span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_location.html">edr_location</a></span><span class="op">(</span></span>
-<span>  <span class="va">usgs</span>, <span class="st">"daily-edr"</span>,</span>
+<span>  <span class="va">usgs</span>, <span class="st">"edr/daily"</span>,</span>
 <span>  location_id    <span class="op">=</span> <span class="va">example_id</span>,</span>
 <span>  parameter_name <span class="op">=</span> <span class="st">"00060"</span>,</span>
+<span>  datetime       <span class="op">=</span> <span class="st">"2026-01-01/2026-05-31"</span>,</span>
 <span>  limit          <span class="op">=</span> <span class="fl">200</span></span>
 <span><span class="op">)</span></span>
 <span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/covjson_to_tibble.html">covjson_to_tibble</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span></span>
@@ -263,9 +263,10 @@ the same bounded per-station workflow without discovering or
 parallelizing anything:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">all_streamflow</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_location_batch.html">edr_location_batch</a></span><span class="op">(</span></span>
-<span>  <span class="va">usgs</span>, <span class="st">"daily-edr"</span>,</span>
+<span>  <span class="va">usgs</span>, <span class="st">"edr/daily"</span>,</span>
 <span>  location_id    <span class="op">=</span> <span class="va">gauges</span><span class="op">$</span><span class="va">id</span>,</span>
 <span>  parameter_name <span class="op">=</span> <span class="st">"00060"</span>,</span>
+<span>  datetime       <span class="op">=</span> <span class="st">"2026-01-01/2026-05-31"</span>,</span>
 <span>  limit           <span class="op">=</span> <span class="fl">200</span>,</span>
 <span>  max_requests    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">gauges</span><span class="op">)</span>,</span>
 <span>  on_error        <span class="op">=</span> <span class="st">"collect"</span>,</span>
@@ -275,10 +276,11 @@ parallelizing anything:</p>
 <span><span class="va">all_streamflow</span><span class="op">$</span><span class="va">requests</span></span>
 <span><span class="va">all_streamflow</span><span class="op">$</span><span class="va">data</span></span>
 <span><span class="va">all_streamflow</span><span class="op">$</span><span class="va">errors</span></span></code></pre></div>
-<p>USGS beta currently ignores <code>datetime</code> on these individual
-location queries and returns the latest records. Do not add
-<code>chunk</code> here expecting historical windows: chunking is
-intended for EDR implementations that honor the requested interval.</p>
+<p>For longer historical pulls, use <code>chunk</code> to split the
+<code>datetime</code> interval into bounded windows. Set
+<code>limit</code> high enough for each window and
+<code>max_requests</code> high enough for the full station-by-window
+plan.</p>
 </div>
 <div class="section level2">
 <h2 id="map-every-gauge-with-per-station-popups">4. Map every gauge with per-station popups<a class="anchor" aria-label="anchor" href="#map-every-gauge-with-per-station-popups"></a>
@@ -288,10 +290,11 @@ results to <code><a href="../reference/edr_map.html">edr_map()</a></code> in one
 inline plot + CSV download for that gauge.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_explore.html">edr_explore</a></span><span class="op">(</span></span>
-<span>  <span class="va">usgs</span>, <span class="st">"daily-edr"</span>,</span>
+<span>  <span class="va">usgs</span>, <span class="st">"edr/daily"</span>,</span>
 <span>  bbox           <span class="op">=</span> <span class="va">piedmont_bbox</span>,</span>
 <span>  parameter_name <span class="op">=</span> <span class="st">"00060"</span>,</span>
-<span>  record_limit   <span class="op">=</span> <span class="fl">200</span>,                 <span class="co"># ~6 months of daily values per station</span></span>
+<span>  datetime       <span class="op">=</span> <span class="st">"2026-01-01/2026-05-31"</span>,</span>
+<span>  record_limit   <span class="op">=</span> <span class="fl">200</span>,</span>
 <span>  popup          <span class="op">=</span> <span class="st">"plot+csv"</span>,</span>
 <span>  label_col      <span class="op">=</span> <span class="st">"monitoring_location_name"</span>,</span>
 <span>  quiet          <span class="op">=</span> <span class="cn">TRUE</span></span>
@@ -310,16 +313,15 @@ series.</p>
 </h2>
 <ul>
 <li>
-<code>daily-edr</code> only advertises the <code>locations</code>
+<code>edr/daily</code> only advertises the <code>locations</code>
 query. The other EDR verbs (<code>cube</code>, <code>area</code>,
 <code>position</code>, …) return HTTP errors. The per-station fallback
 works fine for tens of gauges; for hundreds consider pre-filtering
 aggressively with <code>bbox =</code>.</li>
 <li>
-<code>datetime</code> is <strong>not honoured</strong> on
-<code>/locations/{id}</code> requests – the server returns the latest
-<code>limit</code> records regardless. Pass enough <code>limit</code> to
-cover your window, then filter client-side.</li>
+<code>datetime</code> filters <code>/locations/{id}</code> requests
+to the requested interval. Set <code>limit</code> high enough to cover
+the window.</li>
 <li>The station id format is <code>"USGS-&lt;NWIS-id&gt;"</code>. The
 bare NWIS id (<code>"02087500"</code>) doesn’t work; pass the full
 <code>"USGS-..."</code> form, which is what <code><a href="../reference/edr_locations.html">edr_locations()</a></code>

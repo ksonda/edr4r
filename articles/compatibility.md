@@ -166,12 +166,13 @@ or clear that client’s metadata with `edr_cache_clear(client)`.
 ## Verified endpoints
 
 The table records direct compatibility checks, not a permanent
-availability promise. Server metadata and pagination behavior were last
-inspected on 2026-07-10.
+availability promise. WWDH and Met Office metadata and pagination
+behavior were inspected on 2026-07-10. USGS v1 discovery, pagination,
+station data, and `datetime` filtering were checked on 2026-09-23.
 
 | Endpoint | Role | Advertised query types observed | edr4r coverage |
 |----|----|----|----|
-| [USGS waterdata](https://api.waterdata.usgs.gov/ogcapi/beta/) | Operational U.S. streamgage service | `locations` | Collection/location discovery, opaque cursor pagination, latest-record station/batch time series, CoverageJSON parsing, per-location exploration; location queries currently ignore `datetime` |
+| [USGS waterdata](https://api.waterdata.usgs.gov/ogcapi/v1/) | Operational U.S. streamgage service | `locations` | Collection/location discovery, opaque cursor pagination, station/batch time series with `datetime` filtering, CoverageJSON parsing, per-location exploration |
 | [Western Water Datahub](https://api.wwdh.internetofwater.app) | Operational multi-network pygeoapi deployment | `locations`, `items`, `position`, `area`, `cube` | Discovery, parameters, offset pagination for items, station and bulk queries, plotting and mapping |
 | [Met Office Labs](https://labs.metoffice.gov.uk/edr/collections?f=html) | Non-operational technical demonstrator | `locations`, `items`, `instances`, `position`, `area`, `cube`, `radius`, `trajectory` | Cross-implementation metadata, instances, query-specific formats, terrain point coverage, and an explicit-CRS population grid |
 

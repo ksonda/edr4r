@@ -12,7 +12,7 @@ as EDR collections.
 
 Two operational endpoints worth pointing it at:
 
-- [USGS waterdata OGC API](https://api.waterdata.usgs.gov/ogcapi/beta/)
+- [USGS waterdata OGC API](https://api.waterdata.usgs.gov/ogcapi/v1/)
 
 - [Western Water Datahub](https://api.wwdh.internetofwater.app) (a
   [pygeoapi](https://pygeoapi.io) deployment)

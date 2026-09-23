@@ -27,7 +27,7 @@ library(edr4r)
 library(ggplot2)
 
 usgs <- edr_client(
-  "https://api.waterdata.usgs.gov/ogcapi/beta",
+  "https://api.waterdata.usgs.gov/ogcapi/v1",
   timeout = 60,
   max_tries = 1
 )
@@ -57,13 +57,13 @@ advertises the query used below:
 capability_check <- data.frame(
   endpoint = c("Met Office Labs", "Met Office Labs", "USGS waterdata", "WWDH"),
   collection = c(
-    "global_pop_density", "copernicus_dem", "daily-edr", "rise-edr"
+    "global_pop_density", "copernicus_dem", "edr/daily", "rise-edr"
   ),
   query = c("area", "area", "locations", "locations"),
   supported = c(
     edr_supports(met, "global_pop_density", query = "area"),
     edr_supports(met, "copernicus_dem", query = "area"),
-    edr_supports(usgs, "daily-edr", query = "locations"),
+    edr_supports(usgs, "edr/daily", query = "locations"),
     edr_supports(wwdh, "rise-edr", query = "locations")
   )
 )
@@ -75,7 +75,7 @@ knitr::kable(capability_check)
 |:----------------|:-------------------|:----------|:----------|
 | Met Office Labs | global_pop_density | area      | TRUE      |
 | Met Office Labs | copernicus_dem     | area      | TRUE      |
-| USGS waterdata  | daily-edr          | locations | TRUE      |
+| USGS waterdata  | edr/daily          | locations | TRUE      |
 | WWDH            | rise-edr           | locations | TRUE      |
 
 ## 2. Build two grid facets
@@ -203,15 +203,14 @@ the station layers and map extent fixed.
 ## 3. Retrieve the station series
 
 Two USGS gauges provide a stage series below Hoover Dam and a discharge
-series on Las Vegas Wash. USGS currently ignores `datetime` on
-individual location requests, so the example asks for 31 records and
-uses the dates actually returned.
+series on Las Vegas Wash. This example asks for the latest 31 records
+and uses their dates to align the series.
 
 ``` r
 
 usgs_index <- edr_locations(
   usgs,
-  "daily-edr",
+  "edr/daily",
   bbox = study_bbox,
   limit = 100
 )
@@ -224,7 +223,7 @@ usgs_sites <- usgs_index[
 
 hoover_response <- edr_location(
   usgs,
-  "daily-edr",
+  "edr/daily",
   location_id = "USGS-09421500",
   parameter_name = "00065",
   limit = 31
@@ -237,7 +236,7 @@ hoover_stage$coverage_id <- paste0("usgs:", hoover_stage$coverage_id)
 
 wash_response <- edr_location(
   usgs,
-  "daily-edr",
+  "edr/daily",
   location_id = "USGS-09419800",
   parameter_name = "00060",
   limit = 31

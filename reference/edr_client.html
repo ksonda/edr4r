@@ -40,7 +40,7 @@ applied to every request."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Create an EDR client</h1>
-      <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/v0.3.0/R/client.R" class="external-link"><code>R/client.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/main/R/client.R" class="external-link"><code>R/client.R</code></a></small>
       <div class="d-none name"><code>edr_client.Rd</code></div>
     </div>
 
@@ -71,12 +71,14 @@ applied to every request.</p>
 <dl><dt id="arg-base-url">base_url<a class="anchor" aria-label="anchor" href="#arg-base-url"></a></dt>
 <dd><p>Base URL of an
 <a href="https://ogcapi.ogc.org/edr/" class="external-link">OGC API - EDR</a> service. Examples:
-the <a href="https://api.waterdata.usgs.gov/ogcapi/beta/" class="external-link">USGS waterdata OGC API</a>
-at <code>"https://api.waterdata.usgs.gov/ogcapi/beta"</code>, the
+the <a href="https://api.waterdata.usgs.gov/ogcapi/v1/" class="external-link">USGS waterdata OGC API</a>
+at <code>"https://api.waterdata.usgs.gov/ogcapi/v1"</code>, the
 <a href="https://api.wwdh.internetofwater.app" class="external-link">Western Water Datahub</a> at
 <code>"https://api.wwdh.internetofwater.app"</code>, or
 <code>"http://localhost:5005"</code> for a local <a href="https://pygeoapi.io" class="external-link">pygeoapi</a>
-dev server. A trailing slash is optional.</p></dd>
+dev server. A trailing slash is optional. Supply the service root;
+for USGS daily values, pass <code>"edr/daily"</code> as the <code>collection_id</code> to
+discovery and query functions.</p></dd>
 
 
 <dt id="arg-user-agent">user_agent<a class="anchor" aria-label="anchor" href="#arg-user-agent"></a></dt>
@@ -125,10 +127,10 @@ are made. Useful for debugging.</p></dd>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">usgs</span> <span class="op">&lt;-</span> <span class="fu">edr_client</span><span class="op">(</span><span class="st">"https://api.waterdata.usgs.gov/ogcapi/beta"</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">usgs</span> <span class="op">&lt;-</span> <span class="fu">edr_client</span><span class="op">(</span><span class="st">"https://api.waterdata.usgs.gov/ogcapi/v1"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">usgs</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;edr_client&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   base_url:   <span style="color: #0000BB; font-style: italic;">&lt;https://api.waterdata.usgs.gov/ogcapi/beta&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   base_url:   <span style="color: #0000BB; font-style: italic;">&lt;https://api.waterdata.usgs.gov/ogcapi/v1&gt;</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   user_agent: edr4r/0.3.0 (+https://github.com/ksonda/edr4r)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   timeout:    60s</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   max_tries:  3</span>

@@ -62,7 +62,7 @@
       <h1>Mapping Lake Mead data across three EDR services</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/v0.3.0/vignettes/cross-endpoint-water-context.Rmd" class="external-link"><code>vignettes/cross-endpoint-water-context.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/main/vignettes/cross-endpoint-water-context.Rmd" class="external-link"><code>vignettes/cross-endpoint-water-context.Rmd</code></a></small>
       <div class="d-none name"><code>cross-endpoint-water-context.Rmd</code></div>
     </div>
 
@@ -94,7 +94,7 @@ technical demonstrator and may change independently of
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">usgs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_client.html">edr_client</a></span><span class="op">(</span></span>
-<span>  <span class="st">"https://api.waterdata.usgs.gov/ogcapi/beta"</span>,</span>
+<span>  <span class="st">"https://api.waterdata.usgs.gov/ogcapi/v1"</span>,</span>
 <span>  timeout <span class="op">=</span> <span class="fl">60</span>,</span>
 <span>  max_tries <span class="op">=</span> <span class="fl">1</span></span>
 <span><span class="op">)</span></span>
@@ -120,13 +120,13 @@ advertises the query used below:</p>
 <code class="sourceCode R"><span><span class="va">capability_check</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  endpoint <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Met Office Labs"</span>, <span class="st">"Met Office Labs"</span>, <span class="st">"USGS waterdata"</span>, <span class="st">"WWDH"</span><span class="op">)</span>,</span>
 <span>  collection <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>    <span class="st">"global_pop_density"</span>, <span class="st">"copernicus_dem"</span>, <span class="st">"daily-edr"</span>, <span class="st">"rise-edr"</span></span>
+<span>    <span class="st">"global_pop_density"</span>, <span class="st">"copernicus_dem"</span>, <span class="st">"edr/daily"</span>, <span class="st">"rise-edr"</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"area"</span>, <span class="st">"area"</span>, <span class="st">"locations"</span>, <span class="st">"locations"</span><span class="op">)</span>,</span>
 <span>  supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>    <span class="fu"><a href="../reference/edr_supports.html">edr_supports</a></span><span class="op">(</span><span class="va">met</span>, <span class="st">"global_pop_density"</span>, query <span class="op">=</span> <span class="st">"area"</span><span class="op">)</span>,</span>
 <span>    <span class="fu"><a href="../reference/edr_supports.html">edr_supports</a></span><span class="op">(</span><span class="va">met</span>, <span class="st">"copernicus_dem"</span>, query <span class="op">=</span> <span class="st">"area"</span><span class="op">)</span>,</span>
-<span>    <span class="fu"><a href="../reference/edr_supports.html">edr_supports</a></span><span class="op">(</span><span class="va">usgs</span>, <span class="st">"daily-edr"</span>, query <span class="op">=</span> <span class="st">"locations"</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="../reference/edr_supports.html">edr_supports</a></span><span class="op">(</span><span class="va">usgs</span>, <span class="st">"edr/daily"</span>, query <span class="op">=</span> <span class="st">"locations"</span><span class="op">)</span>,</span>
 <span>    <span class="fu"><a href="../reference/edr_supports.html">edr_supports</a></span><span class="op">(</span><span class="va">wwdh</span>, <span class="st">"rise-edr"</span>, query <span class="op">=</span> <span class="st">"locations"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span>
@@ -154,7 +154,7 @@ advertises the query used below:</p>
 </tr>
 <tr class="odd">
 <td align="left">USGS waterdata</td>
-<td align="left">daily-edr</td>
+<td align="left">edr/daily</td>
 <td align="left">locations</td>
 <td align="left">TRUE</td>
 </tr>
@@ -287,13 +287,12 @@ extent fixed.</p>
 <h2 id="retrieve-the-station-series">3. Retrieve the station series<a class="anchor" aria-label="anchor" href="#retrieve-the-station-series"></a>
 </h2>
 <p>Two USGS gauges provide a stage series below Hoover Dam and a
-discharge series on Las Vegas Wash. USGS currently ignores
-<code>datetime</code> on individual location requests, so the example
-asks for 31 records and uses the dates actually returned.</p>
+discharge series on Las Vegas Wash. This example asks for the latest 31
+records and uses their dates to align the series.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">usgs_index</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_locations.html">edr_locations</a></span><span class="op">(</span></span>
 <span>  <span class="va">usgs</span>,</span>
-<span>  <span class="st">"daily-edr"</span>,</span>
+<span>  <span class="st">"edr/daily"</span>,</span>
 <span>  bbox <span class="op">=</span> <span class="va">study_bbox</span>,</span>
 <span>  limit <span class="op">=</span> <span class="fl">100</span></span>
 <span><span class="op">)</span></span>
@@ -306,7 +305,7 @@ asks for 31 records and uses the dates actually returned.</p>
 <span></span>
 <span><span class="va">hoover_response</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_location.html">edr_location</a></span><span class="op">(</span></span>
 <span>  <span class="va">usgs</span>,</span>
-<span>  <span class="st">"daily-edr"</span>,</span>
+<span>  <span class="st">"edr/daily"</span>,</span>
 <span>  location_id <span class="op">=</span> <span class="st">"USGS-09421500"</span>,</span>
 <span>  parameter_name <span class="op">=</span> <span class="st">"00065"</span>,</span>
 <span>  limit <span class="op">=</span> <span class="fl">31</span></span>
@@ -319,7 +318,7 @@ asks for 31 records and uses the dates actually returned.</p>
 <span></span>
 <span><span class="va">wash_response</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/edr_location.html">edr_location</a></span><span class="op">(</span></span>
 <span>  <span class="va">usgs</span>,</span>
-<span>  <span class="st">"daily-edr"</span>,</span>
+<span>  <span class="st">"edr/daily"</span>,</span>
 <span>  location_id <span class="op">=</span> <span class="st">"USGS-09419800"</span>,</span>
 <span>  parameter_name <span class="op">=</span> <span class="st">"00060"</span>,</span>
 <span>  limit <span class="op">=</span> <span class="fl">31</span></span>

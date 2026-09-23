@@ -46,7 +46,7 @@ use edr_parameters()."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Get the queryables (filter properties) for a collection</h1>
-      <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/v0.3.0/R/discovery.R" class="external-link"><code>R/discovery.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/ksonda/edr4r/blob/main/R/discovery.R" class="external-link"><code>R/discovery.R</code></a></small>
       <div class="d-none name"><code>edr_queryables.Rd</code></div>
     </div>
 
@@ -74,7 +74,8 @@ use <code><a href="edr_parameters.html">edr_parameters()</a></code>.</p>
 
 <dt id="arg-collection-id">collection_id<a class="anchor" aria-label="anchor" href="#arg-collection-id"></a></dt>
 <dd><p>Collection identifier as advertised by the
-server – e.g. <code>"monitoring-locations"</code> or <code>"daily-values"</code>.</p></dd>
+server, e.g. <code>"monitoring-locations"</code> or <code>"edr/daily"</code>. Slashes separate
+collection path segments; empty segments and <code>.</code> or <code>..</code> are rejected.</p></dd>
 
 
 <dt id="arg-refresh">refresh<a class="anchor" aria-label="anchor" href="#arg-refresh"></a></dt>

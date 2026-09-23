@@ -16,8 +16,9 @@ edr_collection(client, collection_id, refresh = FALSE)
 
 - collection_id:
 
-  Collection identifier as advertised by the server – e.g.
-  `"monitoring-locations"` or `"daily-values"`.
+  Collection identifier as advertised by the server, e.g.
+  `"monitoring-locations"` or `"edr/daily"`. Slashes separate collection
+  path segments; empty segments and `.` or `..` are rejected.
 
 - refresh:
 
