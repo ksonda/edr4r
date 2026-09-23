@@ -10,7 +10,8 @@ edr_collection(client, collection_id, refresh = FALSE)
 \item{client}{An \code{edr_client}.}
 
 \item{collection_id}{Collection identifier as advertised by the
-server -- e.g. \code{"monitoring-locations"} or \code{"daily-values"}.}
+server, e.g. \code{"monitoring-locations"} or \code{"edr/daily"}. Slashes separate
+collection path segments; empty segments and \code{.} or \code{..} are rejected.}
 
 \item{refresh}{If \code{TRUE}, bypass and replace any cached response. Discovery
 responses otherwise use the client's \code{cache_ttl}; see \code{\link[=edr_client]{edr_client()}}.}

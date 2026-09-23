@@ -573,7 +573,7 @@ test_that("batch validation finishes before network activity", {
     "instance_id.*must not contain"
   )
   expect_error(
-    edr_location_batch(client, "bad/collection", "a", progress = FALSE),
+    edr_location_batch(client, "bad/../collection", "a", progress = FALSE),
     "collection_id.*must not contain"
   )
   expect_error(

@@ -6,12 +6,14 @@
 #'
 #' @param base_url Base URL of an
 #'   [OGC API - EDR](https://ogcapi.ogc.org/edr/) service. Examples:
-#'   the [USGS waterdata OGC API](https://api.waterdata.usgs.gov/ogcapi/beta/)
-#'   at `"https://api.waterdata.usgs.gov/ogcapi/beta"`, the
+#'   the [USGS waterdata OGC API](https://api.waterdata.usgs.gov/ogcapi/v1/)
+#'   at `"https://api.waterdata.usgs.gov/ogcapi/v1"`, the
 #'   [Western Water Datahub](https://api.wwdh.internetofwater.app) at
 #'   `"https://api.wwdh.internetofwater.app"`, or
 #'   `"http://localhost:5005"` for a local [pygeoapi](https://pygeoapi.io)
-#'   dev server. A trailing slash is optional.
+#'   dev server. A trailing slash is optional. Supply the service root;
+#'   for USGS daily values, pass `"edr/daily"` as the `collection_id` to
+#'   discovery and query functions.
 #' @param user_agent String sent in the `User-Agent` header. Defaults to
 #'   `"edr4r/<version> (+https://github.com/ksonda/edr4r)"`.
 #' @param timeout Request timeout in seconds. Defaults to 60.
@@ -35,7 +37,7 @@
 #' @export
 #'
 #' @examples
-#' usgs <- edr_client("https://api.waterdata.usgs.gov/ogcapi/beta")
+#' usgs <- edr_client("https://api.waterdata.usgs.gov/ogcapi/v1")
 #' usgs
 edr_client <- function(base_url,
                        user_agent = NULL,

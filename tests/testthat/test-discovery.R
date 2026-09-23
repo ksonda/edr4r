@@ -32,7 +32,10 @@ test_that("edr_conformance flattens the URI list", {
 test_that("collection id is validated", {
   expect_error(edr_collection(test_client(), ""), "non-empty")
   expect_error(edr_collection(test_client(), c("a", "b")), "single non-empty")
-  expect_error(edr_collection(test_client(), "a/b"), "must not contain")
+  for (id in c("/edr/daily", "edr/daily/", "edr//daily", ".", "..",
+               "edr/./daily", "edr/../daily")) {
+    expect_error(edr_collection(test_client(), id), "must not contain")
+  }
 })
 
 test_that("collection ids are encoded as path segments", {
@@ -44,6 +47,49 @@ test_that("collection ids are encoded as path segments", {
 
   edr_collection(test_client(), "daily values?")
   expect_match(captured$url, "collections/daily%20values%3F", fixed = TRUE)
+
+  edr_collection(test_client(), "edr/daily values?#&")
+  expect_identical(
+    captured$url,
+    "http://test/collections/edr/daily%20values%3F%23%26?f=json"
+  )
+})
+
+test_that("namespaced collection ids work for discovery and data queries", {
+  urls <- character()
+  coverage <- read_fixture("pointseries.covjson")
+  locations <- read_fixture("locations.geojson")
+  httr2::local_mocked_responses(function(req) {
+    urls <<- c(urls, req$url)
+    path <- sub("[?].*$", "", req$url)
+    if (endsWith(path, "/locations/USGS-02081500")) {
+      mock_json_response(coverage)
+    } else if (endsWith(path, "/locations")) {
+      mock_json_response(locations)
+    } else {
+      mock_json_response(list(id = "edr/daily"))
+    }
+  })
+  client <- edr_client("https://api.waterdata.usgs.gov/ogcapi/v1")
+
+  expect_identical(edr_collection(client, "edr/daily")$id, "edr/daily")
+  edr_queryables(client, "edr/daily")
+  edr_locations(client, "edr/daily")
+  result <- edr_location_batch(
+    client, "edr/daily", "USGS-02081500", progress = FALSE
+  )
+
+  expect_identical(
+    urls,
+    paste0(
+      "https://api.waterdata.usgs.gov/ogcapi/v1/collections/edr/daily",
+      c("", "/queryables", "/locations", "/locations/USGS-02081500"),
+      "?f=json"
+    )
+  )
+  expect_identical(result$collection_id, "edr/daily")
+  expect_identical(result$requests$status, "success")
+  expect_equal(nrow(result$data), 6L)
 })
 
 test_that("rich collection and parameter metadata is retained", {

@@ -10,14 +10,14 @@ suppressPackageStartupMessages(library(edr4r))
 
 message("Checking USGS cursor pagination ...")
 usgs <- edr_client(
-  "https://api.waterdata.usgs.gov/ogcapi/beta",
+  "https://api.waterdata.usgs.gov/ogcapi/v1",
   timeout = 20,
   max_tries = 2
 )
 
 locations <- edr_locations(
   usgs,
-  "daily-edr",
+  "edr/daily",
   bbox = c(-78.60, 36.04, -78.28, 36.22),
   limit = 2,
   paginate = TRUE,
@@ -58,7 +58,7 @@ if (length(location_ids) == 0L) {
 message("Checking a bounded USGS station batch ...")
 batch <- edr_location_batch(
   usgs,
-  "daily-edr",
+  "edr/daily",
   location_id = location_ids,
   parameter_name = "00060",
   limit = 1,

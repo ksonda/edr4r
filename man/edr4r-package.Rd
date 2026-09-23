@@ -17,7 +17,7 @@ or reservoir telemetry as EDR collections.
 \details{
 Two operational endpoints worth pointing it at:
 \itemize{
-\item \href{https://api.waterdata.usgs.gov/ogcapi/beta/}{USGS waterdata OGC API}
+\item \href{https://api.waterdata.usgs.gov/ogcapi/v1/}{USGS waterdata OGC API}
 \item \href{https://api.wwdh.internetofwater.app}{Western Water Datahub}
 (a \href{https://pygeoapi.io}{pygeoapi} deployment)
 }

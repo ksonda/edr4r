@@ -18,12 +18,14 @@ edr_client(
 \arguments{
 \item{base_url}{Base URL of an
 \href{https://ogcapi.ogc.org/edr/}{OGC API - EDR} service. Examples:
-the \href{https://api.waterdata.usgs.gov/ogcapi/beta/}{USGS waterdata OGC API}
-at \code{"https://api.waterdata.usgs.gov/ogcapi/beta"}, the
+the \href{https://api.waterdata.usgs.gov/ogcapi/v1/}{USGS waterdata OGC API}
+at \code{"https://api.waterdata.usgs.gov/ogcapi/v1"}, the
 \href{https://api.wwdh.internetofwater.app}{Western Water Datahub} at
 \code{"https://api.wwdh.internetofwater.app"}, or
 \code{"http://localhost:5005"} for a local \href{https://pygeoapi.io}{pygeoapi}
-dev server. A trailing slash is optional.}
+dev server. A trailing slash is optional. Supply the service root;
+for USGS daily values, pass \code{"edr/daily"} as the \code{collection_id} to
+discovery and query functions.}
 
 \item{user_agent}{String sent in the \code{User-Agent} header. Defaults to
 \code{"edr4r/<version> (+https://github.com/ksonda/edr4r)"}.}
@@ -59,6 +61,6 @@ API - EDR service, a default user-agent, and HTTP options that are
 applied to every request.
 }
 \examples{
-usgs <- edr_client("https://api.waterdata.usgs.gov/ogcapi/beta")
+usgs <- edr_client("https://api.waterdata.usgs.gov/ogcapi/v1")
 usgs
 }

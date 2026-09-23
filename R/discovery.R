@@ -68,7 +68,8 @@ edr_collections <- function(client, refresh = FALSE) {
 #'
 #' @inheritParams edr_landing
 #' @param collection_id Collection identifier as advertised by the
-#'   server -- e.g. `"monitoring-locations"` or `"daily-values"`.
+#'   server, e.g. `"monitoring-locations"` or `"edr/daily"`. Slashes separate
+#'   collection path segments; empty segments and `.` or `..` are rejected.
 #' @return A list with the raw collection document.
 #' @export
 edr_collection <- function(client, collection_id, refresh = FALSE) {
@@ -267,10 +268,12 @@ check_collection_id <- function(collection_id, call = rlang::caller_env()) {
       call = call
     )
   }
-  if (grepl("/", collection_id, fixed = TRUE)) {
+  segments <- strsplit(collection_id, "/", fixed = TRUE)[[1L]]
+  if (grepl("^/|/$|//", collection_id) ||
+      any(segments %in% c(".", ".."))) {
     cli::cli_abort(
-      c("{.arg collection_id} must not contain {.val /}.",
-        i = "Collection ids are used as HTTP path segments."),
+      c("{.arg collection_id} must not contain empty, {.val .}, or {.val ..} path segments.",
+        i = "Use the collection identifier advertised by the server."),
       call = call
     )
   }
@@ -279,7 +282,12 @@ check_collection_id <- function(collection_id, call = rlang::caller_env()) {
 
 collection_path_id <- function(collection_id, call = rlang::caller_env()) {
   collection_id <- check_collection_id(collection_id, call = call)
-  utils::URLencode(collection_id, reserved = TRUE, repeated = TRUE)
+  segments <- strsplit(collection_id, "/", fixed = TRUE)[[1L]]
+  paste(
+    vapply(segments, utils::URLencode, character(1),
+           reserved = TRUE, repeated = TRUE),
+    collapse = "/"
+  )
 }
 
 collection_row <- function(c) {

@@ -153,11 +153,11 @@ test_that("collection and instance ids are safe path segments", {
 
   edr_instance(
     test_client(),
-    collection_id = "model family?",
+    collection_id = "edr/model family?",
     instance_id = "run 00?#&"
   )
   expected <- paste0(
-    "collections/",
+    "collections/edr/",
     utils::URLencode("model family?", reserved = TRUE),
     "/instances/",
     utils::URLencode("run 00?#&", reserved = TRUE)
@@ -169,7 +169,7 @@ test_that("collection and instance ids are safe path segments", {
     "instance_id.*must not contain"
   )
   expect_error(
-    edr_instances(test_client(), "model/family"),
+    edr_instances(test_client(), "model/../family"),
     "collection_id.*must not contain"
   )
 })
